@@ -1,0 +1,619 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		10581EAEE18449219345570F /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = F292057CE60FE52926AEEE6C /* Components.swift */; };
+		3607D69D6BD87963249BDF98 /* ResponseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33FB421789C053BD9B6160C /* ResponseView.swift */; };
+		39268C70F6635DDBABED7942 /* WorkspaceSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FF8D9C2DB8DBCD51480B88D /* WorkspaceSheets.swift */; };
+		3BAEF3C723DE5C6C10E2A0B9 /* IntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E015068A24823CDD3FE171F2 /* IntegrationTests.swift */; };
+		7CDE29859B6995FB4416CA8B /* WorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F4743BD555372710532E45 /* WorkspaceView.swift */; };
+		7E8BA664B6A552FACF7E39CC /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */; };
+		85B112AAEBD23CF78053F4B3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9BCBBAD4A09C3F785FE137E1 /* PrivacyInfo.xcprivacy */; };
+		95423499F012D249566AC1CD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1B0C89FDF984E7C8B7630705 /* Assets.xcassets */; };
+		A3084FF752E45C07359EA343 /* RequestEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4D0239FCDE78AC65AE32E3 /* RequestEditor.swift */; };
+		C509B03B66C0A697145786E2 /* MonkeytailUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022F944F583B9E9D0FB599DE /* MonkeytailUITests.swift */; };
+		CD05A502A387D97B4D0D3684 /* MonkeytailCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6AE2B7F6ECCE2F85BF760BF4 /* MonkeytailCore */; };
+		DF876B1428C5036B408FBFC3 /* MonkeytailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831469D5704A4C38BCF3DFD6 /* MonkeytailApp.swift */; };
+		ED6374C5E836DF6786D07653 /* ScriptRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		5DBCCF652AD45E63AB9A12A0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F2EBCE0F9CF78704D46D3EF6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 73F18CD670F8F0333AA67F99;
+			remoteInfo = Monkeytail;
+		};
+		CE808DF3F612F505927D346A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F2EBCE0F9CF78704D46D3EF6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 73F18CD670F8F0333AA67F99;
+			remoteInfo = Monkeytail;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		022F944F583B9E9D0FB599DE /* MonkeytailUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonkeytailUITests.swift; sourceTree = "<group>"; };
+		1B0C89FDF984E7C8B7630705 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScriptRunner.swift; sourceTree = "<group>"; };
+		48EA97FA58A38FBDAF4E6BAA /* MonkeytailTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonkeytailTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		48F4743BD555372710532E45 /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
+		6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
+		831469D5704A4C38BCF3DFD6 /* MonkeytailApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonkeytailApp.swift; sourceTree = "<group>"; };
+		8FF8D9C2DB8DBCD51480B88D /* WorkspaceSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSheets.swift; sourceTree = "<group>"; };
+		9831C297D0A5F470506ACF71 /* Monkeytail */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Monkeytail; path = .; sourceTree = SOURCE_ROOT; };
+		9BCBBAD4A09C3F785FE137E1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		BB1222770C4F737984F012BC /* Monkeytail.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Monkeytail.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0FC810EDA3542E742DBD459 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E015068A24823CDD3FE171F2 /* IntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationTests.swift; sourceTree = "<group>"; };
+		E33FB421789C053BD9B6160C /* ResponseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseView.swift; sourceTree = "<group>"; };
+		ECC3D38271ACED2A728BBCC0 /* MonkeytailUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonkeytailUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F292057CE60FE52926AEEE6C /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		FF4D0239FCDE78AC65AE32E3 /* RequestEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestEditor.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		740A40E1D2F611596A60C1C7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD05A502A387D97B4D0D3684 /* MonkeytailCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1FCAAE7C32137E1A1CC8D364 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BB1222770C4F737984F012BC /* Monkeytail.app */,
+				48EA97FA58A38FBDAF4E6BAA /* MonkeytailTests.xctest */,
+				ECC3D38271ACED2A728BBCC0 /* MonkeytailUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		32530FB40C4AD5686B6715FC /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				9831C297D0A5F470506ACF71 /* Monkeytail */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		3A2045EF5F55D3F7D196078A /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */,
+				6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		46EF89F24DC671AD016E97A6 /* Monkeytail */ = {
+			isa = PBXGroup;
+			children = (
+				1B0C89FDF984E7C8B7630705 /* Assets.xcassets */,
+				D0FC810EDA3542E742DBD459 /* Info.plist */,
+				831469D5704A4C38BCF3DFD6 /* MonkeytailApp.swift */,
+				9BCBBAD4A09C3F785FE137E1 /* PrivacyInfo.xcprivacy */,
+				3A2045EF5F55D3F7D196078A /* Services */,
+				69E2BA52E3A63280A63F582B /* Views */,
+			);
+			path = Monkeytail;
+			sourceTree = "<group>";
+		};
+		6484340B9AD3A610664FDB49 /* MonkeytailUITests */ = {
+			isa = PBXGroup;
+			children = (
+				022F944F583B9E9D0FB599DE /* MonkeytailUITests.swift */,
+			);
+			path = MonkeytailUITests;
+			sourceTree = "<group>";
+		};
+		69E2BA52E3A63280A63F582B /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F292057CE60FE52926AEEE6C /* Components.swift */,
+				FF4D0239FCDE78AC65AE32E3 /* RequestEditor.swift */,
+				E33FB421789C053BD9B6160C /* ResponseView.swift */,
+				8FF8D9C2DB8DBCD51480B88D /* WorkspaceSheets.swift */,
+				48F4743BD555372710532E45 /* WorkspaceView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		6EF869AB9987DEF467BDEF3D = {
+			isa = PBXGroup;
+			children = (
+				46EF89F24DC671AD016E97A6 /* Monkeytail */,
+				B61251B95CF414BA9F3D2752 /* MonkeytailTests */,
+				6484340B9AD3A610664FDB49 /* MonkeytailUITests */,
+				32530FB40C4AD5686B6715FC /* Packages */,
+				1FCAAE7C32137E1A1CC8D364 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B61251B95CF414BA9F3D2752 /* MonkeytailTests */ = {
+			isa = PBXGroup;
+			children = (
+				E015068A24823CDD3FE171F2 /* IntegrationTests.swift */,
+			);
+			path = MonkeytailTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		528E11B933BEAAD10106F4C4 /* MonkeytailTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FD326705A7D788ED19988FEE /* Build configuration list for PBXNativeTarget "MonkeytailTests" */;
+			buildPhases = (
+				E4DE682FB27760D6B0931EE4 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EA276EF71A7E29BDA172E131 /* PBXTargetDependency */,
+			);
+			name = MonkeytailTests;
+			packageProductDependencies = (
+			);
+			productName = MonkeytailTests;
+			productReference = 48EA97FA58A38FBDAF4E6BAA /* MonkeytailTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		73F18CD670F8F0333AA67F99 /* Monkeytail */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 81DFAC03D2FCA280579C99F8 /* Build configuration list for PBXNativeTarget "Monkeytail" */;
+			buildPhases = (
+				02B0E440640E893C8D21B5E6 /* Sources */,
+				B1800023DF07BFF57A3EB755 /* Resources */,
+				740A40E1D2F611596A60C1C7 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Monkeytail;
+			packageProductDependencies = (
+				6AE2B7F6ECCE2F85BF760BF4 /* MonkeytailCore */,
+			);
+			productName = Monkeytail;
+			productReference = BB1222770C4F737984F012BC /* Monkeytail.app */;
+			productType = "com.apple.product-type.application";
+		};
+		7710D384FB73E79665A6C89A /* MonkeytailUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C37498FF3CF8022A7821C597 /* Build configuration list for PBXNativeTarget "MonkeytailUITests" */;
+			buildPhases = (
+				C9B5D89EC6DD57FA989CA1EF /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C05C3973464FD7CC9A041826 /* PBXTargetDependency */,
+			);
+			name = MonkeytailUITests;
+			packageProductDependencies = (
+			);
+			productName = MonkeytailUITests;
+			productReference = ECC3D38271ACED2A728BBCC0 /* MonkeytailUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F2EBCE0F9CF78704D46D3EF6 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					528E11B933BEAAD10106F4C4 = {
+						DevelopmentTeam = 7P8CLHDH5G;
+						ProvisioningStyle = Automatic;
+					};
+					73F18CD670F8F0333AA67F99 = {
+						DevelopmentTeam = 7P8CLHDH5G;
+						ProvisioningStyle = Automatic;
+					};
+					7710D384FB73E79665A6C89A = {
+						DevelopmentTeam = 7P8CLHDH5G;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 73F18CD670F8F0333AA67F99;
+					};
+				};
+			};
+			buildConfigurationList = 9D8F257ACC68131A0184D50D /* Build configuration list for PBXProject "Monkeytail" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 6EF869AB9987DEF467BDEF3D;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				CFA51AC1F7F94FBD7E0AAD7A /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 1FCAAE7C32137E1A1CC8D364 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				73F18CD670F8F0333AA67F99 /* Monkeytail */,
+				528E11B933BEAAD10106F4C4 /* MonkeytailTests */,
+				7710D384FB73E79665A6C89A /* MonkeytailUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B1800023DF07BFF57A3EB755 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				95423499F012D249566AC1CD /* Assets.xcassets in Resources */,
+				85B112AAEBD23CF78053F4B3 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		02B0E440640E893C8D21B5E6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				10581EAEE18449219345570F /* Components.swift in Sources */,
+				DF876B1428C5036B408FBFC3 /* MonkeytailApp.swift in Sources */,
+				A3084FF752E45C07359EA343 /* RequestEditor.swift in Sources */,
+				3607D69D6BD87963249BDF98 /* ResponseView.swift in Sources */,
+				ED6374C5E836DF6786D07653 /* ScriptRunner.swift in Sources */,
+				39268C70F6635DDBABED7942 /* WorkspaceSheets.swift in Sources */,
+				7E8BA664B6A552FACF7E39CC /* WorkspaceStore.swift in Sources */,
+				7CDE29859B6995FB4416CA8B /* WorkspaceView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C9B5D89EC6DD57FA989CA1EF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C509B03B66C0A697145786E2 /* MonkeytailUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E4DE682FB27760D6B0931EE4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3BAEF3C723DE5C6C10E2A0B9 /* IntegrationTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C05C3973464FD7CC9A041826 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 73F18CD670F8F0333AA67F99 /* Monkeytail */;
+			targetProxy = CE808DF3F612F505927D346A /* PBXContainerItemProxy */;
+		};
+		EA276EF71A7E29BDA172E131 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 73F18CD670F8F0333AA67F99 /* Monkeytail */;
+			targetProxy = 5DBCCF652AD45E63AB9A12A0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		00AC99D866C6AEEFA6471982 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Monkeytail/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Monkeytail;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Connect to API servers and proxies on your local network.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		3CE7A054A97B2FB61E1222E7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.MonkeytailUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Monkeytail;
+			};
+			name = Release;
+		};
+		55FB606825EBD9C52A5B9A4A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 7P8CLHDH5G;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		7B7B3D9F83A886408651A55A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 7P8CLHDH5G;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		81EDB0369DFA81466491D9A0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.MonkeytailTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Monkeytail.app/Monkeytail";
+			};
+			name = Debug;
+		};
+		A19FF25A17C196EC2435397E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.MonkeytailUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Monkeytail;
+			};
+			name = Debug;
+		};
+		B2DF20644F2434B12D1342EA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.MonkeytailTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Monkeytail.app/Monkeytail";
+			};
+			name = Release;
+		};
+		CDBBBB3EE56DBE5209E39A0A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Monkeytail/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Monkeytail;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Connect to API servers and proxies on your local network.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		81DFAC03D2FCA280579C99F8 /* Build configuration list for PBXNativeTarget "Monkeytail" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CDBBBB3EE56DBE5209E39A0A /* Debug */,
+				00AC99D866C6AEEFA6471982 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9D8F257ACC68131A0184D50D /* Build configuration list for PBXProject "Monkeytail" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7B7B3D9F83A886408651A55A /* Debug */,
+				55FB606825EBD9C52A5B9A4A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C37498FF3CF8022A7821C597 /* Build configuration list for PBXNativeTarget "MonkeytailUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A19FF25A17C196EC2435397E /* Debug */,
+				3CE7A054A97B2FB61E1222E7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FD326705A7D788ED19988FEE /* Build configuration list for PBXNativeTarget "MonkeytailTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				81EDB0369DFA81466491D9A0 /* Debug */,
+				B2DF20644F2434B12D1342EA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		CFA51AC1F7F94FBD7E0AAD7A /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6AE2B7F6ECCE2F85BF760BF4 /* MonkeytailCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MonkeytailCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = F2EBCE0F9CF78704D46D3EF6 /* Project object */;
+}

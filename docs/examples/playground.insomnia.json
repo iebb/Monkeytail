@@ -1,0 +1,112 @@
+{
+  "__export_date" : "2026-09-22T03:15:21Z",
+  "__export_format" : 4,
+  "__export_source" : "monkeytail:1.0",
+  "_type" : "export",
+  "resources" : [
+    {
+      "_id" : "wrk_1B51FD43-0299-4694-87A8-532ECEF6B806",
+      "_type" : "workspace",
+      "description" : "Exported from Monkeytail",
+      "name" : "Monkeytail workspace",
+      "scope" : "collection"
+    },
+    {
+      "_id" : "env_7F7BB7A2-D9ED-4D3A-A91F-93AE3987EA08",
+      "_type" : "environment",
+      "data" : {
+        "base_url" : "https://httpbin.org"
+      },
+      "name" : "Playground",
+      "parentId" : "wrk_1B51FD43-0299-4694-87A8-532ECEF6B806"
+    },
+    {
+      "_id" : "fld_3C207956-E702-4006-B1D9-E33FE3147AB8",
+      "_type" : "request_group",
+      "name" : "Getting started",
+      "parentId" : "wrk_1B51FD43-0299-4694-87A8-532ECEF6B806"
+    },
+    {
+      "_id" : "req_B7F6B5B0-1E49-4DAD-A2A9-533C905AC407",
+      "_type" : "request",
+      "afterResponseScript" : "",
+      "authentication" : {
+
+      },
+      "body" : {
+
+      },
+      "headers" : [
+        {
+          "disabled" : false,
+          "name" : "Accept",
+          "value" : "application/json"
+        }
+      ],
+      "method" : "GET",
+      "name" : "Echo a request",
+      "parameters" : [
+
+      ],
+      "parentId" : "fld_3C207956-E702-4006-B1D9-E33FE3147AB8",
+      "preRequestScript" : "",
+      "settingFollowRedirects" : "on",
+      "url" : "{{base_url}}/get"
+    },
+    {
+      "_id" : "req_77ED4BA5-2F75-4A49-AA93-E80A76A3B5EE",
+      "_type" : "request",
+      "afterResponseScript" : "test('Request succeeded', () => {\n  assert(response.status === 200, 'Expected HTTP 200');\n});\nconsole.log(response.json());",
+      "authentication" : {
+
+      },
+      "body" : {
+        "mimeType" : "application/json",
+        "text" : "{\n  \"hello\": \"world\",\n  \"from\": \"Monkeytail\"\n}"
+      },
+      "headers" : [
+        {
+          "disabled" : false,
+          "name" : "Accept",
+          "value" : "application/json"
+        }
+      ],
+      "method" : "POST",
+      "name" : "Send some JSON",
+      "parameters" : [
+
+      ],
+      "parentId" : "fld_3C207956-E702-4006-B1D9-E33FE3147AB8",
+      "preRequestScript" : "",
+      "settingFollowRedirects" : "on",
+      "url" : "{{base_url}}/post"
+    },
+    {
+      "_id" : "req_075357DD-6371-4F7D-BA26-64589C77BC08",
+      "_type" : "request",
+      "afterResponseScript" : "",
+      "authentication" : {
+
+      },
+      "body" : {
+
+      },
+      "headers" : [
+        {
+          "disabled" : false,
+          "name" : "Accept",
+          "value" : "application/json"
+        }
+      ],
+      "method" : "GET",
+      "name" : "Check a status",
+      "parameters" : [
+
+      ],
+      "parentId" : "fld_3C207956-E702-4006-B1D9-E33FE3147AB8",
+      "preRequestScript" : "",
+      "settingFollowRedirects" : "on",
+      "url" : "{{base_url}}/status/200"
+    }
+  ]
+}

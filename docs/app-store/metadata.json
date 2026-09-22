@@ -1,0 +1,17 @@
+{
+  "name": "Monkeytail",
+  "subtitle": "HTTP, cURL & JSON Client",
+  "primaryLanguage": "en-US",
+  "primaryCategory": "DEVELOPER_TOOLS",
+  "secondaryCategory": "UTILITIES",
+  "price": "Free",
+  "inAppPurchases": false,
+  "copyright": "2026 Kitta Ltd",
+  "privacyURL": "https://docs.kitta.co/monkeytail/privacy/",
+  "supportURL": "https://docs.kitta.co/monkeytail/support/",
+  "marketingURL": "https://docs.kitta.co/monkeytail/",
+  "keywords": "api,rest,request,headers,debug,developer,network,proxy,javascript,testing,formatter,inspector",
+  "promotionalText": "Import cURL, edit requests, inspect JSON, and take your API workspace anywhere. Native for iPhone and iPad. Free, with no accounts or tracking.",
+  "description": "Monkeytail is a native HTTP and cURL client for iPhone and iPad. Build requests, inspect responses, and work with your API collections in a compact SwiftUI interface.\n\nREQUESTS\n\u2022 Import and export cURL commands.\n\u2022 Edit methods, URLs, headers, query parameters, and request bodies.\n\u2022 Use bearer or basic authentication and named environments.\n\u2022 Set timeouts, control redirects, and cancel requests.\n\nRESPONSES\n\u2022 Format JSON, explore an expandable tree, and search response text.\n\u2022 Inspect status, timing, size, and headers.\n\u2022 Copy results or save the full response to Files.\n\nYOUR WORKSPACE\n\u2022 Organize requests in collections and restore recent requests from history.\n\u2022 Import Postman collection and environment JSON; export Postman v2.1 collections.\n\u2022 Import and export Insomnia v4 JSON and native Monkeytail workspaces.\n\u2022 Run simple JavaScript hooks before requests and after responses, including assertions and environment updates.\n\u2022 Choose system networking or HTTP CONNECT, HTTPS CONNECT, and SOCKS5 proxies.\n\nMADE FOR IPHONE\nReach Send and switch between request and response from the bottom of the screen. On wider iPad windows, work side by side. Includes dark mode, Dynamic Type, VoiceOver labels, and a keyboard shortcut to send.\n\nPRIVATE BY DESIGN\nKitta Co collects no data through Monkeytail. No analytics, advertising, tracking, account, or sync service. Requests connect to the servers and proxies you choose. Your workspace stays on your device unless you export it.\n\nFree, with no in-app purchases. Requires iOS 17 or later.\n\nInterchange supports the documented JSON formats and a practical scripting subset, not every feature of other API clients. Imported scripts remain disabled until you choose to enable them.",
+  "reviewNotes": "Monkeytail is an HTTP API developer tool. No sign-in or purchase is required. Open the included Playground collection and tap Send to send a request to https://httpbin.org. You can edit the URL to any test API. Use Response to inspect formatted JSON or Tree. The actions menu imports cURL and supported JSON collections; Settings contains proxy selection and the privacy policy. JavaScript hooks run locally in an isolated WebKit context with network access blocked and an execution timeout. Imported scripts are disabled by default. There is no telemetry or developer-operated backend."
+}

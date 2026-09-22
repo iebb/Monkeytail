@@ -1,0 +1,132 @@
+{
+  "collections" : [
+    {
+      "id" : "D8B15D92-1C71-4522-A130-99CD67F40233",
+      "name" : "Getting started",
+      "requests" : [
+        {
+          "auth" : {
+            "kind" : "None",
+            "password" : "",
+            "token" : "",
+            "username" : ""
+          },
+          "body" : "",
+          "bodyKind" : "None",
+          "followRedirects" : true,
+          "form" : [
+
+          ],
+          "headers" : [
+            {
+              "enabled" : true,
+              "id" : "80B00A67-DF3C-4DEF-9A1D-315EB7030832",
+              "name" : "Accept",
+              "value" : "application\/json"
+            }
+          ],
+          "id" : "895E9E49-1DC8-46E1-965D-BB2A11BC0537",
+          "method" : "GET",
+          "name" : "Echo a request",
+          "postScript" : "",
+          "preScript" : "",
+          "query" : [
+
+          ],
+          "scriptsEnabled" : false,
+          "timeout" : 30,
+          "url" : "{{base_url}}\/get"
+        },
+        {
+          "auth" : {
+            "kind" : "None",
+            "password" : "",
+            "token" : "",
+            "username" : ""
+          },
+          "body" : "{\n  \"hello\": \"world\",\n  \"from\": \"Monkeytail\"\n}",
+          "bodyKind" : "JSON",
+          "followRedirects" : true,
+          "form" : [
+
+          ],
+          "headers" : [
+            {
+              "enabled" : true,
+              "id" : "018F71B0-DE9E-4D1F-9F0A-9FAD8430B1B6",
+              "name" : "Accept",
+              "value" : "application\/json"
+            }
+          ],
+          "id" : "74A7EB61-E423-4BB7-992C-493A4861D4A1",
+          "method" : "POST",
+          "name" : "Send some JSON",
+          "postScript" : "test('Request succeeded', () => {\n  assert(response.status === 200, 'Expected HTTP 200');\n});\nconsole.log(response.json());",
+          "preScript" : "",
+          "query" : [
+
+          ],
+          "scriptsEnabled" : false,
+          "timeout" : 30,
+          "url" : "{{base_url}}\/post"
+        },
+        {
+          "auth" : {
+            "kind" : "None",
+            "password" : "",
+            "token" : "",
+            "username" : ""
+          },
+          "body" : "",
+          "bodyKind" : "None",
+          "followRedirects" : true,
+          "form" : [
+
+          ],
+          "headers" : [
+            {
+              "enabled" : true,
+              "id" : "D5B41B8D-821E-4B07-8BC4-C1A03283EAD4",
+              "name" : "Accept",
+              "value" : "application\/json"
+            }
+          ],
+          "id" : "24726629-1387-4158-9007-2BE269BCC0A0",
+          "method" : "GET",
+          "name" : "Check a status",
+          "postScript" : "",
+          "preScript" : "",
+          "query" : [
+
+          ],
+          "scriptsEnabled" : false,
+          "timeout" : 30,
+          "url" : "{{base_url}}\/status\/200"
+        }
+      ]
+    }
+  ],
+  "environments" : [
+    {
+      "id" : "5BF65491-0463-46CB-9ADD-6EDB6825DF58",
+      "name" : "Playground",
+      "variables" : [
+        {
+          "enabled" : true,
+          "id" : "9B108F04-45A5-4CC4-8BE1-24987FE16D23",
+          "name" : "base_url",
+          "value" : "https:\/\/httpbin.org"
+        }
+      ]
+    }
+  ],
+  "proxy" : {
+    "host" : "",
+    "kind" : "System",
+    "password" : "",
+    "port" : "8080",
+    "username" : ""
+  },
+  "selectedEnvironmentID" : "5BF65491-0463-46CB-9ADD-6EDB6825DF58",
+  "version" : 1
+}

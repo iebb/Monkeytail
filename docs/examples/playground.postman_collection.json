@@ -1,0 +1,119 @@
+{
+  "info" : {
+    "_postman_id" : "24B7386D-6649-48F8-9895-2AAED19ECB44",
+    "name" : "Monkeytail workspace",
+    "schema" : "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item" : [
+    {
+      "item" : [
+        {
+          "event" : [
+
+          ],
+          "name" : "Echo a request",
+          "request" : {
+            "auth" : {
+              "type" : "noauth"
+            },
+            "header" : [
+              {
+                "disabled" : false,
+                "key" : "Accept",
+                "type" : "text",
+                "value" : "application/json"
+              }
+            ],
+            "method" : "GET",
+            "url" : {
+              "query" : [
+
+              ],
+              "raw" : "{{base_url}}/get"
+            }
+          }
+        },
+        {
+          "event" : [
+            {
+              "listen" : "test",
+              "script" : {
+                "exec" : [
+                  "test('Request succeeded', () => {",
+                  "  assert(response.status === 200, 'Expected HTTP 200');",
+                  "});",
+                  "console.log(response.json());"
+                ],
+                "type" : "text/javascript"
+              }
+            }
+          ],
+          "name" : "Send some JSON",
+          "request" : {
+            "auth" : {
+              "type" : "noauth"
+            },
+            "body" : {
+              "mode" : "raw",
+              "options" : {
+                "raw" : {
+                  "language" : "json"
+                }
+              },
+              "raw" : "{\n  \"hello\": \"world\",\n  \"from\": \"Monkeytail\"\n}"
+            },
+            "header" : [
+              {
+                "disabled" : false,
+                "key" : "Accept",
+                "type" : "text",
+                "value" : "application/json"
+              }
+            ],
+            "method" : "POST",
+            "url" : {
+              "query" : [
+
+              ],
+              "raw" : "{{base_url}}/post"
+            }
+          }
+        },
+        {
+          "event" : [
+
+          ],
+          "name" : "Check a status",
+          "request" : {
+            "auth" : {
+              "type" : "noauth"
+            },
+            "header" : [
+              {
+                "disabled" : false,
+                "key" : "Accept",
+                "type" : "text",
+                "value" : "application/json"
+              }
+            ],
+            "method" : "GET",
+            "url" : {
+              "query" : [
+
+              ],
+              "raw" : "{{base_url}}/status/200"
+            }
+          }
+        }
+      ],
+      "name" : "Getting started"
+    }
+  ],
+  "variable" : [
+    {
+      "disabled" : false,
+      "key" : "base_url",
+      "value" : "https://httpbin.org"
+    }
+  ]
+}
