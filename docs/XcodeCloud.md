@@ -28,6 +28,6 @@ The shared scheme runs hosted integration tests and UI tests without parallel ex
 
 Public URLs: [product](https://docs.kitta.co/monkeytail/), [privacy](https://docs.kitta.co/monkeytail/privacy/), [support](https://docs.kitta.co/monkeytail/support/).
 
-The app includes no telemetry, advertising, tracking, account service, or cloud sync. Its App Store privacy answer is Data Not Collected. Requests go to user-selected servers and proxies. Standard OS HTTPS/TLS is used; the app declares no non-exempt encryption.
+The app includes no telemetry, advertising, tracking, account service, or cloud sync. Its App Store privacy answer is Data Not Collected. Requests go to user-selected servers and proxies. System requests use Apple's networking stack; browser profiles bundle curl-impersonate and BoringSSL. Builds omit `ITSAppUsesNonExemptEncryption` so the actual encryption use is declared in App Store Connect. Select standard encryption algorithms outside Apple's operating system. Apple's questionnaire requires a French encryption approval document when France is included in distribution; resolve that requirement before resubmitting the browser-profile build. See [Apple's documentation requirements](https://developer.apple.com/help/app-store-connect/reference/export-compliance-documentation-for-encryption/).
 
 Apple references: [custom scripts](https://developer.apple.com/documentation/xcode/writing-custom-build-scripts), [environment variables](https://developer.apple.com/documentation/xcode/environment-variable-reference).

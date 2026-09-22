@@ -11,7 +11,9 @@ project = (root / 'Monkeytail.xcodeproj/project.pbxproj').read_text()
 assert 'co.kitta.monkeytail' in project, 'Incorrect production bundle ID'
 assert '7P8CLHDH5G' in project, 'Kitta signing team missing'
 assert 'PrivacyInfo.xcprivacy' in project, 'Privacy manifest is not in the project'
-assert info['ITSAppUsesNonExemptEncryption'] is False
+# The browser transport bundles BoringSSL. Complete Apple's questionnaire for
+# each uploaded build instead of carrying forward the URLSession-only exemption.
+assert 'ITSAppUsesNonExemptEncryption' not in info, 'Resolve encryption requirements in App Store Connect for the bundled TLS library'
 assert privacy['NSPrivacyTracking'] is False
 assert privacy['NSPrivacyTrackingDomains'] == []
 assert privacy['NSPrivacyCollectedDataTypes'] == []
@@ -20,4 +22,4 @@ assert icon[:8] == b'\x89PNG\r\n\x1a\n'
 width, height, depth, colour = struct.unpack('>IIBB', icon[16:26])
 assert (width, height) == (1024, 1024), 'App Store icon must be 1024 × 1024'
 assert colour == 2, 'App Store icon must be RGB with no alpha channel'
-print('Release identity, privacy manifest, encryption declaration, and icon passed.')
+print('Release identity, privacy manifest, encryption questionnaire requirement, and icon passed.')
