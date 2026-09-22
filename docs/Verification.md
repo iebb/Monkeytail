@@ -26,6 +26,7 @@ Built with Xcode 27.0 (27A266a), Swift 6.4, with an iOS 17 deployment target.
 | Full Release suite after atomic response publication and MIME viewers, iPhone 18 Pro / iOS 27.0 | 16 integration + 7 UI tests passed |
 | MIME viewers and compact audio playback, iPhone SE / iOS 18.0 and iPad Pro 13-inch / iPadOS 27.0 | Passed on both, including visible Send controls |
 | Final media viewer Release build, generic iOS device | Passed without signing |
+| Final compact audio controls, media viewport bounds, and 1 MB UTF-8 preview boundary, iPhone 18 Pro / iOS 27.0 | Passed in Release; Send remains reachable for valid and invalid media |
 
 Integration coverage includes real HTTP request encoding, HTTP CONNECT and SOCKS5 proxy routing, redirects and cross-origin credential stripping, cancellation, response size limits, persistence, sandbox network blocking, exceptions, infinite-loop timeout/recovery, and a full pre-hook → transport → post-hook flow that saves environment variables.
 
@@ -41,7 +42,7 @@ Response preparation runs off the main thread; text and tree views use lazy rows
 
 The response viewport regression reproduced a completely blank body after horizontally scrolling Raw and returning to Pretty: the text retained the old horizontal offset outside the visible pane. The viewer now starts at the top-left with fresh scroll state for each response, format, and search. It mounts rows only after the current preview is ready. Compact layouts keep both panes at the available width, preserve editor state, and disable interaction with the hidden pane. The regression targets the response scroll view explicitly and checks visible coordinates, not just the existence of response text. Local fixtures cover long JSON, keyboard dismissal, filtering, copying, tree switching, and repeated POST requests; no user API endpoints were called.
 
-The subsequent iOS 27 failure was observed live in the user's displayed simulator: a successful 422-byte response remained on a preview spinner while the process was idle. The stored body was valid JSON. A sanitized replay preserves its exact structure and length; no real response values or credentials are included in tests. Preview preparation now belongs to request completion, and response metadata plus prepared content publish as one immutable value. Rendering no longer depends on a cancellable view task. The exact original lifecycle trigger was not established. The Release replay verifies visible Pretty/Raw/Tree content, a populated file share sheet, and background/foreground recovery.
+The subsequent iOS 27 failure was observed live in the user's displayed simulator: a successful 422-byte response remained on a preview spinner while the process was idle. The stored body was valid JSON. A sanitized replay preserves its exact structure and length; no real response values or credentials are included in tests. Preview preparation now belongs to request completion, and response metadata plus prepared content publish as one immutable value. Rendering no longer depends on a cancellable view task. The exact original lifecycle trigger was not established. A final manual HTTPS request to httpbin.org/json returned 200 and displayed its 429-byte body in Pretty and Raw on iOS 27. The Release replay verifies visible Pretty/Raw/Tree content, a populated file share sheet, and background/foreground recovery.
 
 MIME previews decode images with ImageIO before offering Image mode. Audio and video use local protected response files and AVFoundation's `forbidAll` reference restriction. Synthetic PNG/WAV/MP4 fixtures, arbitrary bytes, and invalid image/audio payloads exercise the preview and fallback paths. Byte formatting tests preserve offsets, zero bytes, non-ASCII bytes, and partial rows. The media cache lifetime test verifies temporary files disappear when the prepared response is released.
 
@@ -52,6 +53,7 @@ Screenshots:
 - [iPad workspace in landscape](screenshots/ipad-workspace.png)
 - [iPad JSON tree](screenshots/ipad-response.png)
 - [iPhone request editor](screenshots/iphone-request.png)
+- [iPhone audio playback controls](screenshots/iphone-audio.png)
 - [iPhone Hex viewer](screenshots/iphone-hex.png)
 - [iPhone validated image preview](screenshots/iphone-image.png)
 - [iPhone sanitized response replay](screenshots/iphone-replayed-response.png)
