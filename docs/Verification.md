@@ -21,6 +21,8 @@ Built with Xcode 27.0 (27A266a), Swift 6.4, with an iOS 17 deployment target.
 | Browser profile flow, iPhone SE (3rd generation) / iOS 18.0 | Passed at 375-point width |
 | Browser TLS transport Release build for a generic iOS device | Passed (without signing); app bundle about 8.4 MB |
 | Public HTTPS smoke check with Apple native trust, macOS | All five profiles returned verified HTTP 200 from example.com |
+| Release simulator investigation, iPhone 18 Pro / iOS 27.0 | Real httpbin GET and imported JSON POST rendered in Pretty and Raw; blank body not reproduced |
+| 422-byte compact JSON response in Release, iPhone 18 Pro / iOS 27.0 | Visible through Pretty/Raw/Tree, copy, background/foreground, Headers/Body, Request/Response, search, and resend |
 
 Integration coverage includes real HTTP request encoding, HTTP CONNECT and SOCKS5 proxy routing, redirects and cross-origin credential stripping, cancellation, response size limits, persistence, sandbox network blocking, exceptions, infinite-loop timeout/recovery, and a full pre-hook → transport → post-hook flow that saves environment variables.
 
@@ -36,6 +38,8 @@ Response preparation runs off the main thread; text and tree views use lazy rows
 
 The response viewport regression reproduced a completely blank body after horizontally scrolling Raw and returning to Pretty: the text retained the old horizontal offset outside the visible pane. The viewer now starts at the top-left with fresh scroll state for each response, format, and search. It mounts rows only after the current preview is ready. Compact layouts keep both panes at the available width, preserve editor state, and disable interaction with the hidden pane. The regression targets the response scroll view explicitly and checks visible coordinates, not just the existence of response text. Local fixtures cover long JSON, keyboard dismissal, filtering, copying, tree switching, and repeated POST requests; no user API endpoints were called.
 
+A subsequent report of a blank body on iOS 27 remains unreproduced on the current source. Manual testing used a Release build from the same app source as TestFlight build 10, without UI-test launch arguments, and real HTTPS GET/POST requests to httpbin.org. An additional Release UI regression uses a 422-byte single-line JSON fixture matching the reported response size and verifies on-screen text coordinates through the transitions above. Its screenshots show the Raw body immediately below the search field. This evidence does not establish that the reported device-specific failure is fixed; the installed TestFlight build and a reproducible request are still needed to match that report.
+
 No physical-device signing, App Store distribution, hardware hinge transitions, or independent display routing was tested. The foldable layout follows available window geometry; the installed Duo configuration was exercised without relying on device-specific or private APIs. HTTPS CONNECT uses Apple's TLS proxy configuration but is not covered by the plaintext CONNECT/SOCKS5 fixture.
 
 Screenshots:
@@ -44,6 +48,7 @@ Screenshots:
 - [iPad JSON tree](screenshots/ipad-response.png)
 - [iPhone request editor](screenshots/iphone-request.png)
 - [iPhone pretty JSON](screenshots/iphone-response.png)
+- [iPhone compact Raw response, Release / iOS 27](screenshots/iphone-compact-release-response.png)
 - [iPhone browser TLS profile](screenshots/iphone-browser-profile.png)
 - [Small iPhone JSON tree](screenshots/iphone-se-response.png)
 - [Duo response view](screenshots/duo-response.png)

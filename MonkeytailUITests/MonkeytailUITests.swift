@@ -1,6 +1,52 @@
 import XCTest
 
 final class MonkeytailUITests: XCTestCase {
+    func testCompactResponseSurvivesFormatAndLifecycleChanges() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launchEnvironment["MONKEYTAIL_TEST_URL"] = "http://127.0.0.1:8766/compact-body-layout"
+        app.launch()
+        app.buttons["HTTP method"].tap()
+        app.buttons["POST"].tap()
+        app.buttons["Send request"].tap()
+        XCTAssertTrue(app.staticTexts["Response status"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["422 bytes"].exists)
+        let message = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Hello from Monkeytail")).firstMatch
+        let search = app.textFields["Find in response"]
+        func verifyVisible(_ name: String) {
+            XCTAssertTrue(message.waitForExistence(timeout: 5), name)
+            XCTAssertTrue(message.isHittable, name)
+            XCTAssertGreaterThanOrEqual(message.frame.minX, app.frame.minX, name)
+            XCTAssertGreaterThanOrEqual(message.frame.minY, search.frame.maxY, name)
+            XCTAssertLessThan(message.frame.maxY, app.buttons["Send request"].frame.minY, name)
+            attach(app, name: name)
+        }
+        verifyVisible("Compact Pretty")
+        app.buttons["Raw"].tap()
+        app.buttons["Copy response"].tap()
+        verifyVisible("Compact Raw copied")
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        verifyVisible("Compact Raw after foreground")
+        app.buttons["Headers"].tap()
+        app.buttons["Body"].tap()
+        verifyVisible("Compact Raw after Headers")
+        app.buttons["Request"].tap()
+        app.buttons["Response"].tap()
+        verifyVisible("Compact Raw after Request")
+        app.buttons["Tree"].tap()
+        verifyVisible("Compact Tree")
+        app.buttons["Pretty"].tap()
+        verifyVisible("Compact Pretty after Tree")
+        search.tap()
+        search.typeText("Hello")
+        verifyVisible("Compact filtered Pretty")
+        app.buttons["Clear search"].tap()
+        app.buttons["Raw"].tap()
+        app.buttons["Send request"].tap()
+        verifyVisible("Compact Raw after resend")
+    }
+
     func testBrowserProfileImportEditSendAndExport() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]

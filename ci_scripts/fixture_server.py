@@ -59,6 +59,10 @@ class API(http.server.BaseHTTPRequestHandler):
                        'items': [{'index': i, 'value': 'Response row'} for i in range(80)],
                        'longLine': '0123456789' * 100}
         encoded = json.dumps(payload, separators=(',', ':')).encode()
+        if path.path == '/compact-body-layout':
+            payload = {'message': 'Hello from Monkeytail', 'success': True, 'padding': ''}
+            payload['padding'] = 'x' * (422 - len(json.dumps(payload, separators=(',', ':')).encode()))
+            encoded = json.dumps(payload, separators=(',', ':')).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(encoded)))
