@@ -4,7 +4,7 @@ Built with Xcode 27.0 (27A266a), Swift 6.4, with an iOS 17 deployment target.
 
 | Check | Result |
 | --- | --- |
-| Swift package unit tests | 19 passed |
+| Swift package unit tests | 23 passed |
 | Hosted integration tests, iPhone Duo / iOS 27.1 | 10 passed |
 | Send → search → JSON tree → import → edit → cURL export UI flow, iPhone SE (3rd generation) / iOS 18.0 | Passed |
 | Same UI flow, iPhone 18 Pro / iOS 27.0 | Passed |
@@ -16,8 +16,17 @@ Built with Xcode 27.0 (27A266a), Swift 6.4, with an iOS 17 deployment target.
 | Response format switching and Raw resend regression, iPhone 17 Pro / iOS 26.2, iPad Pro 13-inch / iPadOS 27.0, and iPhone Duo / iOS 27.1 | Passed on all three |
 | Full hosted suite after response layout fix, iPhone 18 Pro / iOS 27.0 | 10 integration + 3 UI tests passed |
 | Release build for a generic iOS device after response layout fix | Passed (without signing) |
+| Full suite with browser transport, iPhone 18 Pro / iOS 27.0 | 14 integration + 4 UI tests passed |
+| Browser profile import → edit → send → export, iPhone 18 Pro / iOS 27.0, iPad Pro 13-inch / iPadOS 27.0, and iPhone Duo / iOS 27.1 | Passed on all three |
+| Browser profile flow, iPhone SE (3rd generation) / iOS 18.0 | Passed at 375-point width |
+| Browser TLS transport Release build for a generic iOS device | Passed (without signing); app bundle about 8.4 MB |
+| Public HTTPS smoke check with Apple native trust, macOS | All five profiles returned verified HTTP 200 from example.com |
 
 Integration coverage includes real HTTP request encoding, HTTP CONNECT and SOCKS5 proxy routing, redirects and cross-origin credential stripping, cancellation, response size limits, persistence, sandbox network blocking, exceptions, infinite-loop timeout/recovery, and a full pre-hook → transport → post-hook flow that saves environment variables.
+
+Browser transport tests capture real TLS ClientHello fields and HTTP/2 SETTINGS at a loopback TLS server. Every preset negotiates HTTP/2; Chrome and Safari assertions check their exact ordered SETTINGS and distinct cipher/extension lists. The fixture uses a temporary CA only through an internal test seam. The production path rejects that untrusted CA. Additional checks cover browser header overrides, disabling default browser headers, request bodies containing NUL, CONNECT/SOCKS routing, credential removal on redirects, the 20 MB response bound, prompt cancellation, persistence, backward-compatible decoding, and browser-profile round-trips through cURL and every supported collection format. The public HTTPS smoke check was separate from the deterministic CI suite.
+
+The profile selector keeps its label visible and its menu hit area separate. Small-phone testing on iOS 18 caught a combined label/menu accessibility frame that could miss taps after returning from the response pane; the corrected control passes the full profile workflow, including returning to System transport.
 
 Verification caught and corrected CRLF header validation, plus-sign query encoding, keyboard-obstructed import actions, loss of editor state when changing panes, WebKit startup consuming the execution timeout, and `crypto.randomUUID()` availability inside the isolated document.
 
@@ -35,6 +44,7 @@ Screenshots:
 - [iPad JSON tree](screenshots/ipad-response.png)
 - [iPhone request editor](screenshots/iphone-request.png)
 - [iPhone pretty JSON](screenshots/iphone-response.png)
+- [iPhone browser TLS profile](screenshots/iphone-browser-profile.png)
 - [Small iPhone JSON tree](screenshots/iphone-se-response.png)
 - [Duo response view](screenshots/duo-response.png)
 

@@ -45,6 +45,9 @@ struct TransferView: View {
                         }.font(.subheadline).padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                         Text("Includes credentials. Monkeytail preserves all settings; other formats preserve supported fields.")
                             .font(.caption).foregroundStyle(.secondary)
+                        if format != .native, store.workspace.collections.contains(where: { $0.requests.contains(where: { $0.impersonation != nil }) }) {
+                            Text("Browser profiles restore in Monkeytail. Postman and Insomnia don’t apply them.").font(.caption).foregroundStyle(.secondary)
+                        }
                         Button {
                             do { document = CollectionDocument(data: try CollectionCodec.encode(store.workspace, format: format)); exporting = true }
                             catch { self.error = error.localizedDescription }
@@ -142,6 +145,7 @@ struct SettingsView: View {
                 }
                 Section("Transport") {
                     Label("TLS certificates are verified", systemImage: "lock.shield")
+                    Text("Choose a browser TLS profile in each request’s Auth tab.").font(.footnote).foregroundStyle(.secondary)
                     DisclosureGroup("Certificates & cookies") {
                         Text("For debugging proxies, install the CA profile and enable full trust in iOS Settings. HTTP and local APIs are supported.").font(.footnote).foregroundStyle(.secondary)
                         Text("Send cookies with a Cookie header. There is no shared cookie jar.").font(.footnote).foregroundStyle(.secondary)
@@ -161,6 +165,10 @@ struct SettingsView: View {
                     Text("No data collected. No tracking or analytics.").font(.footnote).foregroundStyle(.secondary)
                     Link("Privacy policy", destination: URL(string: "https://docs.kitta.co/monkeytail/privacy/")!)
                     Link("Support", destination: URL(string: "https://docs.kitta.co/monkeytail/support/")!)
+                    NavigationLink("Open source licenses") {
+                        ScrollView { Text(BrowserImpersonation.thirdPartyNotices).font(.system(.caption, design: .monospaced)).textSelection(.enabled).padding() }
+                            .navigationTitle("Licenses")
+                    }
                 }
             }.textInputAutocapitalization(.never).autocorrectionDisabled()
                 .navigationTitle("Connection settings").navigationBarTitleDisplayMode(.inline)

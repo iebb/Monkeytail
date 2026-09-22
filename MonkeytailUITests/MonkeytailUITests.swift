@@ -1,6 +1,50 @@
 import XCTest
 
 final class MonkeytailUITests: XCTestCase {
+    func testBrowserProfileImportEditSendAndExport() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launchEnvironment["MONKEYTAIL_TEST_URL"] = "http://127.0.0.1:8766/echo"
+        app.launch()
+        app.buttons["Workspace actions"].tap()
+        app.buttons["Import workspace"].tap()
+        let editor = app.textViews["Import content"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText("curl-impersonate --impersonate chrome150:no 'http://127.0.0.1:8766/echo'")
+        app.buttons["Confirm import"].tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
+        app.alerts.buttons["OK"].tap()
+        app.buttons["Auth"].tap()
+        let profile = app.buttons["TLS profile"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["TLS profile"].isHittable)
+        XCTAssertTrue(profile.label.contains("Chrome 150"))
+        let headers = app.switches["Browser headers"]
+        XCTAssertEqual(headers.value as? String, "0")
+        headers.tap()
+        profile.tap()
+        app.buttons["Safari 26 · iOS"].tap()
+        XCTAssertTrue(profile.label.contains("Safari 26 · iOS"))
+        XCTAssertEqual(headers.value as? String, "1")
+        attach(app, name: "Browser TLS profile")
+        app.buttons["Send request"].tap()
+        XCTAssertTrue(app.staticTexts["Response status"].waitForExistence(timeout: 15))
+        let browserAgent = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Safari/")).firstMatch
+        XCTAssertTrue(browserAgent.waitForExistence(timeout: 5))
+        app.buttons["Workspace actions"].tap()
+        app.buttons["Export cURL"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "safari260_ios")).firstMatch.waitForExistence(timeout: 5))
+        app.buttons["Copy"].tap()
+        if app.buttons["Request"].exists { app.buttons["Request"].tap() }
+        XCTAssertTrue(profile.label.contains("Safari 26 · iOS"))
+        profile.tap()
+        app.buttons["System"].tap()
+        XCTAssertFalse(headers.exists)
+        let sendIsReachable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: app.buttons["Send request"])
+        XCTAssertEqual(XCTWaiter.wait(for: [sendIsReachable], timeout: 5), .completed)
+    }
+
     func testResponseBodyAfterKeyboardAndRepeatedRequests() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]

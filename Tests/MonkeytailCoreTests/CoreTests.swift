@@ -2,6 +2,48 @@ import XCTest
 @testable import MonkeytailCore
 
 final class CoreTests: XCTestCase {
+    func testBrowserCurlRoundTrips() throws {
+        for profile in BrowserProfile.allCases {
+            for browserHeaders in [true, false] {
+                var request = APIRequest(url: "https://example.com")
+                request.impersonation = BrowserImpersonation(profile: profile, browserHeaders: browserHeaders)
+                request.headers = [Field("User-Agent", "My debug agent")]
+                let command = try CurlCodec.encode(request)
+                XCTAssertTrue(command.hasPrefix("curl-impersonate "))
+                let decoded = try CurlCodec.decode(command).request
+                XCTAssertEqual(decoded.impersonation, request.impersonation)
+                XCTAssertEqual(decoded.headers.first?.value, "My debug agent")
+            }
+        }
+    }
+
+    func testBrowserCurlImportsAndValidation() throws {
+        XCTAssertEqual(try CurlCodec.decode("curl --impersonate chrome:no https://example.com").request.impersonation, BrowserImpersonation(profile: .chrome, browserHeaders: false))
+        XCTAssertEqual(try CurlCodec.decode("/usr/local/bin/curl_safari260_ios https://example.com").request.impersonation?.profile, .safariIOS)
+        XCTAssertNil(try CurlCodec.decode("curl https://example.com -A 'Chrome'").request.impersonation)
+        for target in ["unknown", "chrome:maybe", "chrome:", "chrome:no:yes"] {
+            XCTAssertThrowsError(try CurlCodec.decode("curl --impersonate '\(target)' https://example.com"))
+        }
+    }
+
+    func testOldWorkspacesDecodeWithSystemTransport() throws {
+        var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(APIRequest())) as! [String: Any]
+        object.removeValue(forKey: "impersonation")
+        let request = try JSONDecoder().decode(APIRequest.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertNil(request.impersonation)
+        XCTAssertTrue(try CurlCodec.encode(request).hasPrefix("curl "))
+    }
+
+    func testBrowserProfilesSurviveCollectionRoundTrips() throws {
+        var workspace = Workspace.starter
+        workspace.collections[0].requests[0].impersonation = BrowserImpersonation(profile: .safariIOS, browserHeaders: false)
+        for format in ExportFormat.allCases {
+            let decoded = try CollectionCodec.decode(CollectionCodec.encode(workspace, format: format)).workspace
+            XCTAssertEqual(decoded.collections[0].requests[0].impersonation, workspace.collections[0].requests[0].impersonation)
+            XCTAssertNil(decoded.collections[0].requests[1].impersonation)
+        }
+    }
+
     func testCurlQuotedMultilineAndHeaders() throws {
         let result = try CurlCodec.decode("""
         curl 'https://example.com/api?x=1&y=2' \\

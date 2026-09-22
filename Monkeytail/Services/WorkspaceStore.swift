@@ -75,7 +75,7 @@ final class WorkspaceStore {
     func importContent(_ text: String) throws {
         guard text.utf8.count <= 10 * 1024 * 1024 else { throw ClientError("Imports must be smaller than 10 MB.") }
         let command = text.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
-        if command == "curl" || command.hasSuffix("/curl") {
+        if CurlCodec.isCommand(command) {
             let result = try CurlCodec.decode(text)
             let collection = RequestCollection(name: "Imported cURL", requests: [result.request])
             workspace.collections.append(collection); selectedRequestID = result.request.id
@@ -129,7 +129,7 @@ final class WorkspaceStore {
                 }
                 try Task.checkCancellation()
                 let built = try RequestBuilder.build(request, variables: variables)
-                var response = try await HTTPClient(followRedirects: request.followRedirects).send(built, proxy: proxy)
+                var response = try await HTTPClient(followRedirects: request.followRedirects).send(built, proxy: proxy, impersonation: request.impersonation)
                 if saved.scriptsEnabled && !saved.postScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     do {
                         let result = try await ScriptRunner().run(saved.postScript, request: request, response: response, variables: variables)

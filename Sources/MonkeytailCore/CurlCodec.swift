@@ -7,6 +7,10 @@ public struct CurlImport {
 }
 
 public enum CurlCodec {
+    public static func isCommand(_ word: String) -> Bool {
+        let name = word.split(separator: "/").last.map(String.init) ?? word
+        return ["curl", "curl-impersonate"].contains(name) || name.hasPrefix("curl_")
+    }
     /// A shell lexer only. Commands, substitutions, and local files are never executed.
     public static func tokens(_ source: String) throws -> [String] {
         let chars = Array(source)
@@ -41,8 +45,10 @@ public enum CurlCodec {
 
     public static func decode(_ source: String) throws -> CurlImport {
         let words = try tokens(source.trimmingCharacters(in: .whitespacesAndNewlines))
-        guard words.first == "curl" || words.first?.hasSuffix("/curl") == true else { throw ClientError("Start the command with curl.") }
+        guard let command = words.first, isCommand(command) else { throw ClientError("Start the command with curl.") }
         var request = APIRequest(name: "Imported cURL", url: "")
+        let name = command.split(separator: "/").last.map(String.init) ?? command
+        if name.hasPrefix("curl_") { request.impersonation = BrowserImpersonation(profile: try BrowserProfile.parse(String(name.dropFirst(5)))) }
         request.headers = []; request.followRedirects = false
         var index = 1, explicitMethod: String?, useGet = false, head = false, data: [String] = []
         var proxy: ProxySettings?, warnings: [String] = []
@@ -65,6 +71,11 @@ public enum CurlCodec {
                 return words[index]
             }
             switch option {
+            case "--impersonate":
+                let parts = try value().split(separator: ":", omittingEmptySubsequences: false)
+                guard parts.count <= 2, let target = parts.first, !target.isEmpty,
+                      parts.count == 1 || ["yes", "no"].contains(String(parts[1])) else { throw ClientError("Use --impersonate PROFILE or PROFILE:no to omit browser headers.") }
+                request.impersonation = BrowserImpersonation(profile: try BrowserProfile.parse(String(target)), browserHeaders: parts.count == 1 || parts[1] == "yes")
             case "-X", "--request": explicitMethod = try value().uppercased()
             case "--url": try setURL(value())
             case "-H", "--header":
@@ -138,7 +149,10 @@ public enum CurlCodec {
 
     public static func encode(_ model: APIRequest, variables: [String: String] = [:]) throws -> String {
         let request = try RequestBuilder.build(model, variables: variables)
-        var parts = ["curl", "--request \(quote(request.httpMethod ?? "GET"))"]
+        var parts = [model.impersonation == nil ? "curl" : "curl-impersonate", "--request \(quote(request.httpMethod ?? "GET"))"]
+        if let impersonation = model.impersonation {
+            parts.append("--impersonate \(quote(impersonation.profile.rawValue + (impersonation.browserHeaders ? "" : ":no")))")
+        }
         if model.followRedirects { parts.append("--location") }
         parts.append("--max-time \(Int(model.timeout))")
         parts.append(quote(request.url!.absoluteString))

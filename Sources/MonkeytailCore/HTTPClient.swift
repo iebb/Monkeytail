@@ -24,7 +24,10 @@ public final class HTTPClient: NSObject, URLSessionTaskDelegate, @unchecked Send
         return configuration
     }
 
-    public func send(_ request: URLRequest, proxy: ProxySettings = ProxySettings()) async throws -> APIResponse {
+    public func send(_ request: URLRequest, proxy: ProxySettings = ProxySettings(), impersonation: BrowserImpersonation? = nil) async throws -> APIResponse {
+        if let impersonation {
+            return try await BrowserHTTPClient(followRedirects: followRedirects).send(request, proxy: proxy, impersonation: impersonation)
+        }
         let session = URLSession(configuration: try Self.configuration(proxy: proxy, timeout: request.timeoutInterval), delegate: self, delegateQueue: nil)
         defer { session.invalidateAndCancel() }
         let started = ContinuousClock.now

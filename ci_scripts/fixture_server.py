@@ -7,6 +7,7 @@ import socketserver
 import struct
 import threading
 import time
+import tls_fixture
 from urllib.parse import urlsplit, parse_qs
 
 
@@ -25,6 +26,14 @@ class API(http.server.BaseHTTPRequestHandler):
 
     def respond(self):
         path = urlsplit(self.path)
+        if path.path in ['/tls-ca', '/tls-captures']:
+            with tls_fixture.lock:
+                data = tls_fixture.ca_pem if path.path == '/tls-ca' else json.dumps(tls_fixture.captures).encode()
+            self.send_response(200)
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path.path == '/slow':
             time.sleep(4)
         if path.path in ['/redirect', '/cross-origin']:
@@ -117,7 +126,7 @@ class ThreadedTCP(socketserver.ThreadingTCPServer):
 
 if __name__ == '__main__':
     servers = [http.server.ThreadingHTTPServer(('127.0.0.1', 8766), API),
-               ThreadedTCP(('127.0.0.1', 8767), CONNECT), ThreadedTCP(('127.0.0.1', 8768), SOCKS)]
+               ThreadedTCP(('127.0.0.1', 8767), CONNECT), ThreadedTCP(('127.0.0.1', 8768), SOCKS), tls_fixture.make_server()]
     for server in servers:
         threading.Thread(target=server.serve_forever, daemon=True).start()
     print('Fixture HTTP :8766 · CONNECT :8767 · SOCKS5 :8768', flush=True)

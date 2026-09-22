@@ -59,7 +59,8 @@ public enum CollectionCodec {
                     if request.auth.kind == .basic { auth = ["type": "basic", "username": request.auth.username, "password": request.auth.password] }
                     resources.append(["_id": "req_" + request.id.uuidString, "_type": "request", "parentId": groupID, "name": request.name, "url": request.url, "method": request.method,
                                       "headers": request.headers.map(insomniaField), "parameters": request.query.map(insomniaField), "body": body, "authentication": auth,
-                                      "settingFollowRedirects": request.followRedirects ? "on" : "off", "preRequestScript": request.preScript, "afterResponseScript": request.postScript])
+                                      "settingFollowRedirects": request.followRedirects ? "on" : "off", "preRequestScript": request.preScript, "afterResponseScript": request.postScript,
+                                      "_monkeytail": transportMetadata(request)])
                 }
             }
             return try json(["_type": "export", "__export_format": 4, "__export_date": ISO8601DateFormatter().string(from: Date()), "__export_source": "monkeytail:1.0", "resources": resources])
@@ -82,6 +83,7 @@ public enum CollectionCodec {
                 let raw = source["url"] as? String ?? urlObject?["raw"] as? String ?? ""
                 guard !raw.isEmpty else { throw ClientError("Request ‘\(name)’ is missing a raw URL.") }
                 var request = APIRequest(name: path + name, method: source["method"] as? String ?? "GET", url: raw)
+                request.impersonation = try decodeTransport(item["_monkeytail"])
                 request.headers = fields(source["header"] as? [[String: Any]] ?? [])
                 if let query = urlObject?["query"] as? [[String: Any]] {
                     request.query = fields(query)
@@ -134,6 +136,7 @@ public enum CollectionCodec {
             let groupName = groups.first { $0["_id"] as? String == parent }?["name"] as? String ?? "Insomnia collection"
             if !collections.contains(where: { $0.name == groupName }) { collections.append(RequestCollection(name: groupName)) }
             var request = APIRequest(name: resource["name"] as? String ?? "Untitled", method: resource["method"] as? String ?? "GET", url: normalizeInsomnia(resource["url"] as? String ?? ""))
+            request.impersonation = try decodeTransport(resource["_monkeytail"])
             request.headers = fields(resource["headers"] as? [[String: Any]] ?? [])
             request.query = fields(resource["parameters"] as? [[String: Any]] ?? [])
             request.auth = decodeAuth(resource["authentication"] as? [String: Any], postman: false, warnings: &warnings)
@@ -186,12 +189,20 @@ public enum CollectionCodec {
         case .bearer: source["auth"] = ["type": "bearer", "bearer": [["key": "token", "value": request.auth.token, "type": "string"]]]
         case .basic: source["auth"] = ["type": "basic", "basic": [["key": "username", "value": request.auth.username, "type": "string"], ["key": "password", "value": request.auth.password, "type": "string"]]]
         }
-        var item: [String: Any] = ["name": request.name, "request": source]
+        var item: [String: Any] = ["name": request.name, "request": source, "_monkeytail": transportMetadata(request)]
         item["event"] = [("prerequest", request.preScript), ("test", request.postScript)].filter { !$0.1.isEmpty }.map { ["listen": $0.0, "script": ["type": "text/javascript", "exec": $0.1.components(separatedBy: "\n")]] as [String: Any] }
         return item
     }
     private static func fields(_ source: [[String: Any]]) -> [Field] {
         source.map { Field(normalizeInsomnia($0["key"] as? String ?? $0["name"] as? String ?? ""), normalizeInsomnia(string($0["value"])), enabled: !($0["disabled"] as? Bool ?? false) && ($0["enabled"] as? Bool ?? true)) }
+    }
+    private static func transportMetadata(_ request: APIRequest) -> [String: Any] {
+        guard let value = request.impersonation else { return [:] }
+        return ["tlsProfile": value.profile.rawValue, "browserHeaders": value.browserHeaders]
+    }
+    private static func decodeTransport(_ value: Any?) throws -> BrowserImpersonation? {
+        guard let metadata = value as? [String: Any], let name = metadata["tlsProfile"] as? String else { return nil }
+        return BrowserImpersonation(profile: try BrowserProfile.parse(name), browserHeaders: metadata["browserHeaders"] as? Bool ?? true)
     }
     private static func string(_ value: Any?) -> String {
         guard let value else { return "" }

@@ -62,6 +62,21 @@ struct RequestEditor: View {
                 SecureField("Password", text: $request.auth.password).dismissibleInput().textFieldStyle(.roundedBorder)
             }
             Divider()
+            HStack {
+                Text("TLS profile")
+                Spacer(minLength: 8)
+                Picker("TLS profile", selection: Binding<BrowserProfile?>(
+                    get: { request.impersonation?.profile },
+                    set: { profile in request.impersonation = profile.map { BrowserImpersonation(profile: $0, browserHeaders: request.impersonation?.browserHeaders ?? true) } }
+                )) {
+                    Text("System").tag(BrowserProfile?.none)
+                    ForEach(BrowserProfile.allCases) { Text($0.title).tag(Optional($0)) }
+                }.pickerStyle(.menu).labelsHidden().frame(minHeight: 44).accessibilityIdentifier("TLS profile")
+            }.font(.subheadline)
+            if request.impersonation != nil {
+                Toggle("Browser headers", isOn: Binding(get: { request.impersonation?.browserHeaders ?? true }, set: { request.impersonation?.browserHeaders = $0 }))
+                Text("TLS + HTTP/2. Your headers override browser defaults.").font(.caption).foregroundStyle(.secondary)
+            }
             Toggle("Follow redirects", isOn: $request.followRedirects).font(.subheadline)
             Stepper("Timeout: \(Int(request.timeout))s", value: $request.timeout, in: 1...300, step: 5).font(.subheadline)
         }.textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -100,6 +115,7 @@ struct CurlExportView: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Includes resolved variables and credentials.").font(.caption).foregroundStyle(.secondary)
+                if request.impersonation != nil { Text("Requires curl-impersonate 2.2.3 or later.").font(.caption).foregroundStyle(.secondary) }
                 if let error { Text(error).font(.footnote).foregroundStyle(.red) }
                 ScrollView { Text(curl).font(.system(.footnote, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12) }
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))

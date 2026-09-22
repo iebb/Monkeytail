@@ -6,7 +6,7 @@
 
 Free. No in-app purchases. No account. No data collected by Kitta Co.
 
-[Product](https://docs.kitta.co/monkeytail/) · [Privacy](https://docs.kitta.co/monkeytail/privacy/) · [Support](https://docs.kitta.co/monkeytail/support/) · [Scripting](docs/Scripting.md) · [Release setup](docs/XcodeCloud.md)
+[Product](https://docs.kitta.co/monkeytail/) · [Privacy](https://docs.kitta.co/monkeytail/privacy/) · [Support](https://docs.kitta.co/monkeytail/support/) · [Scripting](docs/Scripting.md) · [Browser profiles](docs/BrowserProfiles.md) · [Release setup](docs/XcodeCloud.md)
 
 <p><img src="docs/screenshots/iphone-request.png" alt="Monkeytail iPhone request editor with inline headers" width="285"> <img src="docs/screenshots/iphone-response.png" alt="Monkeytail JSON response viewer on iPhone" width="285"></p>
 
@@ -31,6 +31,7 @@ The starter collection uses httpbin.org. Requests are only sent when you tap **S
 - Collections with add, rename, duplicate, delete, search, and automatic local persistence.
 - Named environments and `{{variable}}` substitution throughout requests; nested variables with missing-variable and cycle detection.
 - Real HTTP transport, request cancellation, response status/timing/size, response headers, and full response file sharing.
+- Optional [browser TLS and HTTP/2 profiles](docs/BrowserProfiles.md) for Chrome, Firefox, and Safari, including iOS and Android presets. Runs locally using pinned curl-impersonate; certificate verification stays enabled.
 - JSON pretty printing, minification in the core library, syntax colors, expandable tree, line search, copying, and request-body formatting.
 - Local JavaScript before-request and after-response hooks, console logs, assertions, tests, and environment updates.
 - System networking or custom HTTP CONNECT, TLS-wrapped HTTPS CONNECT, and SOCKS5 proxies, with optional credentials and no direct fallback when a custom proxy fails.
@@ -66,6 +67,8 @@ Insomnia supports the v4 JSON resource format and normalizes `{{ _.variable }}` 
 
 Third-party formats do not preserve every Monkeytail setting, such as request timeouts or global proxy selection. Unsupported authentication produces an import notice; multipart/file bodies and unsupported cURL flags produce an explicit error. Full OAuth flows, client certificates, WebSockets, gRPC, binary uploads, multipart attachments, cloud sync, collection runners, and the complete Postman/Insomnia scripting runtimes are outside this version.
 
+Browser profiles round-trip through native JSON and `curl-impersonate --impersonate` commands. Postman and Insomnia exports carry `_monkeytail` metadata for reimport into Monkeytail; those apps do not apply browser profiles themselves.
+
 ## Data and networking
 
 Workspace and history live in the app's Application Support directory and use iOS file protection. They can contain credentials; exports include the saved values. There is no analytics or sync service. Response bodies stay in memory unless explicitly saved. Request cookies are explicit headers; sessions are ephemeral and do not share a cookie jar. TLS trust verification stays enabled; install and trust a debugging CA in iOS Settings when required. ATS permits HTTP because this app is a general API/debugging client.
@@ -80,7 +83,7 @@ Pure model, parser, collection, encoding, JSON, and proxy-configuration tests:
 swift test
 ```
 
-Simulator integration and UI tests use a local HTTP server plus real CONNECT and SOCKS5 fixtures, with no public API dependencies:
+Simulator integration and UI tests use local HTTP, TLS/HTTP2, CONNECT, and SOCKS5 fixtures, with no public API dependencies:
 
 ```sh
 ./Scripts/test.sh 'platform=iOS Simulator,name=iPhone Duo'
@@ -88,13 +91,15 @@ Simulator integration and UI tests use a local HTTP server plus real CONNECT and
 ./Scripts/test.sh 'platform=iOS Simulator,name=iPhone 18 Pro,OS=27.0'
 ```
 
-The suite verifies transport, redirects, credential removal across origins, cancellation, limits, both proxy protocols, script mutation/assertions/errors/timeouts/network blocking, persistence, and a send → inspect → import → edit → cURL export UI flow in portrait and landscape. UI tests use an isolated temporary workspace and do not change normal user collections.
+The suite verifies transport, TLS ClientHello and HTTP/2 SETTINGS on the wire, certificate rejection, browser header overrides, redirects, credential removal across origins, cancellation, limits, both proxy protocols, script mutation/assertions/errors/timeouts/network blocking, persistence, and a send → inspect → import → edit → cURL export UI flow in portrait and landscape. UI tests use an isolated temporary workspace and do not change normal user collections.
 
 ## Project structure
 
 ```text
 Sources/MonkeytailCore/  Codable models, request builder, HTTP transport, cURL,
                         collection codecs, JSON formatting/tree
+Sources/MonkeytailCurl/  Small C bridge for the static browser transport
+Vendor/                 Pinned curl-impersonate XCFramework and provenance
 Monkeytail/Services/    Observable workspace/persistence and WebKit script runner
 Monkeytail/Views/       Native adaptive SwiftUI interface
 Tests/                 Core Swift package tests
@@ -110,3 +115,5 @@ Protocol references: [Apple proxy configuration](https://developer.apple.com/doc
 ## Ownership
 
 Private source repository for Kitta Co (Kitta Ltd). Copyright © 2026 Kitta Ltd. All rights reserved. The public product, support, and privacy pages are hosted at [docs.kitta.co](https://docs.kitta.co/monkeytail/).
+
+Third-party library notices are included in Settings → Open source licenses. See [vendor provenance](Vendor/README.md) for the pinned binaries and regeneration procedure.

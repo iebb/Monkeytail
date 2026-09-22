@@ -37,6 +37,7 @@ public struct APIRequest: Codable, Identifiable, Equatable, Sendable {
     public var scriptsEnabled = false
     public var followRedirects = true
     public var timeout: Double = 30
+    public var impersonation: BrowserImpersonation?
     public init(name: String = "Untitled request", method: String = "GET", url: String = "https://httpbin.org/get") {
         self.name = name; self.method = method; self.url = url
     }

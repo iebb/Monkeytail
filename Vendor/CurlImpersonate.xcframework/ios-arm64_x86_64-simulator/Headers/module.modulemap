@@ -1,0 +1,4 @@
+module CurlImpersonate [system] {
+  header "curl/curl.h"
+  export *
+}

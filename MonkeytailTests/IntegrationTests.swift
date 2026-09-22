@@ -1,9 +1,82 @@
 import XCTest
-import MonkeytailCore
+@testable import MonkeytailCore
 @testable import Monkeytail
 
 @MainActor
 final class IntegrationTests: XCTestCase {
+    func testBrowserTLSAndHTTP2FingerprintsOnTheWire() async throws {
+        let ca = try await HTTPClient().send(RequestBuilder.build(APIRequest(url: "http://127.0.0.1:8766/tls-ca"))).body
+        let request = try RequestBuilder.build(APIRequest(url: "https://localhost:8769/"))
+        var fingerprints: [BrowserProfile: [String: Any]] = [:]
+        for profile in BrowserProfile.allCases {
+            let response = try await BrowserHTTPClient(certificateAuthorities: ca).send(request, proxy: ProxySettings(), impersonation: BrowserImpersonation(profile: profile))
+            XCTAssertEqual(response.status, 200, profile.rawValue)
+            let fingerprint = try XCTUnwrap(try JSONTools.parse(response.text) as? [String: Any])
+            fingerprints[profile] = fingerprint
+            XCTAssertEqual(fingerprint["negotiatedALPN"] as? String, "h2")
+            XCTAssertEqual(fingerprint["alpn"] as? [String], ["h2", "http/1.1"])
+            XCTAssertFalse((fingerprint["ciphers"] as? [Int] ?? []).isEmpty)
+        }
+        let chrome = try XCTUnwrap(fingerprints[.chrome])
+        let safari = try XCTUnwrap(fingerprints[.safariIOS])
+        XCTAssertEqual(chrome["http2Settings"] as? [[Int]], [[1, 65536], [2, 0], [4, 6291456], [6, 262144]])
+        XCTAssertEqual(safari["http2Settings"] as? [[Int]], [[2, 0], [3, 100], [4, 2097152], [9, 1]])
+        func withoutGrease(_ values: Any?) -> [Int] { (values as? [Int] ?? []).filter { $0 & 0x0f0f != 0x0a0a } }
+        XCTAssertNotEqual(withoutGrease(chrome["ciphers"]), withoutGrease(safari["ciphers"]))
+        XCTAssertNotEqual(withoutGrease(chrome["extensions"]).sorted(), withoutGrease(safari["extensions"]).sorted())
+    }
+
+    func testBrowserTransportRejectsUntrustedCertificates() async throws {
+        do {
+            _ = try await HTTPClient().send(RequestBuilder.build(APIRequest(url: "https://localhost:8769/")), impersonation: BrowserImpersonation(profile: .chrome))
+            XCTFail("An untrusted fixture certificate must be rejected")
+        } catch { XCTAssertTrue(error.localizedDescription.lowercased().contains("certificate"), error.localizedDescription) }
+    }
+
+    func testBrowserHeadersBodyProxiesAndRedirects() async throws {
+        var model = APIRequest(method: "POST", url: "http://127.0.0.1:8766/echo")
+        model.bodyKind = .text; model.body = "Hello\0Browser"
+        model.headers = [Field("User-Agent", "Monkeytail debug"), Field("X-Debug", "yes")]
+        let profile = BrowserImpersonation(profile: .chrome)
+        let response = try await HTTPClient().send(RequestBuilder.build(model), impersonation: profile)
+        let echoed = try JSONTools.parse(response.text) as! [String: Any]
+        let headers = (echoed["headers"] as! [String: String]).reduce(into: [String: String]()) { $0[$1.key.lowercased()] = $1.value }
+        XCTAssertEqual(echoed["body"] as? String, model.body)
+        XCTAssertEqual(headers["user-agent"], "Monkeytail debug")
+        XCTAssertEqual(headers["x-debug"], "yes")
+        XCTAssertNotNil(headers["sec-ch-ua"])
+        let plain = try await HTTPClient().send(RequestBuilder.build(model), impersonation: BrowserImpersonation(profile: .chrome, browserHeaders: false))
+        let plainHeaders = (try JSONTools.parse(plain.text) as! [String: Any])["headers"] as! [String: String]
+        XCTAssertFalse(plainHeaders.keys.contains { $0.lowercased() == "sec-ch-ua" })
+        model.url = "http://monkeytail.test:8766/echo"
+        for kind in [ProxyKind.http, .socks] {
+            var proxy = ProxySettings(); proxy.kind = kind; proxy.host = "127.0.0.1"; proxy.port = kind == .http ? "8767" : "8768"
+            let result = try await HTTPClient().send(RequestBuilder.build(model), proxy: proxy, impersonation: profile)
+            XCTAssertEqual(result.status, 200)
+        }
+        model.url = "http://127.0.0.1:8766/cross-origin"
+        model.headers += [Field("Authorization", "Bearer secret"), Field("Cookie", "token=secret"), Field("Proxy-Authorization", "Basic secret")]
+        let cross = try await HTTPClient().send(RequestBuilder.build(model), impersonation: profile)
+        let crossHeaders = (try JSONTools.parse(cross.text) as! [String: Any])["headers"] as! [String: String]
+        XCTAssertFalse(crossHeaders.keys.contains { ["authorization", "cookie", "proxy-authorization"].contains($0.lowercased()) })
+        let stopped = try await HTTPClient(followRedirects: false).send(RequestBuilder.build(model), impersonation: profile)
+        XCTAssertEqual(stopped.status, 302)
+    }
+
+    func testBrowserResponseLimitAndCancellation() async throws {
+        let profile = BrowserImpersonation(profile: .chrome)
+        do {
+            _ = try await HTTPClient().send(RequestBuilder.build(APIRequest(url: "http://127.0.0.1:8766/oversize")), impersonation: profile)
+            XCTFail("Expected response limit")
+        } catch { XCTAssertTrue(error.localizedDescription.contains("20 MB")) }
+        let task = Task { try await HTTPClient().send(RequestBuilder.build(APIRequest(url: "http://127.0.0.1:8766/slow")), impersonation: profile) }
+        try await Task.sleep(for: .milliseconds(100))
+        let started = ContinuousClock.now
+        task.cancel()
+        do { _ = try await task.value; XCTFail("Expected cancellation") } catch { XCTAssertTrue(error is CancellationError) }
+        XCTAssertLessThan(started.duration(to: .now), .seconds(2))
+    }
+
     func testPreRequestScriptMutationsAndConsole() async throws {
         let result = try await ScriptRunner().run("request.headers['X-Test'] = 'yes'; environment.set('token', 'abc'); console.log('ready');", request: APIRequest(), variables: [:])
         XCTAssertEqual(result.request.headers["X-Test"], "yes")
@@ -82,8 +155,9 @@ final class IntegrationTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = WorkspaceStore(directory: directory)
         let originalCount = store.requestCount
-        try store.importContent("curl https://example.com -H 'X-Test: yes'")
+        try store.importContent("curl-impersonate --impersonate firefox147:no https://example.com -H 'X-Test: yes'")
         XCTAssertEqual(store.requestCount, originalCount + 1)
+        XCTAssertEqual(store.selectedRequest?.impersonation, BrowserImpersonation(profile: .firefox, browserHeaders: false))
         store.save()
         let restored = WorkspaceStore(directory: directory)
         XCTAssertEqual(restored.workspace, store.workspace)
