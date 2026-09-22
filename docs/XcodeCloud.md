@@ -16,9 +16,13 @@ The generated project is committed, so Cloud does not need XcodeGen. Regenerate 
 
 The shared scheme runs hosted integration tests and UI tests without parallel execution. GitHub Actions separately runs the core Swift package tests. Tests use loopback servers and require no production credentials.
 
-## Intended workflow
+## Active workflow
 
-Build on changes to main and pull requests targeting main, cancel superseded runs, run required iPhone simulator tests, and archive for TestFlight and App Store distribution with automatic signing. Apple-side activation and the first build are tracked below once verified.
+`Monkeytail CI` runs on changes to `main` and can be started manually for any branch. It cancels superseded push builds, runs required tests on iPhone 18 Pro with the latest release iOS simulator, and archives for App Store Connect with automatic signing. Both Xcode and macOS track the latest release. GitHub Actions runs core tests for pushes and pull requests to `main`.
+
+- [App Store Connect app](https://appstoreconnect.apple.com/apps/6814706725/distribution): `6814706725`
+- [Cloud workflow](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/xcode-cloud/products/503e6b3e-e4f0-497c-84de-827b8c8b88bd/workflows/31C47B5F-652E-4FB9-8998-248C9C0E2CB8)
+- Connected September 22, 2026. Initial Cloud compilation succeeded. Distribution validation is in progress; test targets generate Info.plist files for Cloud signing.
 
 ## Publication
 

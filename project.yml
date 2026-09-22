@@ -48,12 +48,18 @@ targets:
   MonkeytailTests:
     type: bundle.unit-test
     platform: iOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
     sources: [MonkeytailTests]
     dependencies:
       - target: Monkeytail
   MonkeytailUITests:
     type: bundle.ui-testing
     platform: iOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
     sources: [MonkeytailUITests]
     dependencies:
       - target: Monkeytail
