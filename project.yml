@@ -36,6 +36,7 @@ targets:
     info:
       path: Monkeytail/Info.plist
       properties:
+        ITSAppUsesNonExemptEncryption: false
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
         UIFileSharingEnabled: false
