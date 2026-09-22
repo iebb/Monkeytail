@@ -22,7 +22,7 @@ The shared scheme runs hosted integration tests and UI tests without parallel ex
 
 - [App Store Connect app](https://appstoreconnect.apple.com/apps/6814706725/distribution): `6814706725`
 - [Cloud workflow](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/xcode-cloud/products/503e6b3e-e4f0-497c-84de-827b8c8b88bd/workflows/31C47B5F-652E-4FB9-8998-248C9C0E2CB8)
-- Connected September 22, 2026. Initial Cloud compilation succeeded. Distribution validation is in progress; test targets generate Info.plist files for Cloud signing.
+- Connected September 22, 2026. [Build 4](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/xcode-cloud/products/503e6b3e-e4f0-497c-84de-827b8c8b88bd/builds/044ace29-c142-49a1-a0b2-4f8d65438dcd) at `5949fa9` passed required iOS tests and the App Store archive. The signed version is `1.0 (4)`. Test targets generate Info.plist files for Cloud signing.
 
 ## Publication
 
