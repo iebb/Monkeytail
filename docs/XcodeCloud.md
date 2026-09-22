@@ -18,11 +18,12 @@ The shared scheme runs hosted integration tests and UI tests without parallel ex
 
 ## Active workflow
 
-`Monkeytail CI` runs on changes to `main` and can be started manually for any branch. It cancels superseded push builds, runs required tests on iPhone 18 Pro with the latest release iOS simulator, and archives for App Store Connect with automatic signing. Both Xcode and macOS track the latest release. GitHub Actions runs core tests for pushes and pull requests to `main`.
+`Monkeytail CI` runs on changes to `main` and can be started manually for any branch. It cancels superseded push builds and archives for App Store Connect with automatic signing, followed by TestFlight internal distribution. As observed for build 10, the Cloud workflow runs Archive only; hosted integration and UI tests are run locally. Both Xcode and macOS track the latest release. GitHub Actions runs core tests for pushes and pull requests to `main`.
 
 - [App Store Connect app](https://appstoreconnect.apple.com/apps/6814706725/distribution): `6814706725`
 - [Cloud workflow](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/xcode-cloud/products/503e6b3e-e4f0-497c-84de-827b8c8b88bd/workflows/31C47B5F-652E-4FB9-8998-248C9C0E2CB8)
 - Connected September 22, 2026. [Build 4](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/xcode-cloud/products/503e6b3e-e4f0-497c-84de-827b8c8b88bd/builds/044ace29-c142-49a1-a0b2-4f8d65438dcd) at `5949fa9` passed required iOS tests and the App Store archive. The signed version is `1.0 (4)`. Test targets generate Info.plist files for Cloud signing.
+- [Build 10](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/xcode-cloud/products/503e6b3e-e4f0-497c-84de-827b8c8b88bd/builds/fee9863c-3d6e-4750-8115-c320a6e591ec) at `d51b8ba` passed archive and TestFlight distribution on September 22, 2026. Version `1.0 (10)` was resubmitted for App Review at 16:54 JST with the response-body fix, browser profiles, and the exempt-encryption declaration. GitHub Actions passed for the same commit.
 
 ## Publication
 
