@@ -164,19 +164,24 @@ struct RequestWorkspace: View {
     var body: some View {
         GeometryReader { geometry in
             let sideBySide = geometry.size.width >= 640 && geometry.size.height >= 440 && !dynamicType.isAccessibilitySize
+            let paneLayout = sideBySide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(ZStackLayout(alignment: .topLeading))
             VStack(spacing: 0) {
                 addressBar
                 Divider()
-                HStack(spacing: 0) {
+                // Keep both panes alive and fully sized on iPhone. A zero-width
+                // hidden pane gives its scroll views an invalid initial viewport.
+                paneLayout {
                     RequestEditor(request: request)
                         .disabled(!sideBySide && pane != "Request")
-                        .frame(maxWidth: sideBySide || pane == "Request" ? .infinity : 0)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped().opacity(sideBySide || pane == "Request" ? 1 : 0)
+                        .allowsHitTesting(sideBySide || pane == "Request")
                         .accessibilityHidden(!sideBySide && pane != "Request")
                     if sideBySide { Divider() }
                     ResponseView(store: store, requestID: requestID)
-                        .frame(maxWidth: sideBySide || pane == "Response" ? .infinity : 0)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped().opacity(sideBySide || pane == "Response" ? 1 : 0)
+                        .allowsHitTesting(sideBySide || pane == "Response")
                         .accessibilityHidden(!sideBySide && pane != "Response")
                 }
                 Divider()

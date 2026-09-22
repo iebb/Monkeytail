@@ -45,6 +45,10 @@ class API(http.server.BaseHTTPRequestHandler):
                    'path': path.path, 'query': parse_qs(path.query),
                    'headers': dict(self.headers), 'body': body,
                    'data': {'name': 'Monkeytail', 'native': True, 'platforms': ['iPhone', 'iPhone Duo', 'iPad']}}
+        if path.path == '/body-layout':
+            payload = {'aMessage': 'Hello from Monkeytail',
+                       'items': [{'index': i, 'value': 'Response row'} for i in range(80)],
+                       'longLine': '0123456789' * 100}
         encoded = json.dumps(payload, separators=(',', ':')).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')

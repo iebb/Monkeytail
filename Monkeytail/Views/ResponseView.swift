@@ -88,6 +88,7 @@ struct ResponseView: View {
                         HStack {
                             Picker("Response format", selection: $format) { Text("Pretty").tag("Pretty"); Text("Tree").tag("Tree"); Text("Raw").tag("Raw") }.pickerStyle(.segmented)
                             Button { UIPasteboard.general.string = format == "Raw" ? response.text : formatted; copied = true } label: { Image(systemName: copied ? "checkmark" : "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Copy response")
+                                .disabled(format != "Raw" && preview.responseID != response.id)
                         }
                     }
                     HStack {
@@ -96,12 +97,16 @@ struct ResponseView: View {
                         if !search.isEmpty { Button { search = ""; searchFocused = false } label: { Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44) }.accessibilityLabel("Clear search") }
                     }.padding(.leading, 10).frame(minHeight: 44).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                 }.padding(.horizontal, 12).padding(.bottom, 8)
-                if format == "Tree", let tree, search.isEmpty {
+                if preview.responseID != response.id {
+                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if format == "Tree", let tree, search.isEmpty {
                     GeometryReader { geometry in
                         ScrollView([.horizontal, .vertical]) {
                             LazyVStack(alignment: .leading) { JSONTreeRow(node: tree, depth: 0) }
                                 .frame(width: max(geometry.size.width - 24, CGFloat(preview.treeColumns) * characterWidth), alignment: .leading).padding(12)
-                        }
+                        }.defaultScrollAnchor(.topLeading)
+                            .id(response.id)
+                            .accessibilityIdentifier("Response tree")
                     }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).background(Palette.surface.opacity(0.5))
                 } else {
                     codeResponse(response)
@@ -143,6 +148,11 @@ struct ResponseView: View {
                     if response.body.count > 1_000_000 { Text("Preview limited to 1 MB. Save the response for the full body.").font(.caption).foregroundStyle(.orange) }
                 }.frame(width: max(geometry.size.width - 24, CGFloat(columns + 8) * characterWidth), alignment: .leading).padding(12)
             }
+            .defaultScrollAnchor(.topLeading)
+            // Formats and filters have different row sizes. Never reuse a scroll
+            // offset or lazy-row measurements from the previous representation.
+            .id(ResponseScrollIdentity(responseID: response.id, format: format, search: search))
+            .accessibilityIdentifier("Response body")
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).background(Palette.surface.opacity(0.5))
     }
     private func highlight(_ line: String) -> AttributedString {
@@ -167,6 +177,7 @@ struct ResponseView: View {
 }
 
 private struct ResponsePreview: Sendable {
+    var responseID: UUID?
     var formatted = ""
     var rawLines: [String] = []
     var prettyLines: [String] = []
@@ -176,6 +187,7 @@ private struct ResponsePreview: Sendable {
     var treeColumns = 0
     init() {}
     init(response: APIResponse) {
+        responseID = response.id
         let text = response.body.count <= 1_000_000 ? response.text : String(decoding: response.body.prefix(1_000_000), as: UTF8.self)
         formatted = (try? JSONTools.format(text)) ?? text
         rawLines = text.components(separatedBy: "\n")
@@ -192,6 +204,12 @@ private struct ResponsePreview: Sendable {
     private static func textColumns(_ text: String) -> Int {
         text.unicodeScalars.reduce(0) { $0 + ($1.value > 255 ? 2 : 1) }
     }
+}
+
+private struct ResponseScrollIdentity: Hashable {
+    let responseID: UUID
+    let format: String
+    let search: String
 }
 
 struct JSONTreeRow: View {
