@@ -6,18 +6,15 @@ struct ResponseView: View {
     let requestID: UUID
     @State private var tab = "Body"
     @State private var format = "Pretty"
+    @State private var lastKind: ResponseBodyKind?
     @State private var search = ""
-    @State private var preview = ResponsePreview()
     @State private var copied = false
-    @State private var shareURL: URL?
-    @State private var showShare = false
+    @State private var shareItem: ResponseShare?
     @FocusState private var searchFocused: Bool
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.inputDismissal) private var inputDismissal
     @ScaledMetric(relativeTo: .footnote) private var characterWidth: CGFloat = 8
-    var response: APIResponse? { store.responses[requestID] }
-    private var formatted: String { preview.formatted }
-    private var tree: JSONNode? { preview.tree }
+    var response: APIResponse? { store.responses[requestID]?.response }
     private var compactSearch: Bool { searchFocused && sizeClass != .regular }
     private static let tokenPattern = try? NSRegularExpression(pattern: #"\"(?:[^\"\\]|\\.)*\"|\b(?:true|false|null|\d+(?:\.\d+)?)\b"#)
 
@@ -28,8 +25,8 @@ struct ResponseView: View {
                     .frame(maxWidth: .infinity, alignment: .leading).background(Color.red.opacity(0.06))
                 if response != nil { Text("Previous response shown below").font(.caption).foregroundStyle(.secondary).padding(12) }
             }
-            if let response {
-                responseContent(response)
+            if let result = store.responses[requestID] {
+                responseContent(result.response, preview: result.preview)
             } else if store.runningID == requestID {
                 VStack(spacing: 12) { ProgressView(); Text("Sending…").font(.subheadline).foregroundStyle(.secondary) }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -37,12 +34,19 @@ struct ResponseView: View {
                 EmptyPanel(title: "No response")
             }
         }
-        .task(id: response?.id) { await prepare() }
+        .onChange(of: response?.id, initial: true) { _, _ in
+            copied = false
+            if let preview = store.responses[requestID]?.preview {
+                if lastKind != preview.kind || !preview.formats.contains(format) { format = preview.defaultFormat }
+                lastKind = preview.kind
+            }
+        }
+        .onChange(of: format) { _, _ in copied = false; searchFocused = false }
         .onChange(of: inputDismissal) { _, _ in searchFocused = false }
-        .sheet(isPresented: $showShare) { if let shareURL { ShareSheet(items: [shareURL]) } }
+        .sheet(item: $shareItem) { item in ShareSheet(items: [item.url]) }
     }
 
-    private func responseContent(_ response: APIResponse) -> some View {
+    private func responseContent(_ response: APIResponse, preview: ResponsePreview) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 ViewThatFits(in: .horizontal) {
@@ -51,7 +55,7 @@ struct ResponseView: View {
                 }
                 Spacer(minLength: 0)
                 if store.runningID == requestID { ProgressView().controlSize(.small) }
-                Button { save(response) } label: { Image(systemName: "square.and.arrow.up").frame(width: 44, height: 44) }.accessibilityLabel("Save response")
+                Button { save(response, preview: preview) } label: { Image(systemName: "square.and.arrow.up").frame(width: 44, height: 44) }.accessibilityLabel("Save response")
             }.padding(.leading, 12).padding(.trailing, 4).padding(.vertical, 2)
             Divider()
             if !compactSearch { PillTabs(tabs: ["Body", "Headers", "Console"], selection: $tab) }
@@ -86,20 +90,39 @@ struct ResponseView: View {
                 VStack(spacing: 4) {
                     if !compactSearch {
                         HStack {
-                            Picker("Response format", selection: $format) { Text("Pretty").tag("Pretty"); Text("Tree").tag("Tree"); Text("Raw").tag("Raw") }.pickerStyle(.segmented)
-                            Button { UIPasteboard.general.string = format == "Raw" ? response.text : formatted; copied = true } label: { Image(systemName: copied ? "checkmark" : "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Copy response")
-                                .disabled(format != "Raw" && preview.responseID != response.id)
+                            Menu {
+                                ForEach(preview.formats, id: \.self) { name in
+                                    Button { format = name } label: { if name == format { Label(name, systemImage: "checkmark") } else { Text(name) } }
+                                        .accessibilityIdentifier("Response format " + name)
+                                }
+                            } label: {
+                                HStack { Text(format).font(.subheadline.weight(.medium)); Image(systemName: "chevron.down").font(.caption) }.frame(minHeight: 44)
+                            }.accessibilityIdentifier("Response format")
+                            Spacer()
+                            if !["Image", "Audio", "Video"].contains(format) {
+                                Button { copy(response, preview: preview) } label: { Image(systemName: copied ? "checkmark" : "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Copy response")
+                            }
                         }
                     }
-                    HStack {
-                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                        TextField("Find in response", text: $search).font(.caption).textInputAutocapitalization(.never).autocorrectionDisabled().focused($searchFocused).submitLabel(.done).onSubmit { searchFocused = false }
-                        if !search.isEmpty { Button { search = ""; searchFocused = false } label: { Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44) }.accessibilityLabel("Clear search") }
-                    }.padding(.leading, 10).frame(minHeight: 44).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
+                    if ["Pretty", "Raw", "Tree"].contains(format) {
+                        HStack {
+                            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                            TextField("Find in response", text: $search).font(.caption).textInputAutocapitalization(.never).autocorrectionDisabled().focused($searchFocused).submitLabel(.done).onSubmit { searchFocused = false }
+                            if !search.isEmpty { Button { search = ""; searchFocused = false } label: { Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44) }.accessibilityLabel("Clear search") }
+                        }.padding(.leading, 10).frame(minHeight: 44).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
+                    }
                 }.padding(.horizontal, 12).padding(.bottom, 8)
-                if preview.responseID != response.id {
-                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if format == "Tree", let tree, search.isEmpty {
+                if format == "Image", let image = preview.image {
+                    ResponseImageView(image: image).id(response.id).frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if format == "Audio" || format == "Video" {
+                    GeometryReader { geometry in
+                        ResponseMediaView(url: preview.mediaURL, error: preview.mediaError, audio: format == "Audio")
+                            .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                    }.frame(maxWidth: .infinity, maxHeight: .infinity).id(response.id)
+                } else if format == "Hex" || format == "Binary" {
+                    ResponseBytesView(bytes: preview.bytes, totalCount: response.body.count, binary: format == "Binary")
+                        .id(ResponseScrollIdentity(responseID: response.id, format: format, search: ""))
+                } else if format == "Tree", let tree = preview.tree, search.isEmpty {
                     GeometryReader { geometry in
                         ScrollView([.horizontal, .vertical]) {
                             LazyVStack(alignment: .leading) { JSONTreeRow(node: tree, depth: 0) }
@@ -109,16 +132,29 @@ struct ResponseView: View {
                             .accessibilityIdentifier("Response tree")
                     }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).background(Palette.surface.opacity(0.5))
                 } else {
-                    codeResponse(response)
+                    codeResponse(response, preview: preview)
                 }
             }
             Spacer(minLength: 0)
         }
     }
-    private func save(_ response: APIResponse) {
-        let ext = response.headers.contains { $0.name.lowercased() == "content-type" && $0.value.contains("json") } ? "json" : "txt"
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("response-\(response.id.uuidString.prefix(8)).\(ext)")
-        do { try response.body.write(to: url); shareURL = url; showShare = true } catch { store.issue = error.localizedDescription }
+    private func copy(_ response: APIResponse, preview: ResponsePreview) {
+        let selectedFormat = format
+        Task {
+            let text = await Task.detached(priority: .userInitiated) {
+                switch selectedFormat {
+                case "Hex", "Binary": return ByteFormatter.dump(preview.bytes, width: selectedFormat == "Binary" ? 4 : 8, binary: selectedFormat == "Binary")
+                case "Raw": return response.text
+                default: return preview.formatted
+                }
+            }.value
+            UIPasteboard.general.string = text
+            if self.response?.id == response.id && format == selectedFormat { copied = true }
+        }
+    }
+    private func save(_ response: APIResponse, preview: ResponsePreview) {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("response-\(response.id.uuidString.prefix(8)).\(preview.fileExtension)")
+        do { try response.body.write(to: url, options: [.atomic, .completeFileProtectionUnlessOpen]); shareItem = ResponseShare(url: url) } catch { store.issue = error.localizedDescription }
     }
     private func status(_ response: APIResponse) -> some View {
         Text("\(response.status) \(statusLabel(response.status))").font(.system(.caption, design: .monospaced, weight: .semibold)).lineLimit(1)
@@ -130,7 +166,7 @@ struct ResponseView: View {
     }
     private func size(_ response: APIResponse) -> some View { Text(ByteCountFormatter.string(fromByteCount: Int64(response.body.count), countStyle: .file)).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
 
-    private func codeResponse(_ response: APIResponse) -> some View {
+    private func codeResponse(_ response: APIResponse, preview: ResponsePreview) -> some View {
         let source = format == "Raw" ? preview.rawLines : preview.prettyLines
         let columns = format == "Raw" ? preview.rawColumns : preview.prettyColumns
         let lines = source.enumerated().filter { search.isEmpty || $0.element.localizedCaseInsensitiveContains(search) }
@@ -166,44 +202,11 @@ struct ResponseView: View {
         }
         return result
     }
-    private func prepare() async {
-        guard let response else { return }
-        let result = await Task.detached(priority: .userInitiated) { ResponsePreview(response: response) }.value
-        guard !Task.isCancelled, self.response?.id == response.id else { return }
-        preview = result
-        copied = false
-        if tree == nil && format == "Tree" { format = "Raw" }
-    }
 }
 
-private struct ResponsePreview: Sendable {
-    var responseID: UUID?
-    var formatted = ""
-    var rawLines: [String] = []
-    var prettyLines: [String] = []
-    var rawColumns = 0
-    var prettyColumns = 0
-    var tree: JSONNode?
-    var treeColumns = 0
-    init() {}
-    init(response: APIResponse) {
-        responseID = response.id
-        let text = response.body.count <= 1_000_000 ? response.text : String(decoding: response.body.prefix(1_000_000), as: UTF8.self)
-        formatted = (try? JSONTools.format(text)) ?? text
-        rawLines = text.components(separatedBy: "\n")
-        prettyLines = formatted.components(separatedBy: "\n")
-        rawColumns = rawLines.map(Self.textColumns).max() ?? 0
-        prettyColumns = prettyLines.map(Self.textColumns).max() ?? 0
-        tree = response.body.count <= 1_000_000 ? try? JSONTools.tree(text) : nil
-        if let tree { treeColumns = Self.columns(tree, depth: 0) }
-    }
-    private static func columns(_ node: JSONNode, depth: Int) -> Int {
-        let own = depth * 3 + textColumns(String(node.key.prefix(512))) + textColumns(String(node.summary.prefix(512))) + 8
-        return max(own, node.children?.map { columns($0, depth: depth + 1) }.max() ?? 0)
-    }
-    private static func textColumns(_ text: String) -> Int {
-        text.unicodeScalars.reduce(0) { $0 + ($1.value > 255 ? 2 : 1) }
-    }
+private struct ResponseShare: Identifiable {
+    let url: URL
+    var id: URL { url }
 }
 
 private struct ResponseScrollIdentity: Hashable {

@@ -211,7 +211,7 @@ struct RequestWorkspace: View {
                 }.padding(.horizontal, 12).padding(.vertical, 4).background(Palette.surface)
             }.background(Palette.canvas).environment(\.inputDismissal, inputDismissal)
                 .onChange(of: pane) { _, _ in dismissKeyboard() }
-                .onChange(of: store.responses[requestID]?.id) { _, _ in if !sideBySide { pane = "Response" } }
+                .onChange(of: store.responses[requestID]?.response.id) { _, _ in if !sideBySide { pane = "Response" } }
                 .onChange(of: store.errors[requestID]) { _, error in if error != nil && !sideBySide { pane = "Response" } }
         }
     }

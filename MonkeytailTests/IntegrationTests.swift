@@ -1,9 +1,49 @@
 import XCTest
 @testable import MonkeytailCore
 @testable import Monkeytail
+import AVFoundation
 
 @MainActor
 final class IntegrationTests: XCTestCase {
+    func testMIMEPreviewsValidateDataAndPreserveBytes() async throws {
+        for (path, kind, ext) in [("png", ResponseBodyKind.image, "png"), ("wav", .audio, "wav"), ("mp4", .video, "mp4"), ("binary", .binary, "bin"), ("fake-image", .binary, "png")] {
+            let response = try await HTTPClient().send(RequestBuilder.build(APIRequest(url: "http://127.0.0.1:8766/media/" + path)))
+            let preview = ResponsePreview(response: response)
+            XCTAssertEqual(preview.kind, kind, path)
+            XCTAssertEqual(preview.fileExtension, ext, path)
+            XCTAssertEqual(preview.bytes, Array(response.body), path)
+            if kind == .image { XCTAssertEqual(preview.image?.width, 64) }
+            if kind == .audio || kind == .video {
+                let url = try XCTUnwrap(preview.mediaURL)
+                XCTAssertEqual(try Data(contentsOf: url), response.body)
+                let asset = ResponseMediaView.asset(for: url)
+                XCTAssertEqual(asset.referenceRestrictions, .forbidAll)
+                let playable = try await asset.load(.isPlayable)
+                XCTAssertTrue(playable, path)
+            }
+        }
+    }
+
+    func testTextMIMEAndPreviewByteLimit() {
+        let body = Data(("a" + String(repeating: "é", count: 500_000)).utf8)
+        let response = APIResponse(status: 200, headers: [Field("CONTENT-TYPE", "Text/Plain; charset=UTF-8")], body: body, duration: 0, url: "https://example.com")
+        let preview = ResponsePreview(response: response)
+        XCTAssertEqual(preview.kind, .text)
+        XCTAssertEqual(preview.defaultFormat, "Raw")
+        XCTAssertEqual(preview.bytes.count, 1_000_000)
+        XCTAssertEqual(response.body.count, 1_000_001)
+        XCTAssertFalse(preview.rawLines.isEmpty)
+    }
+
+    func testMediaCacheFollowsResponseLifetime() async throws {
+        let response = try await HTTPClient().send(RequestBuilder.build(APIRequest(url: "http://127.0.0.1:8766/media/wav")))
+        var preview: ResponsePreview? = ResponsePreview(response: response)
+        let url = try XCTUnwrap(preview?.mediaURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+        preview = nil
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+    }
+
     func testBrowserTLSAndHTTP2FingerprintsOnTheWire() async throws {
         let ca = try await HTTPClient().send(RequestBuilder.build(APIRequest(url: "http://127.0.0.1:8766/tls-ca"))).body
         let request = try RequestBuilder.build(APIRequest(url: "https://localhost:8769/"))
@@ -177,7 +217,11 @@ final class IntegrationTests: XCTestCase {
         while store.runningID != nil && Date() < deadline { try await Task.sleep(for: .milliseconds(50)) }
         XCTAssertNil(store.runningID)
         XCTAssertNil(store.errors[request.id])
-        let response = try XCTUnwrap(store.responses[request.id])
+        let prepared = try XCTUnwrap(store.responses[request.id])
+        let response = prepared.response
+        XCTAssertEqual(prepared.preview.responseID, response.id)
+        XCTAssertTrue(prepared.preview.rawLines.joined(separator: "\n").contains("Hello from Monkeytail"))
+        XCTAssertNotNil(prepared.preview.tree)
         XCTAssertEqual(response.status, 200)
         XCTAssertEqual(response.logs.first?.level, "pass")
         XCTAssertEqual(store.variables["phase"], "pre")

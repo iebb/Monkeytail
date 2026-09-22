@@ -4,6 +4,7 @@ import SwiftUI
 struct MonkeytailApp: App {
     @State private var store = WorkspaceStore()
     @Environment(\.scenePhase) private var phase
+    init() { ResponsePreview.removeStaleMedia() }
     var body: some Scene {
         WindowGroup {
             WorkspaceView(store: store)

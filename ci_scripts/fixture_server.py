@@ -1,6 +1,11 @@
 """Local HTTP / CONNECT / SOCKS5 fixtures. No external services required."""
 import http.server
 import json
+import io
+import math
+import wave
+import zlib
+from pathlib import Path
 import select
 import socket
 import socketserver
@@ -26,6 +31,35 @@ class API(http.server.BaseHTTPRequestHandler):
 
     def respond(self):
         path = urlsplit(self.path)
+        if path.path.startswith('/media/'):
+            kind = path.path.rsplit('/', 1)[-1]
+            mime, data = 'application/octet-stream', bytes(range(256))
+            if kind == 'png':
+                def chunk(name, value):
+                    return struct.pack('!I', len(value)) + name + value + struct.pack('!I', zlib.crc32(name + value))
+                data = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('!2I5B', 64, 64, 8, 2, 0, 0, 0))
+                        + chunk(b'IDAT', zlib.compress((b'\x00' + b'\x16\x7b\x67' * 64) * 64)) + chunk(b'IEND', b''))
+                mime = 'image/png'
+            elif kind == 'wav':
+                buffer = io.BytesIO()
+                with wave.open(buffer, 'wb') as sound:
+                    sound.setnchannels(1)
+                    sound.setsampwidth(2)
+                    sound.setframerate(8000)
+                    sound.writeframes(b''.join(struct.pack('<h', int(1200 * math.sin(i * math.pi * 440 / 4000))) for i in range(16000)))
+                data, mime = buffer.getvalue(), 'audio/wav'
+            elif kind == 'mp4':
+                data, mime = Path(__file__).with_name('fixtures').joinpath('sample.mp4').read_bytes(), 'video/mp4'
+            elif kind == 'fake-image':
+                data, mime = b'not an image', 'image/png'
+            elif kind == 'fake-audio':
+                data, mime = b'not audio', 'audio/wav'
+            self.send_response(200)
+            self.send_header('Content-Type', mime)
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path.path in ['/tls-ca', '/tls-captures']:
             with tls_fixture.lock:
                 data = tls_fixture.ca_pem if path.path == '/tls-ca' else json.dumps(tls_fixture.captures).encode()
@@ -62,6 +96,12 @@ class API(http.server.BaseHTTPRequestHandler):
         if path.path == '/compact-body-layout':
             payload = {'message': 'Hello from Monkeytail', 'success': True, 'padding': ''}
             payload['padding'] = 'x' * (422 - len(json.dumps(payload, separators=(',', ':')).encode()))
+            encoded = json.dumps(payload, separators=(',', ':')).encode()
+        if path.path == '/captured-body-layout':
+            # Shape and byte count of the reported response; all values sanitized.
+            payload = {'onetimeCode': '#0000000', 'onetimeExpiredDate': '0000-00-00x00:00:00x',
+                       'usedCoupons': [{'usedCouponId': '00000', 'expiredDate': '0000-00-00x00:00:00x',
+                                        'dailyUsedFlag': False} for _ in range(4)]}
             encoded = json.dumps(payload, separators=(',', ':')).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')

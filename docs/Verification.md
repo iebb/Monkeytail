@@ -4,7 +4,7 @@ Built with Xcode 27.0 (27A266a), Swift 6.4, with an iOS 17 deployment target.
 
 | Check | Result |
 | --- | --- |
-| Swift package unit tests | 23 passed |
+| Swift package unit tests | 24 passed |
 | Hosted integration tests, iPhone Duo / iOS 27.1 | 10 passed |
 | Send → search → JSON tree → import → edit → cURL export UI flow, iPhone SE (3rd generation) / iOS 18.0 | Passed |
 | Same UI flow, iPhone 18 Pro / iOS 27.0 | Passed |
@@ -23,6 +23,9 @@ Built with Xcode 27.0 (27A266a), Swift 6.4, with an iOS 17 deployment target.
 | Public HTTPS smoke check with Apple native trust, macOS | All five profiles returned verified HTTP 200 from example.com |
 | Release simulator investigation, iPhone 18 Pro / iOS 27.0 | Real httpbin GET and imported JSON POST rendered in Pretty and Raw; blank body not reproduced |
 | 422-byte compact JSON response in Release, iPhone 18 Pro / iOS 27.0 | Visible through Pretty/Raw/Tree, copy, background/foreground, Headers/Body, Request/Response, search, and resend |
+| Full Release suite after atomic response publication and MIME viewers, iPhone 18 Pro / iOS 27.0 | 16 integration + 7 UI tests passed |
+| MIME viewers and compact audio playback, iPhone SE / iOS 18.0 and iPad Pro 13-inch / iPadOS 27.0 | Passed on both, including visible Send controls |
+| Final media viewer Release build, generic iOS device | Passed without signing |
 
 Integration coverage includes real HTTP request encoding, HTTP CONNECT and SOCKS5 proxy routing, redirects and cross-origin credential stripping, cancellation, response size limits, persistence, sandbox network blocking, exceptions, infinite-loop timeout/recovery, and a full pre-hook → transport → post-hook flow that saves environment variables.
 
@@ -38,7 +41,9 @@ Response preparation runs off the main thread; text and tree views use lazy rows
 
 The response viewport regression reproduced a completely blank body after horizontally scrolling Raw and returning to Pretty: the text retained the old horizontal offset outside the visible pane. The viewer now starts at the top-left with fresh scroll state for each response, format, and search. It mounts rows only after the current preview is ready. Compact layouts keep both panes at the available width, preserve editor state, and disable interaction with the hidden pane. The regression targets the response scroll view explicitly and checks visible coordinates, not just the existence of response text. Local fixtures cover long JSON, keyboard dismissal, filtering, copying, tree switching, and repeated POST requests; no user API endpoints were called.
 
-A subsequent report of a blank body on iOS 27 remains unreproduced on the current source. Manual testing used a Release build from the same app source as TestFlight build 10, without UI-test launch arguments, and real HTTPS GET/POST requests to httpbin.org. An additional Release UI regression uses a 422-byte single-line JSON fixture matching the reported response size and verifies on-screen text coordinates through the transitions above. Its screenshots show the Raw body immediately below the search field. This evidence does not establish that the reported device-specific failure is fixed; the installed TestFlight build and a reproducible request are still needed to match that report.
+The subsequent iOS 27 failure was observed live in the user's displayed simulator: a successful 422-byte response remained on a preview spinner while the process was idle. The stored body was valid JSON. A sanitized replay preserves its exact structure and length; no real response values or credentials are included in tests. Preview preparation now belongs to request completion, and response metadata plus prepared content publish as one immutable value. Rendering no longer depends on a cancellable view task. The exact original lifecycle trigger was not established. The Release replay verifies visible Pretty/Raw/Tree content, a populated file share sheet, and background/foreground recovery.
+
+MIME previews decode images with ImageIO before offering Image mode. Audio and video use local protected response files and AVFoundation's `forbidAll` reference restriction. Synthetic PNG/WAV/MP4 fixtures, arbitrary bytes, and invalid image/audio payloads exercise the preview and fallback paths. Byte formatting tests preserve offsets, zero bytes, non-ASCII bytes, and partial rows. The media cache lifetime test verifies temporary files disappear when the prepared response is released.
 
 No physical-device signing, App Store distribution, hardware hinge transitions, or independent display routing was tested. The foldable layout follows available window geometry; the installed Duo configuration was exercised without relying on device-specific or private APIs. HTTPS CONNECT uses Apple's TLS proxy configuration but is not covered by the plaintext CONNECT/SOCKS5 fixture.
 
@@ -47,6 +52,9 @@ Screenshots:
 - [iPad workspace in landscape](screenshots/ipad-workspace.png)
 - [iPad JSON tree](screenshots/ipad-response.png)
 - [iPhone request editor](screenshots/iphone-request.png)
+- [iPhone Hex viewer](screenshots/iphone-hex.png)
+- [iPhone validated image preview](screenshots/iphone-image.png)
+- [iPhone sanitized response replay](screenshots/iphone-replayed-response.png)
 - [iPhone pretty JSON](screenshots/iphone-response.png)
 - [iPhone compact Raw response, Release / iOS 27](screenshots/iphone-compact-release-response.png)
 - [iPhone browser TLS profile](screenshots/iphone-browser-profile.png)

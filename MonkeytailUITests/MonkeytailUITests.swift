@@ -1,6 +1,86 @@
 import XCTest
 
 final class MonkeytailUITests: XCTestCase {
+    private func selectFormat(_ name: String, in app: XCUIApplication) {
+        app.buttons["Response format"].tap()
+        app.buttons["Response format " + name].tap()
+    }
+
+    func testMIMEBodyPreviewsAndBytes() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        for (path, expected) in [("binary", "Hex"), ("png", "Image"), ("wav", "Audio"), ("mp4", "Video"), ("fake-image", "Hex"), ("fake-audio", "Audio")] {
+            app.launchEnvironment["MONKEYTAIL_TEST_URL"] = "http://127.0.0.1:8766/media/" + path
+            app.launch()
+            app.buttons["Send request"].tap()
+            XCTAssertTrue(app.staticTexts["Response status"].waitForExistence(timeout: 15), path)
+            XCTAssertTrue(app.buttons["Response format"].label.contains(expected), path)
+            if path == "png" {
+                XCTAssertTrue(app.images["Response image preview"].waitForExistence(timeout: 5))
+                XCTAssertTrue(app.images["Response image preview"].isHittable)
+            } else if path == "wav" || path == "mp4" {
+                let player = app.descendants(matching: .any).matching(identifier: "Response media player").firstMatch
+                XCTAssertTrue(player.waitForExistence(timeout: 10), path)
+                XCTAssertTrue(player.isHittable, path)
+                if path == "wav" {
+                    app.buttons["Play audio"].tap()
+                    XCTAssertTrue(app.buttons["Pause audio"].waitForExistence(timeout: 1))
+                    app.buttons["Pause audio"].tap()
+                }
+            } else if path == "fake-audio" {
+                XCTAssertTrue(app.staticTexts["Media preview error"].waitForExistence(timeout: 10))
+            }
+            XCTAssertTrue(app.buttons["Send request"].isHittable, path)
+            XCTAssertLessThan(app.buttons["Send request"].frame.maxY, app.frame.maxY, path)
+            attach(app, name: "MIME " + path)
+            selectFormat("Hex", in: app)
+            let row = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH %@", "00000000")).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 5), path)
+            XCTAssertTrue(row.isHittable, path)
+            selectFormat("Binary", in: app)
+            XCTAssertTrue(row.waitForExistence(timeout: 5), path)
+            XCTAssertTrue(row.isHittable, path)
+            if path == "binary" { XCTAssertTrue(row.label.contains("00000000 00000001 00000010 00000011")) }
+        }
+    }
+
+    func testImportedCapturedResponseAndShare() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+        app.buttons["Workspace actions"].tap()
+        app.buttons["Import workspace"].tap()
+        let editor = app.textViews["Import content"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText("curl -X POST 'http://127.0.0.1:8766/captured-body-layout'")
+        app.buttons["Confirm import"].tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
+        app.alerts.buttons["OK"].tap()
+        app.buttons["Send request"].tap()
+        XCTAssertTrue(app.staticTexts["Response status"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["422 bytes"].exists)
+        let code = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "#0000000")).firstMatch
+        for format in ["Pretty", "Raw", "Tree"] {
+            selectFormat(format, in: app)
+            XCTAssertTrue(code.waitForExistence(timeout: 5), format)
+            XCTAssertTrue(code.isHittable, format)
+            XCTAssertGreaterThanOrEqual(code.frame.minY, app.textFields["Find in response"].frame.maxY, format)
+            attach(app, name: "Captured response " + format)
+        }
+        app.buttons["Save response"].tap()
+        let copyAction = app.descendants(matching: .any).matching(identifier: "Copy").firstMatch
+        XCTAssertTrue(copyAction.waitForExistence(timeout: 20), "The share sheet must contain actions. " + app.debugDescription)
+        attach(app, name: "Captured response share sheet")
+        copyAction.tap()
+        XCTAssertTrue(app.buttons["Send request"].waitForExistence(timeout: 5))
+        XCTAssertTrue(code.isHittable)
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(code.waitForExistence(timeout: 5))
+        XCTAssertTrue(code.isHittable)
+    }
+
     func testCompactResponseSurvivesFormatAndLifecycleChanges() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]
@@ -22,7 +102,7 @@ final class MonkeytailUITests: XCTestCase {
             attach(app, name: name)
         }
         verifyVisible("Compact Pretty")
-        app.buttons["Raw"].tap()
+        selectFormat("Raw", in: app)
         app.buttons["Copy response"].tap()
         verifyVisible("Compact Raw copied")
         XCUIDevice.shared.press(.home)
@@ -34,15 +114,15 @@ final class MonkeytailUITests: XCTestCase {
         app.buttons["Request"].tap()
         app.buttons["Response"].tap()
         verifyVisible("Compact Raw after Request")
-        app.buttons["Tree"].tap()
+        selectFormat("Tree", in: app)
         verifyVisible("Compact Tree")
-        app.buttons["Pretty"].tap()
+        selectFormat("Pretty", in: app)
         verifyVisible("Compact Pretty after Tree")
         search.tap()
         search.typeText("Hello")
         verifyVisible("Compact filtered Pretty")
         app.buttons["Clear search"].tap()
-        app.buttons["Raw"].tap()
+        selectFormat("Raw", in: app)
         app.buttons["Send request"].tap()
         verifyVisible("Compact Raw after resend")
     }
@@ -102,7 +182,7 @@ final class MonkeytailUITests: XCTestCase {
         app.buttons["Send request"].tap()
         XCTAssertTrue(app.staticTexts["Response status"].waitForExistence(timeout: 15))
         let bodyLine = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Hello from Monkeytail")).firstMatch
-        app.buttons["Raw"].tap()
+        selectFormat("Raw", in: app)
         XCTAssertTrue(bodyLine.waitForExistence(timeout: 5))
         XCTAssertTrue(bodyLine.isHittable)
         app.buttons["Copy response"].tap()
@@ -120,10 +200,10 @@ final class MonkeytailUITests: XCTestCase {
             XCTAssertGreaterThanOrEqual(bodyLine.frame.minY, search.frame.maxY)
             XCTAssertLessThan(bodyLine.frame.maxY, app.buttons["Send request"].frame.minY)
         }
-        app.buttons["Tree"].tap()
+        selectFormat("Tree", in: app)
         XCTAssertTrue(app.staticTexts["data"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["data"].isHittable)
-        app.buttons["Raw"].tap()
+        selectFormat("Raw", in: app)
         XCTAssertTrue(bodyLine.waitForExistence(timeout: 5))
         XCTAssertTrue(bodyLine.isHittable)
         attach(app, name: "Raw after keyboard and repeated requests")
@@ -144,7 +224,7 @@ final class MonkeytailUITests: XCTestCase {
         for _ in 0..<3 { bodyScroll.swipeUp() }
         XCTAssertFalse(bodyLine.isHittable, "The long response must actually scroll before changing formats")
         attach(app, name: "Scrolled pretty response")
-        app.buttons["Raw"].tap()
+        selectFormat("Raw", in: app)
         attach(app, name: "Raw response visibility")
         XCTAssertTrue(bodyLine.waitForExistence(timeout: 5))
         XCTAssertTrue(bodyLine.isHittable, "Raw response must be visible without scrolling")
@@ -158,13 +238,13 @@ final class MonkeytailUITests: XCTestCase {
             XCTAssertTrue(bodyLine.isHittable)
         }
         for _ in 0..<3 { bodyScroll.swipeLeft() }
-        app.buttons["Pretty"].tap()
+        selectFormat("Pretty", in: app)
         attach(app, name: "Pretty after horizontal scroll")
         XCTAssertTrue(bodyLine.waitForExistence(timeout: 5))
         XCTAssertTrue(bodyLine.isHittable)
         XCTAssertGreaterThanOrEqual(bodyLine.frame.minX, app.frame.minX)
         XCTAssertGreaterThanOrEqual(bodyLine.frame.minY, app.textFields["Find in response"].frame.maxY)
-        app.buttons["Raw"].tap()
+        selectFormat("Raw", in: app)
         for _ in 0..<3 { bodyScroll.swipeLeft() }
         XCTAssertLessThan(bodyLine.frame.minX, app.frame.minX, "Raw must actually scroll before sending again")
         app.buttons["Send request"].tap()
@@ -190,7 +270,7 @@ final class MonkeytailUITests: XCTestCase {
         search.typeText("Hello from Monkeytail")
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Hello from Monkeytail")).firstMatch.waitForExistence(timeout: 5))
         app.buttons["Clear search"].tap()
-        app.buttons["Tree"].tap()
+        selectFormat("Tree", in: app)
         XCTAssertTrue(app.staticTexts["data"].waitForExistence(timeout: 3))
         attach(app, name: "Response tree")
         app.buttons["Workspace actions"].tap()

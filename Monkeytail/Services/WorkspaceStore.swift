@@ -6,7 +6,7 @@ import MonkeytailCore
 final class WorkspaceStore {
     var workspace: Workspace { didSet { scheduleSave() } }
     var selectedRequestID: UUID?
-    var responses: [UUID: APIResponse] = [:]
+    private(set) var responses: [UUID: PreparedResponse] = [:]
     var errors: [UUID: String] = [:]
     var history: [HistoryEntry] = []
     var runningID: UUID?
@@ -141,10 +141,14 @@ final class WorkspaceStore {
                     }
                 }
                 response.logs = logs
-                responses[saved.id] = response
+                let prepared = await Task.detached(priority: .userInitiated) { [response] in
+                    PreparedResponse(response: response)
+                }.value
+                try Task.checkCancellation()
+                responses[saved.id] = prepared
                 // Keep a bounded working set on memory-constrained devices.
-                while responses.count > 8 || responses.values.reduce(0, { $0 + $1.body.count }) > 40 * 1024 * 1024 {
-                    guard let oldest = responses.filter({ $0.key != saved.id }).min(by: { $0.value.receivedAt < $1.value.receivedAt })?.key else { break }
+                while responses.count > 8 || responses.values.reduce(0, { $0 + $1.response.body.count }) > 40 * 1024 * 1024 {
+                    guard let oldest = responses.filter({ $0.key != saved.id }).min(by: { $0.value.response.receivedAt < $1.value.response.receivedAt })?.key else { break }
                     responses[oldest] = nil
                 }
                 history.insert(HistoryEntry(request: saved, status: response.status, duration: response.duration), at: 0)

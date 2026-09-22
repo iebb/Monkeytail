@@ -215,3 +215,12 @@ final class CoreTests: XCTestCase {
         XCTAssertFalse(config.proxyConfigurations[0].allowFailover)
     }
 }
+
+final class ByteFormatterTests: XCTestCase {
+    func testBinaryAndHexPreserveOffsetsAndNonPrintableBytes() {
+        let bytes: [UInt8] = [0, 65, 127, 255, 32]
+        XCTAssertEqual(ByteFormatter.dump(bytes, width: 4), "00000000  00 41 7F FF  .A..\n00000004  20            ")
+        XCTAssertEqual(ByteFormatter.dump([0, 255], width: 2, binary: true), "00000000  00000000 11111111  ..")
+        XCTAssertEqual(ByteFormatter.dump([]), "")
+    }
+}

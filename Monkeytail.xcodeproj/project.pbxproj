@@ -18,8 +18,10 @@
 		A3084FF752E45C07359EA343 /* RequestEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4D0239FCDE78AC65AE32E3 /* RequestEditor.swift */; };
 		C509B03B66C0A697145786E2 /* MonkeytailUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022F944F583B9E9D0FB599DE /* MonkeytailUITests.swift */; };
 		CD05A502A387D97B4D0D3684 /* MonkeytailCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6AE2B7F6ECCE2F85BF760BF4 /* MonkeytailCore */; };
+		D67B5EE7BDC10CB12B9B8697 /* ResponseMediaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B9ABF580715316AB6CE849C /* ResponseMediaView.swift */; };
 		DF876B1428C5036B408FBFC3 /* MonkeytailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831469D5704A4C38BCF3DFD6 /* MonkeytailApp.swift */; };
 		ED6374C5E836DF6786D07653 /* ScriptRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */; };
+		F1A01C1E7FCF1B61F6CC41B1 /* ResponsePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F48FD4E7E6D6C31EA922878 /* ResponsePreview.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,6 +44,7 @@
 /* Begin PBXFileReference section */
 		022F944F583B9E9D0FB599DE /* MonkeytailUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonkeytailUITests.swift; sourceTree = "<group>"; };
 		1B0C89FDF984E7C8B7630705 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1B9ABF580715316AB6CE849C /* ResponseMediaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseMediaView.swift; sourceTree = "<group>"; };
 		32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScriptRunner.swift; sourceTree = "<group>"; };
 		48EA97FA58A38FBDAF4E6BAA /* MonkeytailTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonkeytailTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		48F4743BD555372710532E45 /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
@@ -50,6 +53,7 @@
 		8FF8D9C2DB8DBCD51480B88D /* WorkspaceSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSheets.swift; sourceTree = "<group>"; };
 		9831C297D0A5F470506ACF71 /* Monkeytail */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Monkeytail; path = .; sourceTree = SOURCE_ROOT; };
 		9BCBBAD4A09C3F785FE137E1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		9F48FD4E7E6D6C31EA922878 /* ResponsePreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponsePreview.swift; sourceTree = "<group>"; };
 		BB1222770C4F737984F012BC /* Monkeytail.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Monkeytail.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D0FC810EDA3542E742DBD459 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E015068A24823CDD3FE171F2 /* IntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationTests.swift; sourceTree = "<group>"; };
@@ -92,6 +96,7 @@
 		3A2045EF5F55D3F7D196078A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				9F48FD4E7E6D6C31EA922878 /* ResponsePreview.swift */,
 				32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */,
 				6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */,
 			);
@@ -124,6 +129,7 @@
 			children = (
 				F292057CE60FE52926AEEE6C /* Components.swift */,
 				FF4D0239FCDE78AC65AE32E3 /* RequestEditor.swift */,
+				1B9ABF580715316AB6CE849C /* ResponseMediaView.swift */,
 				E33FB421789C053BD9B6160C /* ResponseView.swift */,
 				8FF8D9C2DB8DBCD51480B88D /* WorkspaceSheets.swift */,
 				48F4743BD555372710532E45 /* WorkspaceView.swift */,
@@ -277,6 +283,8 @@
 				10581EAEE18449219345570F /* Components.swift in Sources */,
 				DF876B1428C5036B408FBFC3 /* MonkeytailApp.swift in Sources */,
 				A3084FF752E45C07359EA343 /* RequestEditor.swift in Sources */,
+				D67B5EE7BDC10CB12B9B8697 /* ResponseMediaView.swift in Sources */,
+				F1A01C1E7FCF1B61F6CC41B1 /* ResponsePreview.swift in Sources */,
 				3607D69D6BD87963249BDF98 /* ResponseView.swift in Sources */,
 				ED6374C5E836DF6786D07653 /* ScriptRunner.swift in Sources */,
 				39268C70F6635DDBABED7942 /* WorkspaceSheets.swift in Sources */,
