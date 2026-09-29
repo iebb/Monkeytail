@@ -68,7 +68,8 @@ final class MonkeytailUITests: XCTestCase {
             XCTAssertGreaterThanOrEqual(code.frame.minY, app.textFields["Find in response"].frame.maxY, format)
             attach(app, name: "Captured response " + format)
         }
-        app.buttons["Save response"].tap()
+        app.buttons["Response actions"].tap()
+        app.buttons["Export body"].tap()
         let copyAction = app.descendants(matching: .any).matching(identifier: "Copy").firstMatch
         XCTAssertTrue(copyAction.waitForExistence(timeout: 20), "The share sheet must contain actions. " + app.debugDescription)
         attach(app, name: "Captured response share sheet")
@@ -310,6 +311,54 @@ final class MonkeytailUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
     }
 
+    func testDiagnosticsSnapshotAndJSONPathFlow() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launchEnvironment["MONKEYTAIL_TEST_URL"] = "http://127.0.0.1:8766/echo"
+        app.launch(); app.buttons["Send request"].tap()
+        XCTAssertTrue(app.staticTexts["Response status"].waitForExistence(timeout: 15))
+        app.buttons["Diagnostics"].tap()
+        XCTAssertTrue(app.staticTexts["DNS"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["DNS"].isHittable)
+        attach(app, name: "Request diagnostics")
+        app.buttons["Body"].tap()
+        app.buttons["Response actions"].tap(); app.buttons["Save snapshot"].tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5)); app.alerts.buttons["OK"].tap()
+        app.buttons["Response actions"].tap(); app.buttons["Extract JSONPath"].tap()
+        let path = app.textFields["JSONPath expression"]
+        XCTAssertTrue(path.waitForExistence(timeout: 5)); path.tap(); path.typeText(".data.platforms[*]")
+        app.buttons["Extract"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "iPhone Duo")).firstMatch.waitForExistence(timeout: 5))
+        attach(app, name: "JSONPath extraction")
+        app.buttons["Done"].tap()
+        app.buttons["Response actions"].tap(); app.buttons["Compare snapshot"].tap()
+        let baseline = app.buttons["Snapshot baseline"]
+        XCTAssertTrue(baseline.waitForExistence(timeout: 5)); baseline.tap()
+        app.buttons.containing(NSPredicate(format: "label CONTAINS %@", "Echo a request")).firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Identical status, headers, and body"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        app.buttons["Workspace actions"].tap(); app.buttons["Snapshots"].tap()
+        XCTAssertTrue(app.navigationBars["Snapshots"].waitForExistence(timeout: 5))
+        app.buttons.containing(NSPredicate(format: "label CONTAINS %@", "Echo a request")).firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Response status"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Hello from Monkeytail")).firstMatch.isHittable)
+        attach(app, name: "Saved response snapshot")
+    }
+    func testMultipartImportAndLocalOnlySyncSetting() throws {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        app.buttons["Workspace actions"].tap(); app.buttons["Import workspace"].tap()
+        let editor = app.textViews["Import content"]; XCTAssertTrue(editor.waitForExistence(timeout: 5)); editor.tap()
+        editor.typeText("curl 'http://127.0.0.1:8766/upload' -F 'greeting=hello' -F 'upload=@sample.png;type=image/png'")
+        app.buttons["Confirm import"].tap(); XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5)); app.alerts.buttons["OK"].tap()
+        app.buttons["Body"].tap()
+        XCTAssertTrue(app.buttons["Choose file"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields.containing(NSPredicate(format: "value == %@", "upload")).firstMatch.exists)
+        attach(app, name: "Multipart request editor")
+        app.buttons["Workspace actions"].tap(); app.buttons["Connection settings"].tap()
+        let sync = app.switches["iCloud sync"]
+        XCTAssertTrue(sync.waitForExistence(timeout: 5)); XCTAssertEqual(sync.value as? String, "0")
+        attach(app, name: "Optional iCloud sync")
+    }
     private func attach(_ app: XCUIApplication, name: String) {
         let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         screenshot.name = name; screenshot.lifetime = .keepAlways

@@ -83,11 +83,15 @@ class API(http.server.BaseHTTPRequestHandler):
             self.wfile.flush()
             time.sleep(1)
             return
-        body = self.rfile.read(int(self.headers.get('Content-Length', 0))).decode()
+        raw_body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        body = raw_body.decode(errors='replace')
         payload = {'message': 'Hello from Monkeytail', 'method': self.command,
                    'path': path.path, 'query': parse_qs(path.query),
                    'headers': dict(self.headers), 'body': body,
                    'data': {'name': 'Monkeytail', 'native': True, 'platforms': ['iPhone', 'iPhone Duo', 'iPad']}}
+        if path.path == '/upload':
+            import base64
+            payload['bodyBase64'] = base64.b64encode(raw_body).decode()
         if path.path == '/body-layout':
             payload = {'aMessage': 'Hello from Monkeytail',
                        'items': [{'index': i, 'value': 'Response row'} for i in range(80)],

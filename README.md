@@ -26,11 +26,11 @@ The starter collection uses httpbin.org. Requests are only sent when you tap **S
 
 ## Included
 
-- Native request editor: methods, URL, enabled/disabled headers and query parameters, JSON/text/URL-encoded bodies, bearer/basic authentication, timeout, redirects.
+- Native request editor: methods, URL, enabled/disabled headers and query parameters, JSON/text/URL-encoded/multipart bodies and binary file uploads, bearer/basic authentication, timeout, redirects.
 - cURL import and export, including shell quoting, multiline commands, data, JSON, cookies, basic auth, and proxy selection. The importer parses text; it never invokes a shell.
-- Collections with add, rename, duplicate, delete, search, and automatic local persistence.
+- Collections with add, rename, duplicate, delete, search, and automatic local persistence. Optional iCloud Drive sync uses the device’s existing session; no Monkeytail account.
 - Named environments and `{{variable}}` substitution throughout requests; nested variables with missing-variable and cycle detection.
-- Real HTTP transport, request cancellation, response status/timing/size, response headers, and full response file sharing.
+- Real HTTP transport, cancellation, response sharing, and per-hop DNS/connect/TLS/upload/server/download diagnostics with transport-reported headers and bounded sent bodies.
 - Optional [browser TLS and HTTP/2 profiles](docs/BrowserProfiles.md) for Chrome, Firefox, and Safari, including iOS and Android presets. Runs locally using pinned curl-impersonate; certificate verification stays enabled.
 - JSON pretty printing, minification in the core library, syntax colors, expandable tree, line search, copying, and request-body formatting.
 - MIME-aware image previews with pinch zoom, native audio/video playback, and offset/ASCII Hex and Binary viewers. Unsupported media can be inspected as bytes or saved.
@@ -39,6 +39,7 @@ The starter collection uses httpbin.org. Requests are only sent when you tap **S
 - Postman v2/v2.1 collection and environment JSON import; Postman v2.1 collection export.
 - Insomnia v4 JSON import/export. Current Insomnia can import this legacy format.
 - Full-fidelity Monkeytail workspace JSON import/export, Files integration, and a system share sheet.
+- Saved response snapshots with search, JSON/status/header comparison, and JSONPath extraction (`$`, keys, indices, wildcards). Snapshots remain local and retain at most 50 entries within 60 MB.
 - Last 50 request definitions in history with status and timing; restore without automatically resending.
 - Light/dark appearances, Dynamic Type, VoiceOver labels, hardware keyboard Send shortcut (⌘↵), and adaptive portrait/landscape layouts.
 
@@ -62,23 +63,23 @@ Selection and editor state survive width changes, rotation, iPad window resizing
 
 Monkeytail workspace JSON preserves all model fields, environments, and proxy settings. Imports append collections and environments and generate fresh IDs; native imports also apply their saved proxy settings. Scripts are disabled on every import until reviewed and enabled.
 
-Postman export places collections in folders and exports the **active environment** as collection variables. Postman imports flatten nested folder paths into request names and inherit folder/collection authentication and scripts. Raw, URL-encoded, and GraphQL JSON bodies are supported. Scripts are preserved, but only the APIs in [Scripting](docs/Scripting.md) execute here.
+Postman export places collections in folders and exports the **active environment** as collection variables. Postman imports flatten nested folder paths into request names and inherit folder/collection authentication and scripts. Raw, URL-encoded, multipart, file, and GraphQL JSON bodies are supported. Scripts are preserved, but only the APIs in [Scripting](docs/Scripting.md) execute here.
 
 Insomnia supports the v4 JSON resource format and normalizes `{{ _.variable }}` references. Environments are imported as named flat dictionaries. Nested environment inheritance and dynamic template tags are not emulated. YAML/v5 workspaces should be converted to a supported JSON format in the source tool.
 
-Third-party formats do not preserve every Monkeytail setting, such as request timeouts or global proxy selection. Unsupported authentication produces an import notice; multipart/file bodies and unsupported cURL flags produce an explicit error. Full OAuth flows, client certificates, WebSockets, gRPC, binary uploads, multipart attachments, cloud sync, collection runners, and the complete Postman/Insomnia scripting runtimes are outside this version.
+Third-party formats do not preserve every Monkeytail setting, such as request timeouts or global proxy selection. Unsupported authentication produces an import notice; unsupported cURL flags produce an explicit error. Imported file paths are metadata only: choose each file using Files or Photos before sending. Native workspace exports include file bytes; Postman/Insomnia/cURL exports reference filenames. Use Body → Export file to transfer the actual attachments alongside third-party exports. Full OAuth flows, client certificates, WebSockets, gRPC, collection runners, and the complete Postman/Insomnia scripting runtimes are outside this version.
 
 Browser profiles round-trip through native JSON and `curl-impersonate --impersonate` commands. Postman and Insomnia exports carry `_monkeytail` metadata for reimport into Monkeytail; those apps do not apply browser profiles themselves.
 
 ## Data and networking
 
-Workspace and history live in the app's Application Support directory and use iOS file protection. They can contain credentials; exports include the saved values. There is no analytics or sync service. Response bodies stay in memory; audio/video previews use protected temporary files that are removed when their cached response is released. Files left by an interrupted session are cleaned on launch after one day. Saving explicitly exports the original bytes. Request cookies are explicit headers; sessions are ephemeral and do not share a cookie jar. TLS trust verification stays enabled; install and trust a debugging CA in iOS Settings when required. ATS permits HTTP because this app is a general API/debugging client.
+Workspace and history live in the app's Application Support directory and use iOS file protection. Workspace credentials use a device-only, non-synchronizing Keychain entry; exports include saved values. There is no analytics or Kitta-operated backend. Optional iCloud Drive sync shares collections, environments, and scripts between your devices, merging each entity by its latest edit and retaining delete tombstones. Edits to different requests survive concurrent changes; the latest edit wins for the same entity. A protected local recovery copy is retained before applying remote changes. The app stays usable offline and sync checks while active and on foregrounding. Bearer/basic/proxy credentials, inferred or marked secret fields, attachments, snapshots, and request history are excluded from sync. Fields can be marked local using their lock/options menu. Check bodies and scripts for embedded secrets before enabling sync. Imported/synced scripts require a per-device opt-in. Switching the device's iCloud session requires toggling sync off and on. Response bodies stay in memory until explicitly saved as snapshots or exported; audio/video previews use protected temporary files that are removed when their cached response is released. Files left by an interrupted session are cleaned on launch after one day. Saving explicitly exports the original bytes. Request cookies are explicit headers; sessions are ephemeral and do not share a cookie jar. TLS trust verification stays enabled; install and trust a debugging CA in iOS Settings when required. ATS permits HTTP because this app is a general API/debugging client.
 
-Responses are bounded at 20 MB; text/tree and byte previews are bounded at 1 MB. Images decode to a maximum 2,048-pixel preview; saving retains the original. Audio/video playback uses only the downloaded file, with external media references disabled. JSON formatting, tree preparation, and line splitting run off the main thread. Text and tree rows render lazily, line arrays are reused during search, and syntax highlighting uses one compiled expression with a length cap for long lines. The response cache retains up to 8 responses within 40 MB. Imports are bounded at 10 MB. JavaScript contexts have a three-second deadline, use an ephemeral WebKit data store, block network/DOM navigation, and expose no native file or app bridge. A timed-out context is discarded. Scripts are a convenience API, not a general Node.js runtime.
+Responses are bounded at 20 MB; text/tree and byte previews are bounded at 1 MB. Images decode to a maximum 2,048-pixel preview; saving retains the original. Audio/video playback uses only the downloaded file, with external media references disabled. JSON formatting, tree preparation, and line splitting run off the main thread. Text and tree rows render lazily, line arrays are reused during search, and syntax highlighting uses one compiled expression with a length cap for long lines. The response cache retains up to 8 responses within 40 MB. Imports are bounded at 40 MB; uploads at 20 MB; iCloud metadata at 20 MB. JSONPath and JSON diffs operate on bodies up to 2 MB with node/change limits. JavaScript contexts have a three-second deadline, use an ephemeral WebKit data store, block network/DOM navigation, and expose no native file or app bridge. A timed-out context is discarded. Scripts are a convenience API, not a general Node.js runtime.
 
 ## Verification
 
-Pure model, parser, collection, encoding, JSON, and proxy-configuration tests:
+Pure model, parser, collection, encoding, JSON, and proxy-configuration, multipart, sync merge/tombstone/secret, JSONPath, and response comparison tests:
 
 ```sh
 swift test
@@ -92,7 +93,7 @@ Simulator integration and UI tests use local HTTP, TLS/HTTP2, CONNECT, and SOCKS
 ./Scripts/test.sh 'platform=iOS Simulator,name=iPhone 18 Pro,OS=27.0'
 ```
 
-The suite verifies transport, TLS ClientHello and HTTP/2 SETTINGS on the wire, certificate rejection, browser header overrides, redirects, credential removal across origins, cancellation, limits, both proxy protocols, script mutation/assertions/errors/timeouts/network blocking, persistence, and a send → inspect → import → edit → cURL export UI flow in portrait and landscape. UI tests use an isolated temporary workspace and do not change normal user collections.
+The suite verifies transport, TLS ClientHello and HTTP/2 SETTINGS on the wire, certificate rejection, browser header overrides, redirects, credential removal across origins, cancellation, limits, both proxy protocols, script mutation/assertions/errors/timeouts/network blocking, Keychain persistence, snapshot eviction, multipart/binary uploads on both transports, per-hop diagnostics, and a send → inspect → import → edit → cURL export UI flow in portrait and landscape. UI tests use an isolated temporary workspace and do not change normal user collections.
 
 ## Project structure
 

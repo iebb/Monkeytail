@@ -29,6 +29,7 @@ final class BrowserHTTPClient: @unchecked Sendable {
         try check(Self.initialized)
         let started = ContinuousClock.now
         var request = original
+        var transactions: [HTTPTransaction] = []
         for hop in 0...10 {
             if cancellation.isCancelled { throw CancellationError() }
             let elapsed = seconds(started.duration(to: .now))
@@ -36,6 +37,8 @@ final class BrowserHTTPClient: @unchecked Sendable {
             guard remaining > 0 else { throw URLError(.timedOut) }
             request.timeoutInterval = remaining
             var response = try transfer(request, proxy: proxy, impersonation: impersonation, cancellation: cancellation)
+            transactions += response.diagnostics?.transactions ?? []
+            response.diagnostics = RequestDiagnostics(transport: impersonation.profile.title, transactions: transactions)
             response.duration = seconds(started.duration(to: .now))
             guard followRedirects, [301, 302, 303, 307, 308].contains(response.status),
                   let location = response.headers.first(where: { $0.name.lowercased() == "location" })?.value,
@@ -121,12 +124,27 @@ final class BrowserHTTPClient: @unchecked Sendable {
         let state = CurlResponseBuffer(cancellation: cancellation)
         let context = Unmanaged.passUnretained(state).toOpaque()
         try check(mt_curl_callbacks(curl, context, curlBodyCallback, curlHeaderCallback))
+        try check(mt_curl_debug(curl, context, curlDebugCallback))
         let result = mt_curl_run(curl, context, curlCancelledCallback)
         if cancellation.isCancelled { throw CancellationError() }
         if let error = state.error { throw error }
         try check(result)
         let effectiveURL = mt_curl_effective_url(curl).map { String(cString: $0) } ?? url.absoluteString
-        return APIResponse(status: Int(mt_curl_status(curl)), headers: state.headers, body: state.body, duration: 0, url: effectiveURL)
+        var response = APIResponse(status: Int(mt_curl_status(curl)), headers: state.headers, body: state.body, duration: 0, url: effectiveURL)
+        let dns = mt_curl_time(curl, CURLINFO_NAMELOOKUP_TIME), connect = mt_curl_time(curl, CURLINFO_CONNECT_TIME)
+        let tls = mt_curl_time(curl, CURLINFO_APPCONNECT_TIME), ready = mt_curl_time(curl, CURLINFO_PRETRANSFER_TIME)
+        let uploadEnd = mt_curl_upload_end(curl)
+        let firstByte = mt_curl_time(curl, CURLINFO_STARTTRANSFER_TIME), total = mt_curl_time(curl, CURLINFO_TOTAL_TIME)
+        let protocolNumber = mt_curl_info_long(curl, CURLINFO_HTTP_VERSION)
+        let protocolName = [Int(CURL_HTTP_VERSION_1_0): "http/1.0", Int(CURL_HTTP_VERSION_1_1): "http/1.1", Int(CURL_HTTP_VERSION_2_0): "h2", Int(CURL_HTTP_VERSION_3): "h3"][protocolNumber]
+        let remote = mt_curl_info_string(curl, CURLINFO_PRIMARY_IP).map { String(cString: $0) }
+        response.diagnostics = RequestDiagnostics(transport: impersonation.profile.title, transactions: [HTTPTransaction(
+            request: SentRequest(request, headers: state.sentHeaders.isEmpty ? nil : state.sentHeaders), status: response.status,
+            dns: dns, connect: max(0, connect - dns), tls: tls > 0 ? max(0, tls - connect) : nil,
+            upload: uploadEnd > 0 ? max(0, uploadEnd - ready) : nil, wait: uploadEnd > 0 ? max(0, firstByte - uploadEnd) : nil, download: max(0, total - firstByte), total: total,
+            protocolName: protocolName, remoteAddress: remote, proxy: selectedProxy.kind != .system,
+            reusedConnection: mt_curl_info_long(curl, CURLINFO_NUM_CONNECTS) == 0)])
+        return response
     }
 
     private func resolvedProxy(_ proxy: ProxySettings, for url: URL) throws -> ProxySettings {
@@ -163,6 +181,7 @@ private final class CurlResponseBuffer {
     let cancellation: CurlCancellation
     var body = Data()
     var headers: [Field] = []
+    var sentHeaders: [Field] = []
     var headerBytes = 0
     var error: ClientError?
     init(cancellation: CurlCancellation) { self.cancellation = cancellation }
@@ -201,4 +220,17 @@ private let curlHeaderCallback: curl_write_callback = { bytes, size, count, cont
 private let curlCancelledCallback: @convention(c) (UnsafeMutableRawPointer?) -> Int32 = { context in
     guard let context else { return 1 }
     return Unmanaged<CurlResponseBuffer>.fromOpaque(context).takeUnretainedValue().cancellation.isCancelled ? 1 : 0
+}
+
+// Capture only outgoing header blocks; libcurl debug text and TLS bytes are never logged.
+private let curlDebugCallback: curl_debug_callback = { _, kind, bytes, count, context in
+    guard kind == CURLINFO_HEADER_OUT, let bytes, let context, count < 256 * 1024 else { return 0 }
+    let state = Unmanaged<CurlResponseBuffer>.fromOpaque(context).takeUnretainedValue()
+    let text = String(decoding: UnsafeRawBufferPointer(start: bytes, count: count), as: UTF8.self)
+    if text.hasPrefix("CONNECT ") { return 0 }
+    state.sentHeaders = text.components(separatedBy: "\r\n").compactMap { line in
+        guard let colon = line.firstIndex(of: ":"), colon != line.startIndex else { return nil }
+        return Field(String(line[..<colon]), String(line[line.index(after: colon)...]).trimmingCharacters(in: .whitespaces))
+    }
+    return 0
 }

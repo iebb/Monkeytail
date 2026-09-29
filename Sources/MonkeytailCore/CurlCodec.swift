@@ -61,7 +61,7 @@ public enum CurlCodec {
             var option = word, attached: String?
             if word.hasPrefix("--"), let equal = word.firstIndex(of: "=") {
                 option = String(word[..<equal]); attached = String(word[word.index(after: equal)...])
-            } else if word.count > 2, ["-X", "-H", "-d", "-u", "-A", "-b", "-e", "-x"].contains(String(word.prefix(2))) {
+            } else if word.count > 2, ["-X", "-H", "-d", "-u", "-A", "-b", "-e", "-x", "-F"].contains(String(word.prefix(2))) {
                 option = String(word.prefix(2)); attached = String(word.dropFirst(2))
             }
             func value() throws -> String {
@@ -84,13 +84,42 @@ public enum CurlCodec {
                 request.headers.append(Field(String(header[..<colon]).trimmingCharacters(in: .whitespaces), String(header[header.index(after: colon)...]).trimmingCharacters(in: .whitespaces)))
             case "-d", "--data", "--data-raw", "--data-binary", "--json":
                 let body = try value()
-                if body.hasPrefix("@") && option != "--data-raw" { throw ClientError("File-backed cURL bodies aren’t supported. Paste the file content into the body editor.") }
+                if body.hasPrefix("@") && option != "--data-raw" {
+                    guard ["--data-binary", "--json"].contains(option) else { throw ClientError("Use --data-binary @file for file uploads; --data file transformations are unsupported.") }
+                    guard request.fileBody == nil, data.isEmpty, request.multipart == nil else { throw ClientError("Import one body mode at a time.") }
+                    request.bodyKind = .file; request.fileBody = RequestFile(filename: String(body.dropFirst()), mimeType: option == "--json" ? "application/json" : "application/octet-stream")
+                    if option == "--json", !request.headers.contains(where: { $0.name.lowercased() == "accept" }) { request.headers.append(Field("Accept", "application/json")) }
+                    warnings.append("Choose the imported body file on this device before sending.")
+                    break
+                }
+                guard request.fileBody == nil, request.multipart == nil else { throw ClientError("Import one body mode at a time.") }
                 data.append(body)
                 if option == "--json" {
                     request.bodyKind = .json
                     if !request.headers.contains(where: { $0.name.lowercased() == "accept" }) { request.headers.append(Field("Accept", "application/json")) }
                 }
+            case "-F", "--form", "--form-string":
+                guard data.isEmpty, request.fileBody == nil else { throw ClientError("Import one body mode at a time.") }
+                let raw = try value()
+                guard let equal = raw.firstIndex(of: "=") else { throw ClientError("Multipart fields use name=value.") }
+                var part = MultipartPart(name: String(raw[..<equal]), value: String(raw[raw.index(after: equal)...]))
+                if option != "--form-string", part.value.hasPrefix("@") {
+                    let attributes = String(part.value.dropFirst()).split(separator: ";", omittingEmptySubsequences: false).map(String.init)
+                    guard !attributes[0].contains(","), !attributes[0].isEmpty else { throw ClientError("Import each multipart file as a separate field.") }
+                    var file = RequestFile(filename: attributes[0])
+                    for attribute in attributes.dropFirst() {
+                        if attribute.hasPrefix("type=") { file.mimeType = String(attribute.dropFirst(5)) }
+                        else if attribute.hasPrefix("filename=") { file.filename = String(attribute.dropFirst(9)) }
+                        else { throw ClientError("Unsupported multipart attribute: \(attribute)") }
+                    }
+                    part.file = file; part.value = ""
+                    warnings.append("Choose the imported multipart file on this device before sending.")
+                } else if option != "--form-string", part.value.contains(";") { throw ClientError("Multipart text attributes are unsupported; use --form-string for a literal semicolon.") } else if option != "--form-string", part.value.hasPrefix("<") { throw ClientError("Use @file for multipart attachments or --form-string for literal text.") }
+                request.bodyKind = .multipart
+                if request.multipart == nil { request.multipart = [] }
+                request.multipart!.append(part)
             case "--data-urlencode":
+                guard request.fileBody == nil, request.multipart == nil else { throw ClientError("Import one body mode at a time.") }
                 let field = try value()
                 if field.hasPrefix("@") || (!field.contains("=") && field.contains("@")) { throw ClientError("File-backed form values aren’t supported.") }
                 let pair = field.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
@@ -130,6 +159,7 @@ public enum CurlCodec {
             }
             index += 1
         }
+        if useGet && (request.fileBody != nil || request.multipart != nil) { throw ClientError("Multipart and file bodies cannot be combined with --get.") }
         guard !request.url.isEmpty else { throw ClientError("The cURL command needs a URL.") }
         if !data.isEmpty {
             let body = data.joined(separator: "&")
@@ -142,13 +172,15 @@ public enum CurlCodec {
                 if type.isEmpty && request.bodyKind != .json { request.headers.append(Field("Content-Type", "application/x-www-form-urlencoded")) }
             }
         }
-        request.method = explicitMethod ?? (head ? "HEAD" : useGet || data.isEmpty ? "GET" : "POST")
+        request.method = explicitMethod ?? (head ? "HEAD" : useGet || (data.isEmpty && request.bodyKind == .none) ? "GET" : "POST")
         if let host = URLComponents(string: request.url)?.host { request.name = host }
         return CurlImport(request: request, proxy: proxy, warnings: warnings)
     }
 
     public static func encode(_ model: APIRequest, variables: [String: String] = [:]) throws -> String {
-        let request = try RequestBuilder.build(model, variables: variables)
+        var metadata = model
+        if model.bodyKind == .multipart || model.bodyKind == .file { metadata.bodyKind = .none }
+        let request = try RequestBuilder.build(metadata, variables: variables)
         var parts = [model.impersonation == nil ? "curl" : "curl-impersonate", "--request \(quote(request.httpMethod ?? "GET"))"]
         if let impersonation = model.impersonation {
             parts.append("--impersonate \(quote(impersonation.profile.rawValue + (impersonation.browserHeaders ? "" : ":no")))")
@@ -156,8 +188,19 @@ public enum CurlCodec {
         if model.followRedirects { parts.append("--location") }
         parts.append("--max-time \(Int(model.timeout))")
         parts.append(quote(request.url!.absoluteString))
+        if model.bodyKind == .file, let file = model.fileBody, request.value(forHTTPHeaderField: "Content-Type") == nil { parts.append("--header \(quote("Content-Type: " + (try MultipartEncoder.mime(file.mimeType))))") }
         for (key, value) in (request.allHTTPHeaderFields ?? [:]).sorted(by: { $0.key < $1.key }) {
+            if model.bodyKind == .multipart && key.lowercased() == "content-type" { continue }
             parts.append("--header \(quote(key + ": " + value))")
+        }
+        if model.bodyKind == .multipart {
+            for part in model.multipart ?? [] where part.enabled && !part.name.isEmpty {
+                let name = try RequestBuilder.resolve(part.name, variables: variables)
+                if let file = part.file { parts.append("--form \(quote(name + "=@" + file.filename + ";type=" + file.mimeType))") }
+                else { parts.append("--form-string \(quote(name + "=" + (try RequestBuilder.resolve(part.value, variables: variables))))") }
+            }
+        } else if model.bodyKind == .file, let file = model.fileBody {
+            parts.append("--data-binary \(quote("@" + file.filename))")
         }
         if let body = request.httpBody { parts.append("--data-raw \(quote(String(decoding: body, as: UTF8.self)))") }
         return parts.joined(separator: " \\\n  ")

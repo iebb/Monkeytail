@@ -5,12 +5,15 @@ public struct Field: Codable, Identifiable, Equatable, Sendable {
     public var name: String
     public var value: String
     public var enabled: Bool
+    /// nil uses the sensitive-name heuristic; an explicit value overrides it.
+    public var secret: Bool?
+    public var isSecret: Bool { secret ?? SecretPolicy.isSensitive(name) }
     public init(_ name: String = "", _ value: String = "", enabled: Bool = true) {
         self.name = name; self.value = value; self.enabled = enabled
     }
 }
 
-public enum BodyKind: String, Codable, CaseIterable, Sendable { case none = "None", json = "JSON", text = "Text", form = "Form" }
+public enum BodyKind: String, Codable, CaseIterable, Sendable { case none = "None", json = "JSON", text = "Text", form = "Form", multipart = "Multipart", file = "File" }
 public enum AuthKind: String, Codable, CaseIterable, Sendable { case none = "None", bearer = "Bearer", basic = "Basic" }
 public struct RequestAuth: Codable, Equatable, Sendable {
     public var kind: AuthKind = .none
@@ -30,6 +33,8 @@ public struct APIRequest: Codable, Identifiable, Equatable, Sendable {
     public var bodyKind: BodyKind = .none
     public var body = ""
     public var form: [Field] = []
+    public var multipart: [MultipartPart]?
+    public var fileBody: RequestFile?
     public var auth = RequestAuth()
     public var preScript = ""
     public var postScript = ""
@@ -86,6 +91,7 @@ public struct APIResponse: Codable, Identifiable, Equatable, Sendable {
     public var url: String
     public var receivedAt = Date()
     public var logs: [ScriptLog] = []
+    public var diagnostics: RequestDiagnostics?
     public var text: String { String(data: body, encoding: .utf8) ?? String(data: body, encoding: .isoLatin1) ?? "Binary response (\(body.count) bytes)" }
     public init(status: Int, headers: [Field], body: Data, duration: Double, url: String) {
         self.status = status; self.headers = headers; self.body = body; self.duration = duration; self.url = url

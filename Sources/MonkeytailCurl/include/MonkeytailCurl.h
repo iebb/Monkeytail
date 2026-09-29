@@ -10,4 +10,9 @@ CURLcode mt_curl_callbacks(CURL *curl, void *context, curl_write_callback body, 
 CURLcode mt_curl_run(CURL *curl, void *context, int (*cancelled)(void *));
 long mt_curl_status(CURL *curl);
 const char *mt_curl_effective_url(CURL *curl);
+double mt_curl_time(CURL *curl, CURLINFO info);
+long mt_curl_info_long(CURL *curl, CURLINFO info);
+const char *mt_curl_info_string(CURL *curl, CURLINFO info);
+CURLcode mt_curl_debug(CURL *curl, void *context, curl_debug_callback callback);
+double mt_curl_upload_end(CURL *curl);
 #endif

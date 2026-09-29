@@ -13,4 +13,4 @@ if ! kill -0 "$fixture_pid" 2>/dev/null; then
 fi
 xcodebuild -scheme Monkeytail -destination "$destination" \
   -derivedDataPath build -parallel-testing-enabled NO \
-  test CODE_SIGNING_ALLOWED=NO
+  test CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES

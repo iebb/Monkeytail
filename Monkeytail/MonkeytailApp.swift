@@ -9,7 +9,7 @@ struct MonkeytailApp: App {
         WindowGroup {
             WorkspaceView(store: store)
                 .tint(Palette.mint)
-                .onChange(of: phase) { _, value in if value != .active { store.save() } }
+                .onChange(of: phase) { _, value in if value != .active { store.save() } else { Task { await store.synchronize() } } }
         }
     }
 }

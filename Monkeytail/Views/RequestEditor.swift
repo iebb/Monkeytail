@@ -28,10 +28,12 @@ struct RequestEditor: View {
 
     private var bodyEditor: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("Body type", selection: $request.bodyKind) { ForEach(BodyKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
+            Picker("Body type", selection: $request.bodyKind) { ForEach(BodyKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
             switch request.bodyKind {
             case .none: Text("No body").font(.footnote).foregroundStyle(.secondary).padding(.vertical, 12)
             case .form: FieldEditor(fields: $request.form, name: "Field")
+            case .multipart: MultipartEditor(parts: Binding(get: { request.multipart ?? [] }, set: { request.multipart = $0 }))
+            case .file: UploadFileEditor(file: $request.fileBody)
             case .json, .text:
                 if request.bodyKind == .json {
                     HStack {
@@ -115,6 +117,7 @@ struct CurlExportView: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Includes resolved variables and credentials.").font(.caption).foregroundStyle(.secondary)
+                if request.bodyKind == .multipart || request.bodyKind == .file { Text("Export files from Body and place them beside the command.").font(.caption).foregroundStyle(.secondary) }
                 if request.impersonation != nil { Text("Requires curl-impersonate 2.2.3 or later.").font(.caption).foregroundStyle(.secondary) }
                 if let error { Text(error).font(.footnote).foregroundStyle(.red) }
                 ScrollView { Text(curl).font(.system(.footnote, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12) }

@@ -75,11 +75,17 @@ struct FieldEditor: View {
                     let layout = dynamicType.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0)) : AnyLayout(HStackLayout(spacing: 8))
                     layout {
                         TextField("\(name) name", text: $field.name).dismissibleInput().frame(maxWidth: .infinity, minHeight: 44).accessibilityLabel("\(name) name")
-                        TextField("Value", text: $field.value).dismissibleInput().frame(maxWidth: .infinity, minHeight: 44).foregroundStyle(.secondary).accessibilityLabel("\(name) value")
+                        Group {
+                            if field.isSecret { SecureField("Value", text: $field.value) }
+                            else { TextField("Value", text: $field.value) }
+                        }.dismissibleInput().frame(maxWidth: .infinity, minHeight: 44).foregroundStyle(.secondary).accessibilityLabel("\(name) value")
                     }.opacity(field.enabled ? 1 : 0.5)
                         .font(.system(.footnote, design: .monospaced))
-                    Button { fields.removeAll { $0.id == field.id } } label: { Image(systemName: "minus.circle").foregroundStyle(.secondary).frame(width: 44, height: 44) }
-                        .buttonStyle(.plain).accessibilityLabel("Remove \(field.name)")
+                    Menu {
+                        Button(field.isSecret ? "Allow iCloud sync" : "Keep value on this device") { field.secret = !field.isSecret }
+                        Button("Remove field", role: .destructive) { fields.removeAll { $0.id == field.id } }
+                    } label: { Image(systemName: field.isSecret ? "lock" : "ellipsis").foregroundStyle(.secondary).frame(width: 44, height: 44) }
+                        .buttonStyle(.plain).accessibilityLabel("Options for \(field.name)")
                 }
                 Divider().padding(.leading, 44)
             }

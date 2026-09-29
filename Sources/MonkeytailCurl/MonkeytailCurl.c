@@ -43,3 +43,13 @@ CURLcode mt_curl_run(CURL *c, void *context, int (*cancelled)(void *)) {
 }
 long mt_curl_status(CURL *c) { long v = 0; curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &v); return v; }
 const char *mt_curl_effective_url(CURL *c) { char *v = NULL; curl_easy_getinfo(c, CURLINFO_EFFECTIVE_URL, &v); return v; }
+double mt_curl_time(CURL *c, CURLINFO info) { double v = 0; curl_easy_getinfo(c, info, &v); return v; }
+long mt_curl_info_long(CURL *c, CURLINFO info) { long v = 0; curl_easy_getinfo(c, info, &v); return v; }
+const char *mt_curl_info_string(CURL *c, CURLINFO info) { char *v = NULL; curl_easy_getinfo(c, info, &v); return v; }
+CURLcode mt_curl_debug(CURL *c, void *context, curl_debug_callback callback) {
+    CURLcode code;
+    if ((code = curl_easy_setopt(c, CURLOPT_DEBUGFUNCTION, callback)) != CURLE_OK) return code;
+    if ((code = curl_easy_setopt(c, CURLOPT_DEBUGDATA, context)) != CURLE_OK) return code;
+    return curl_easy_setopt(c, CURLOPT_VERBOSE, 1L);
+}
+double mt_curl_upload_end(CURL *c) { curl_off_t v = 0; curl_easy_getinfo(c, CURLINFO_POSTTRANSFER_TIME_T, &v); return (double)v / 1000000.0; }

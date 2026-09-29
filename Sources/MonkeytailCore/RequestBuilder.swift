@@ -66,7 +66,18 @@ public enum RequestBuilder {
             }.joined(separator: "&")
             request.httpBody = Data(encoded.utf8)
             if request.value(forHTTPHeaderField: "Content-Type") == nil { request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type") }
+        case .multipart:
+            let boundary = "Monkeytail-" + UUID().uuidString
+            request.httpBody = try MultipartEncoder.encode(model.multipart ?? [], boundary: boundary, variables: variables)
+            // The boundary must match the bytes, even when importing a captured header.
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        case .file:
+            guard let file = model.fileBody, let data = file.data else { throw ClientError("Choose a body file before sending.") }
+            guard data.count <= MultipartEncoder.maximumBytes else { throw ClientError("Upload exceeds the 20 MB limit.") }
+            request.httpBody = data
+            if request.value(forHTTPHeaderField: "Content-Type") == nil { request.setValue(try MultipartEncoder.mime(file.mimeType), forHTTPHeaderField: "Content-Type") }
         }
+        if let body = request.httpBody, body.count > MultipartEncoder.maximumBytes { throw ClientError("Upload exceeds the 20 MB limit.") }
         return request
     }
 

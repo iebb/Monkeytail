@@ -8,13 +8,17 @@
 
 /* Begin PBXBuildFile section */
 		10581EAEE18449219345570F /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = F292057CE60FE52926AEEE6C /* Components.swift */; };
+		229104C9C93127E70662B916 /* ICloudWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2922CCDF370B32765975DFCD /* ICloudWorkspace.swift */; };
 		3607D69D6BD87963249BDF98 /* ResponseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33FB421789C053BD9B6160C /* ResponseView.swift */; };
 		39268C70F6635DDBABED7942 /* WorkspaceSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FF8D9C2DB8DBCD51480B88D /* WorkspaceSheets.swift */; };
 		3BAEF3C723DE5C6C10E2A0B9 /* IntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E015068A24823CDD3FE171F2 /* IntegrationTests.swift */; };
+		3E8CF00C0CA68E401394426E /* SnapshotStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCD31297689DC03303592345 /* SnapshotStorage.swift */; };
 		7CDE29859B6995FB4416CA8B /* WorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F4743BD555372710532E45 /* WorkspaceView.swift */; };
+		7E0286B0A78CD4711078049C /* UploadEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249960996981BDF096E52556 /* UploadEditor.swift */; };
 		7E8BA664B6A552FACF7E39CC /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */; };
 		85B112AAEBD23CF78053F4B3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9BCBBAD4A09C3F785FE137E1 /* PrivacyInfo.xcprivacy */; };
 		95423499F012D249566AC1CD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1B0C89FDF984E7C8B7630705 /* Assets.xcassets */; };
+		A29AAED733E7048AC71EDE55 /* SecretVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5071325300ABE069E1D857EB /* SecretVault.swift */; };
 		A3084FF752E45C07359EA343 /* RequestEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4D0239FCDE78AC65AE32E3 /* RequestEditor.swift */; };
 		C509B03B66C0A697145786E2 /* MonkeytailUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022F944F583B9E9D0FB599DE /* MonkeytailUITests.swift */; };
 		CD05A502A387D97B4D0D3684 /* MonkeytailCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6AE2B7F6ECCE2F85BF760BF4 /* MonkeytailCore */; };
@@ -22,6 +26,8 @@
 		DF876B1428C5036B408FBFC3 /* MonkeytailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831469D5704A4C38BCF3DFD6 /* MonkeytailApp.swift */; };
 		ED6374C5E836DF6786D07653 /* ScriptRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */; };
 		F1A01C1E7FCF1B61F6CC41B1 /* ResponsePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F48FD4E7E6D6C31EA922878 /* ResponsePreview.swift */; };
+		FED4795528AE7EFC85B9E87C /* WorkspacePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0742AB66F82B8FC3E1F6328 /* WorkspacePersistence.swift */; };
+		FF1E6EC5F1118075D55CF571 /* ResponseTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33BDE8E4782E6E455DEC06F8 /* ResponseTools.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,9 +51,14 @@
 		022F944F583B9E9D0FB599DE /* MonkeytailUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonkeytailUITests.swift; sourceTree = "<group>"; };
 		1B0C89FDF984E7C8B7630705 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1B9ABF580715316AB6CE849C /* ResponseMediaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseMediaView.swift; sourceTree = "<group>"; };
+		249960996981BDF096E52556 /* UploadEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadEditor.swift; sourceTree = "<group>"; };
+		2922CCDF370B32765975DFCD /* ICloudWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudWorkspace.swift; sourceTree = "<group>"; };
 		32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScriptRunner.swift; sourceTree = "<group>"; };
+		33BDE8E4782E6E455DEC06F8 /* ResponseTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseTools.swift; sourceTree = "<group>"; };
+		463A01A05A7172E0B33A9F67 /* Monkeytail.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Monkeytail.entitlements; sourceTree = "<group>"; };
 		48EA97FA58A38FBDAF4E6BAA /* MonkeytailTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonkeytailTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		48F4743BD555372710532E45 /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
+		5071325300ABE069E1D857EB /* SecretVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVault.swift; sourceTree = "<group>"; };
 		6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
 		831469D5704A4C38BCF3DFD6 /* MonkeytailApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonkeytailApp.swift; sourceTree = "<group>"; };
 		8FF8D9C2DB8DBCD51480B88D /* WorkspaceSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSheets.swift; sourceTree = "<group>"; };
@@ -55,8 +66,10 @@
 		9BCBBAD4A09C3F785FE137E1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		9F48FD4E7E6D6C31EA922878 /* ResponsePreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponsePreview.swift; sourceTree = "<group>"; };
 		BB1222770C4F737984F012BC /* Monkeytail.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Monkeytail.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BCD31297689DC03303592345 /* SnapshotStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotStorage.swift; sourceTree = "<group>"; };
 		D0FC810EDA3542E742DBD459 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E015068A24823CDD3FE171F2 /* IntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationTests.swift; sourceTree = "<group>"; };
+		E0742AB66F82B8FC3E1F6328 /* WorkspacePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePersistence.swift; sourceTree = "<group>"; };
 		E33FB421789C053BD9B6160C /* ResponseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseView.swift; sourceTree = "<group>"; };
 		ECC3D38271ACED2A728BBCC0 /* MonkeytailUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonkeytailUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F292057CE60FE52926AEEE6C /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
@@ -96,8 +109,12 @@
 		3A2045EF5F55D3F7D196078A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				2922CCDF370B32765975DFCD /* ICloudWorkspace.swift */,
 				9F48FD4E7E6D6C31EA922878 /* ResponsePreview.swift */,
 				32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */,
+				5071325300ABE069E1D857EB /* SecretVault.swift */,
+				BCD31297689DC03303592345 /* SnapshotStorage.swift */,
+				E0742AB66F82B8FC3E1F6328 /* WorkspacePersistence.swift */,
 				6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */,
 			);
 			path = Services;
@@ -108,6 +125,7 @@
 			children = (
 				1B0C89FDF984E7C8B7630705 /* Assets.xcassets */,
 				D0FC810EDA3542E742DBD459 /* Info.plist */,
+				463A01A05A7172E0B33A9F67 /* Monkeytail.entitlements */,
 				831469D5704A4C38BCF3DFD6 /* MonkeytailApp.swift */,
 				9BCBBAD4A09C3F785FE137E1 /* PrivacyInfo.xcprivacy */,
 				3A2045EF5F55D3F7D196078A /* Services */,
@@ -130,7 +148,9 @@
 				F292057CE60FE52926AEEE6C /* Components.swift */,
 				FF4D0239FCDE78AC65AE32E3 /* RequestEditor.swift */,
 				1B9ABF580715316AB6CE849C /* ResponseMediaView.swift */,
+				33BDE8E4782E6E455DEC06F8 /* ResponseTools.swift */,
 				E33FB421789C053BD9B6160C /* ResponseView.swift */,
+				249960996981BDF096E52556 /* UploadEditor.swift */,
 				8FF8D9C2DB8DBCD51480B88D /* WorkspaceSheets.swift */,
 				48F4743BD555372710532E45 /* WorkspaceView.swift */,
 			);
@@ -281,12 +301,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				10581EAEE18449219345570F /* Components.swift in Sources */,
+				229104C9C93127E70662B916 /* ICloudWorkspace.swift in Sources */,
 				DF876B1428C5036B408FBFC3 /* MonkeytailApp.swift in Sources */,
 				A3084FF752E45C07359EA343 /* RequestEditor.swift in Sources */,
 				D67B5EE7BDC10CB12B9B8697 /* ResponseMediaView.swift in Sources */,
 				F1A01C1E7FCF1B61F6CC41B1 /* ResponsePreview.swift in Sources */,
+				FF1E6EC5F1118075D55CF571 /* ResponseTools.swift in Sources */,
 				3607D69D6BD87963249BDF98 /* ResponseView.swift in Sources */,
 				ED6374C5E836DF6786D07653 /* ScriptRunner.swift in Sources */,
+				A29AAED733E7048AC71EDE55 /* SecretVault.swift in Sources */,
+				3E8CF00C0CA68E401394426E /* SnapshotStorage.swift in Sources */,
+				7E0286B0A78CD4711078049C /* UploadEditor.swift in Sources */,
+				FED4795528AE7EFC85B9E87C /* WorkspacePersistence.swift in Sources */,
 				39268C70F6635DDBABED7942 /* WorkspaceSheets.swift in Sources */,
 				7E8BA664B6A552FACF7E39CC /* WorkspaceStore.swift in Sources */,
 				7CDE29859B6995FB4416CA8B /* WorkspaceView.swift in Sources */,
@@ -329,8 +355,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Monkeytail/Monkeytail.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Monkeytail/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Monkeytail;
@@ -345,7 +372,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -549,8 +576,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Monkeytail/Monkeytail.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Monkeytail/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Monkeytail;
@@ -565,7 +593,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

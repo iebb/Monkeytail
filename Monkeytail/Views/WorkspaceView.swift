@@ -11,7 +11,7 @@ struct WorkspaceView: View {
     @State private var collectionName = ""
     @State private var renameID: UUID?
 
-    enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, history, curl; var id: String { rawValue } }
+    enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, history, snapshots, curl; var id: String { rawValue } }
 
     var body: some View {
         GeometryReader { geometry in
@@ -38,6 +38,7 @@ struct WorkspaceView: View {
             case .environment: EnvironmentView(store: store)
             case .settings: SettingsView(store: store)
             case .history: HistoryView(store: store)
+            case .snapshots: SnapshotsView(store: store)
             case .curl: if let request = store.selectedRequest { CurlExportView(request: request, variables: store.variables) }
             }
         }
@@ -112,6 +113,7 @@ struct WorkspaceView: View {
                 sidebarButton("Import & export", symbol: "arrow.down.doc", sheet: .transfer)
                 sidebarButton("Environments", symbol: "square.stack.3d.up", sheet: .environment)
                 sidebarButton("Request history", symbol: "clock.arrow.circlepath", sheet: .history)
+                sidebarButton("Snapshots", symbol: "camera", sheet: .snapshots)
                 sidebarButton("Connection settings", symbol: "slider.horizontal.3", sheet: .settings)
             }.padding(8)
         }.background(Palette.canvas)
@@ -147,6 +149,7 @@ struct WorkspaceView: View {
                 Button("Export cURL", systemImage: "terminal") { sheet = .curl }.disabled(store.selectedRequest == nil)
                 Button("Import & export", systemImage: "arrow.down.doc") { sheet = .transfer }.accessibilityIdentifier("Import workspace")
                 Button("History", systemImage: "clock.arrow.circlepath") { sheet = .history }
+                Button("Snapshots", systemImage: "camera") { sheet = .snapshots }
                 Button("Connection settings", systemImage: "slider.horizontal.3") { sheet = .settings }
             } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("Workspace actions")
         }

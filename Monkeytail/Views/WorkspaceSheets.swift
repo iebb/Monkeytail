@@ -43,7 +43,7 @@ struct TransferView: View {
                             Text("\(store.workspace.collections.count) collections · \(store.requestCount) requests")
                             Text(format == .postman ? "Active environment as collection variables" : "All environments").foregroundStyle(.secondary)
                         }.font(.subheadline).padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
-                        Text("Includes credentials. Monkeytail preserves all settings; other formats preserve supported fields.")
+                        Text("Exports include credentials. Monkeytail includes file bytes; other formats reference filenames.")
                             .font(.caption).foregroundStyle(.secondary)
                         if format != .native, store.workspace.collections.contains(where: { $0.requests.contains(where: { $0.impersonation != nil }) }) {
                             Text("Browser profiles restore in Monkeytail. Postman and Insomnia don’t apply them.").font(.caption).foregroundStyle(.secondary)
@@ -72,7 +72,7 @@ struct TransferView: View {
                         let granted = url.startAccessingSecurityScopedResource()
                         defer { if granted { url.stopAccessingSecurityScopedResource() } }
                         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                        guard size <= 10 * 1024 * 1024 else { throw ClientError("Import files must be smaller than 10 MB.") }
+                        guard size <= 40 * 1024 * 1024 else { throw ClientError("Import files must be smaller than 40 MB.") }
                         source = try String(contentsOf: url, encoding: .utf8); error = nil
                     } catch { self.error = error.localizedDescription }
                 }
@@ -117,7 +117,7 @@ struct EnvironmentView: View {
                             store.workspace.environments.removeAll { $0.id == editingID }; editingID = store.workspace.environments.first?.id
                         }.font(.footnote).padding(.top, 16)
                     }
-                    Text("Stored locally. Included in exports.").font(.caption).foregroundStyle(.secondary)
+                    Text("Secrets stay on this device. Exports include values.").font(.caption).foregroundStyle(.secondary)
                 }.padding(12)
             }.background(Palette.canvas).navigationTitle("Environments").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
@@ -143,6 +143,15 @@ struct SettingsView: View {
                 } header: { Text("Connection") } footer: {
                     Text(store.workspace.proxy.kind == .system ? "Uses device network and proxy settings." : "All requests use this proxy. HTTP/HTTPS use CONNECT. No direct fallback.")
                 }
+                Section {
+                    Toggle("iCloud sync", isOn: Binding(get: { store.syncEnabled }, set: { store.setSyncEnabled($0) }))
+                    if store.syncEnabled {
+                        Text(store.syncStatus).font(.caption).foregroundStyle(.secondary)
+                        Button("Sync now") { Task { await store.synchronize() } }.disabled(store.syncing)
+                    }
+                } header: { Text("Workspace") } footer: {
+                    Text("Uses your device’s iCloud Drive. No Monkeytail account. Credentials, marked secrets, uploads, and snapshots stay local. Check request bodies and scripts before syncing.")
+                }
                 Section("Transport") {
                     Label("TLS certificates are verified", systemImage: "lock.shield")
                     Text("Choose a browser TLS profile in each request’s Auth tab.").font(.footnote).foregroundStyle(.secondary)
@@ -152,15 +161,16 @@ struct SettingsView: View {
                     }
                 }
                 Section("On your device") {
-                    LabeledContent("Storage", value: "Local workspace")
+                    LabeledContent("Storage", value: store.syncEnabled ? "Local + iCloud" : "Local workspace")
                     LabeledContent("History", value: "Last 50 requests")
                     LabeledContent("Response limit", value: "20 MB")
                     LabeledContent("Script time limit", value: "3 seconds")
-                    Text("Uses iOS file protection. History can contain credentials; response bodies stay in memory.").font(.footnote).foregroundStyle(.secondary)
+                    LabeledContent("Snapshots", value: "50 / 60 MB")
+                    Text("Workspace credentials use the device Keychain. History and saved snapshots use iOS file protection.").font(.footnote).foregroundStyle(.secondary)
                     Button("Clear request history", role: .destructive) { store.clearHistory() }
                 }
                 Section("About") {
-                    LabeledContent("Monkeytail", value: "1.0")
+                    LabeledContent("Monkeytail", value: "1.1")
                     LabeledContent("Developer", value: "Kitta Co")
                     Text("No data collected. No tracking or analytics.").font(.footnote).foregroundStyle(.secondary)
                     Link("Privacy policy", destination: URL(string: "https://docs.kitta.co/monkeytail/privacy/")!)

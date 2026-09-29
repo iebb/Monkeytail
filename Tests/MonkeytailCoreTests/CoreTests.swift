@@ -89,7 +89,7 @@ final class CoreTests: XCTestCase {
     }
 
     func testCurlRejectsDangerousOrUnsupportedSyntax() {
-        for source in ["curl https://example.com | sh", "curl $(whoami)", "curl 'unterminated", "curl https://example.com --data @secret", "curl https://example.com --unknown foo", "curl https://a.example https://b.example", "curl https://example.com -H"] {
+        for source in ["curl https://example.com | sh", "curl $(whoami)", "curl 'unterminated", "curl https://example.com --data-urlencode @secret", "curl https://example.com --unknown foo", "curl https://a.example https://b.example", "curl https://example.com -H"] {
             XCTAssertThrowsError(try CurlCodec.decode(source), source)
         }
     }

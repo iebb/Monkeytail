@@ -5,6 +5,92 @@ import AVFoundation
 
 @MainActor
 final class IntegrationTests: XCTestCase {
+    func testMultipartAndBinaryUploadsAcrossBothTransports() async throws {
+        let bytes = Data([0, 255, 13, 10, 128, 1])
+        for profile in [BrowserImpersonation?.none, BrowserImpersonation(profile: .chrome)] {
+            var request = APIRequest(method: "POST", url: "http://127.0.0.1:8766/upload")
+            request.bodyKind = .multipart
+            request.multipart = [MultipartPart(name: "greeting", value: "hello"), MultipartPart(name: "file", file: RequestFile(filename: "data.bin", data: bytes))]
+            let built = try RequestBuilder.build(request)
+            let response = try await HTTPClient().send(built, impersonation: profile)
+            let echoed = try JSONTools.parse(response.text) as! [String: Any]
+            XCTAssertEqual(Data(base64Encoded: echoed["bodyBase64"] as! String), built.httpBody)
+            let diagnostic = try XCTUnwrap(response.diagnostics?.transactions.last)
+            XCTAssertEqual(diagnostic.request.body, built.httpBody)
+            XCTAssertEqual(diagnostic.request.bodyBytes, built.httpBody?.count)
+            request.bodyKind = .file; request.fileBody = RequestFile(filename: "data.bin", data: bytes)
+            let binary = try await HTTPClient().send(RequestBuilder.build(request), impersonation: profile)
+            let binaryEcho = try JSONTools.parse(binary.text) as! [String: Any]
+            XCTAssertEqual(Data(base64Encoded: binaryEcho["bodyBase64"] as! String), bytes)
+        }
+    }
+    func testDiagnosticsRecordRedirectsSentHeadersAndTimings() async throws {
+        for profile in [BrowserImpersonation?.none, BrowserImpersonation(profile: .chrome)] {
+            var request = APIRequest(url: "http://127.0.0.1:8766/cross-origin")
+            request.headers += [Field("Authorization", "Bearer fixture"), Field("X-Sent", "true")]
+            let response = try await HTTPClient().send(RequestBuilder.build(request), impersonation: profile)
+            let transactions = try XCTUnwrap(response.diagnostics?.transactions)
+            XCTAssertEqual(transactions.map(\.status), [302, 200])
+            XCTAssertTrue(transactions[0].request.headers.contains { $0.name.lowercased() == "authorization" })
+            XCTAssertFalse(transactions[1].request.headers.contains { $0.name.lowercased() == "authorization" })
+            XCTAssertTrue(transactions[1].request.headers.contains { $0.name.lowercased() == "x-sent" && $0.value == "true" })
+            XCTAssertNotNil(transactions[1].total)
+            XCTAssertGreaterThanOrEqual(transactions[1].total ?? -1, 0)
+        }
+    }
+    func testSecretsPersistInKeychainAndSyncIsOffByDefault() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = WorkspaceStore(directory: directory)
+        var request = store.selectedRequest!
+        request.auth.kind = .bearer; request.auth.token = "fixture-private-token"
+        request.headers += [Field("X-API-Key", "fixture-private-key")]
+        store.update(request); store.save()
+        XCTAssertNil(store.issue)
+        let raw = try String(contentsOf: directory.appendingPathComponent("workspace.json"), encoding: .utf8)
+        XCTAssertFalse(raw.contains("fixture-private-token")); XCTAssertFalse(raw.contains("fixture-private-key"))
+        let restored = WorkspaceStore(directory: directory)
+        XCTAssertEqual(restored.selectedRequest?.auth.token, "fixture-private-token")
+        XCTAssertEqual(restored.selectedRequest?.headers.last?.value, "fixture-private-key")
+        XCTAssertFalse(restored.syncEnabled)
+    }
+    func testLegacyWorkspaceCredentialsMigrateToKeychain() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var old = Workspace.starter
+        old.collections[0].requests[0].auth.token = "legacy-token"
+        old.collections[0].requests[0].headers += [Field("Cookie", "legacy-cookie")]
+        try JSONEncoder().encode(old).write(to: directory.appendingPathComponent("workspace.json"))
+        let store = WorkspaceStore(directory: directory)
+        XCTAssertEqual(store.selectedRequest?.auth.token, "legacy-token")
+        XCTAssertEqual(store.selectedRequest?.headers.last?.value, "legacy-cookie")
+        store.save(); XCTAssertNil(store.issue)
+        let restored = WorkspaceStore(directory: directory)
+        XCTAssertEqual(restored.selectedRequest?.auth.token, "legacy-token")
+        XCTAssertEqual(restored.selectedRequest?.headers.last?.value, "legacy-cookie")
+        let raw = try String(contentsOf: directory.appendingPathComponent("workspace.json"), encoding: .utf8)
+        XCTAssertFalse(raw.contains("legacy-token")); XCTAssertFalse(raw.contains("legacy-cookie"))
+    }
+    func testSnapshotPersistenceAndEviction() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storage = SnapshotStorage(directory: directory)
+        let request = APIRequest()
+        var saved: [ResponseSnapshot] = []
+        for index in 0..<52 {
+            let response = APIResponse(status: 200, headers: [], body: Data("{\"index\":\(index)}".utf8), duration: 0, url: request.url)
+            let snapshot = ResponseSnapshot(request: request, response: response)
+            _ = try await storage.save(snapshot); saved.append(snapshot)
+        }
+        let summaries = try await storage.summaries()
+        XCTAssertEqual(summaries.count, 50)
+        let latest = try await storage.load(saved.last!.id)
+        XCTAssertEqual(latest, saved.last)
+        let remaining = try await storage.remove(latest.id)
+        XCTAssertEqual(remaining.count, 49)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("Snapshots/" + saved[0].id.uuidString + ".json").path))
+    }
     func testMIMEPreviewsValidateDataAndPreserveBytes() async throws {
         for (path, kind, ext) in [("png", ResponseBodyKind.image, "png"), ("wav", .audio, "wav"), ("mp4", .video, "mp4"), ("binary", .binary, "bin"), ("fake-image", .binary, "png")] {
             let response = try await HTTPClient().send(RequestBuilder.build(APIRequest(url: "http://127.0.0.1:8766/media/" + path)))

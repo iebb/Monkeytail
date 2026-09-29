@@ -64,3 +64,13 @@ Screenshots:
 - [Duo response view](screenshots/duo-response.png)
 
 Run `swift test` for core tests or `Scripts/test.sh` for the complete local fixture suite. See the project README for simulator destination arguments.
+
+
+## Version 1.1 verification — September 30, 2026
+
+- 34 Swift core tests passed, including multipart byte fidelity, safe unresolved file imports, native/Postman/Insomnia attachment metadata, sync merge/tombstones/secret isolation, legacy credential migration, JSONPath, and response diffs.
+- The complete iOS 27 iPhone suite passed: 21 hosted integration tests and 9 UI tests. The new flows cover diagnostics, snapshots, extraction, multipart import, and optional sync controls.
+- Release verification passed: 22 hosted integration tests, including device Keychain migration and snapshot eviction, plus the 2 new UI flows (snapshot comparison included). A final Release integration pass verified the persistence changes.
+- Multipart and raw binary uploads matched fixture bytes on System and browser transports. Both reported redirect hops, sent headers, bounded bodies, and timings.
+- Automatic workspace encoding/writes run on a serial background queue; superseded saves are skipped. Attachments are capped at 40 MB per workspace. Responses/uploads remain capped at 20 MB each. Snapshots retain at most 50 entries within 60 MB.
+- Dedicated `iCloud.co.kitta.monkeytail` container registered and assigned to the production App ID. Sync remains off by default. Offline/no-session behavior preserves the local workspace. Live transfer between two signed-in iCloud devices has not been exercised in the simulator; merge behavior is covered independently.

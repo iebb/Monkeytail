@@ -4,6 +4,9 @@ import MonkeytailCore
 struct ResponseView: View {
     @Bindable var store: WorkspaceStore
     let requestID: UUID
+    var savedResponse: PreparedResponse? = nil
+    @State private var pathTool = false
+    @State private var comparing = false
     @State private var tab = "Body"
     @State private var format = "Pretty"
     @State private var lastKind: ResponseBodyKind?
@@ -14,7 +17,8 @@ struct ResponseView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.inputDismissal) private var inputDismissal
     @ScaledMetric(relativeTo: .footnote) private var characterWidth: CGFloat = 8
-    var response: APIResponse? { store.responses[requestID]?.response }
+    private var result: PreparedResponse? { savedResponse ?? store.responses[requestID] }
+    var response: APIResponse? { result?.response }
     private var compactSearch: Bool { searchFocused && sizeClass != .regular }
     private static let tokenPattern = try? NSRegularExpression(pattern: #"\"(?:[^\"\\]|\\.)*\"|\b(?:true|false|null|\d+(?:\.\d+)?)\b"#)
 
@@ -25,7 +29,7 @@ struct ResponseView: View {
                     .frame(maxWidth: .infinity, alignment: .leading).background(Color.red.opacity(0.06))
                 if response != nil { Text("Previous response shown below").font(.caption).foregroundStyle(.secondary).padding(12) }
             }
-            if let result = store.responses[requestID] {
+            if let result = result {
                 responseContent(result.response, preview: result.preview)
             } else if store.runningID == requestID {
                 VStack(spacing: 12) { ProgressView(); Text("Sending…").font(.subheadline).foregroundStyle(.secondary) }
@@ -36,7 +40,7 @@ struct ResponseView: View {
         }
         .onChange(of: response?.id, initial: true) { _, _ in
             copied = false
-            if let preview = store.responses[requestID]?.preview {
+            if let preview = result?.preview {
                 if lastKind != preview.kind || !preview.formats.contains(format) { format = preview.defaultFormat }
                 lastKind = preview.kind
             }
@@ -44,6 +48,8 @@ struct ResponseView: View {
         .onChange(of: format) { _, _ in copied = false; searchFocused = false }
         .onChange(of: inputDismissal) { _, _ in searchFocused = false }
         .sheet(item: $shareItem) { item in ShareSheet(items: [item.url]) }
+        .sheet(isPresented: $pathTool) { if let response { JSONPathView(response: response) } }
+        .sheet(isPresented: $comparing) { if let response { SnapshotCompareView(store: store, current: response) } }
     }
 
     private func responseContent(_ response: APIResponse, preview: ResponsePreview) -> some View {
@@ -55,11 +61,16 @@ struct ResponseView: View {
                 }
                 Spacer(minLength: 0)
                 if store.runningID == requestID { ProgressView().controlSize(.small) }
-                Button { save(response, preview: preview) } label: { Image(systemName: "square.and.arrow.up").frame(width: 44, height: 44) }.accessibilityLabel("Save response")
+                Menu {
+                    Button("Export body", systemImage: "square.and.arrow.up") { save(response, preview: preview) }
+                    if savedResponse == nil { Button("Save snapshot", systemImage: "camera") { store.saveSnapshot(requestID: requestID, response: response) } }
+                    Button("Compare snapshot", systemImage: "arrow.left.arrow.right") { comparing = true }
+                    if preview.kind == .json { Button("Extract JSONPath", systemImage: "line.3.horizontal.decrease") { pathTool = true } }
+                } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }.accessibilityLabel("Response actions")
             }.padding(.leading, 12).padding(.trailing, 4).padding(.vertical, 2)
             Divider()
-            if !compactSearch { PillTabs(tabs: ["Body", "Headers", "Console"], selection: $tab) }
-            if tab == "Headers" {
+            if !compactSearch { PillTabs(tabs: ["Body", "Headers", "Console", "Diagnostics"], selection: $tab) }
+            if tab == "Diagnostics" { DiagnosticsView(response: response) } else if tab == "Headers" {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(response.headers) { header in

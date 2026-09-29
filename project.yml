@@ -31,8 +31,9 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: 'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight'
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: 'UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight'
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: 'Connect to API servers and proxies on your local network.'
-        MARKETING_VERSION: '1.0'
-        CURRENT_PROJECT_VERSION: '1'
+        MARKETING_VERSION: '1.1'
+        CURRENT_PROJECT_VERSION: '14'
+        CODE_SIGN_ENTITLEMENTS: Monkeytail/Monkeytail.entitlements
     info:
       path: Monkeytail/Info.plist
       properties:

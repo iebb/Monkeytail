@@ -10,7 +10,7 @@ public struct CollectionImport {
 
 public enum CollectionCodec {
     public static func decode(_ data: Data) throws -> CollectionImport {
-        guard data.count <= 10 * 1024 * 1024 else { throw ClientError("Import files must be smaller than 10 MB.") }
+        guard data.count <= 40 * 1024 * 1024 else { throw ClientError("Import files must be smaller than 40 MB.") }
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw ClientError("Choose a JSON collection or environment file.") }
         if root["collections"] != nil && root["version"] != nil {
             let workspace = try JSONDecoder().decode(Workspace.self, from: data)
@@ -53,6 +53,12 @@ public enum CollectionCodec {
                     case .none: break
                     case .json, .text: body = ["mimeType": request.bodyKind == .json ? "application/json" : "text/plain", "text": request.body]
                     case .form: body = ["mimeType": "application/x-www-form-urlencoded", "params": request.form.map(insomniaField)]
+                    case .multipart: body = ["mimeType": "multipart/form-data", "params": (request.multipart ?? []).map { part in
+                        var field: [String: Any] = ["name": part.name, "value": part.value, "disabled": !part.enabled, "type": part.file == nil ? "text" : "file"]
+                        if let file = part.file { field["fileName"] = file.filename; field["contentType"] = file.mimeType }
+                        return field
+                    }]
+                    case .file: body = ["mimeType": request.fileBody?.mimeType ?? "application/octet-stream", "fileName": request.fileBody?.filename ?? ""]
                     }
                     var auth: [String: Any] = [:]
                     if request.auth.kind == .bearer { auth = ["type": "bearer", "token": request.auth.token] }
@@ -98,6 +104,20 @@ public enum CollectionCodec {
                         let language = (options?["raw"] as? [String: Any])?["language"] as? String
                         request.bodyKind = language == "json" || request.headers.contains { $0.name.lowercased() == "content-type" && $0.value.contains("json") } ? .json : .text
                     case "urlencoded": request.bodyKind = .form; request.form = fields(body["urlencoded"] as? [[String: Any]] ?? [])
+                    case "formdata":
+                        request.bodyKind = .multipart
+                        request.multipart = (body["formdata"] as? [[String: Any]] ?? []).flatMap { field -> [MultipartPart] in
+                            let paths = field["src"] as? [String] ?? [field["src"] as? String ?? ""]
+                            if field["type"] as? String == "file" {
+                                return paths.map { MultipartPart(name: string(field["key"]), enabled: !(field["disabled"] as? Bool ?? false), file: RequestFile(filename: $0, mimeType: field["contentType"] as? String ?? "application/octet-stream")) }
+                            }
+                            return [MultipartPart(name: string(field["key"]), value: string(field["value"]), enabled: !(field["disabled"] as? Bool ?? false))]
+                        }
+                        warnings.append("Choose imported attachment files on this device before sending.")
+                    case "file":
+                        request.bodyKind = .file
+                        request.fileBody = RequestFile(filename: string((body["file"] as? [String: Any])?["src"]))
+                        warnings.append("Choose the imported body file on this device before sending.")
                     case "graphql":
                         request.bodyKind = .json
                         let graph = body["graphql"] as? [String: Any] ?? [:]
@@ -105,7 +125,7 @@ public enum CollectionCodec {
                         if let variables = graph["variables"] as? String, !variables.isEmpty { payload["variables"] = try JSONTools.parse(variables) }
                         request.body = String(decoding: try json(payload), as: UTF8.self)
                     case nil: break
-                    default: throw ClientError("‘\(name)’ uses an unsupported body mode. Convert multipart or file bodies to raw text before importing.")
+                    default: throw ClientError("‘\(name)’ uses an unsupported body mode. Use raw, urlencoded, formdata, file, or GraphQL bodies.")
                     }
                 }
                 for event in events {
@@ -143,7 +163,16 @@ public enum CollectionCodec {
             request.followRedirects = resource["settingFollowRedirects"] as? String != "off"
             if let body = resource["body"] as? [String: Any], let mime = body["mimeType"] as? String, !mime.isEmpty {
                 if mime == "application/x-www-form-urlencoded" { request.bodyKind = .form; request.form = fields(body["params"] as? [[String: Any]] ?? []) }
-                else if mime.contains("multipart") || body["fileName"] != nil { throw ClientError("‘\(request.name)’ uses multipart or file content. Convert its body to raw text before importing.") }
+                else if mime.contains("multipart") {
+                    request.bodyKind = .multipart
+                    request.multipart = (body["params"] as? [[String: Any]] ?? []).map { field in
+                        MultipartPart(name: string(field["name"]), value: string(field["value"]), enabled: !(field["disabled"] as? Bool ?? false), file: field["type"] as? String == "file" ? RequestFile(filename: string(field["fileName"]), mimeType: field["contentType"] as? String ?? "application/octet-stream") : nil)
+                    }
+                    warnings.append("Choose imported attachment files on this device before sending.")
+                } else if body["fileName"] != nil {
+                    request.bodyKind = .file; request.fileBody = RequestFile(filename: string(body["fileName"]), mimeType: mime)
+                    warnings.append("Choose the imported body file on this device before sending.")
+                }
                 else {
                     request.bodyKind = mime.contains("json") ? .json : .text; request.body = normalizeInsomnia(body["text"] as? String ?? "")
                     if !request.headers.contains(where: { $0.name.lowercased() == "content-type" }) { request.headers.append(Field("Content-Type", mime)) }
@@ -183,6 +212,12 @@ public enum CollectionCodec {
         case .none: break
         case .json, .text: source["body"] = ["mode": "raw", "raw": request.body, "options": ["raw": ["language": request.bodyKind == .json ? "json" : "text"]]]
         case .form: source["body"] = ["mode": "urlencoded", "urlencoded": request.form.map(postmanField)]
+        case .multipart: source["body"] = ["mode": "formdata", "formdata": (request.multipart ?? []).map { part in
+            var field: [String: Any] = ["key": part.name, "value": part.value, "disabled": !part.enabled, "type": part.file == nil ? "text" : "file"]
+            if let file = part.file { field["src"] = file.filename; field["contentType"] = file.mimeType }
+            return field
+        }]
+        case .file: source["body"] = ["mode": "file", "file": ["src": request.fileBody?.filename ?? ""]]
         }
         switch request.auth.kind {
         case .none: source["auth"] = ["type": "noauth"]
