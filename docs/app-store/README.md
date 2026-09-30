@@ -10,4 +10,10 @@ Screenshots are unedited captures from the actual native app using a loopback AP
 
 No analytics or tracking SDKs are included. App Privacy: Data Not Collected. Privacy URL: https://docs.kitta.co/monkeytail/privacy/.
 
-Version **1.1** adds optional iCloud Drive workspace sync, multipart/file uploads, transport diagnostics, and response snapshots/comparison/JSONPath. Release tests passed on iPhone iOS 27. Credentials use the local Keychain, and sync excludes secret values and file bytes by default. `ITSAppUsesNonExemptEncryption` remains false.
+Version **1.1 (14)** was submitted on September 30, 2026 at 08:01 GMT+8 and is **Waiting for Review**. [Submission 0a7f141d-455a-4b4c-83fa-906539cb2c26](https://appstoreconnect.apple.com/apps/6814706725/distribution/reviewsubmissions/details/0a7f141d-455a-4b4c-83fa-906539cb2c26). It adds optional iCloud Drive workspace sync, multipart/file uploads, transport diagnostics, and response snapshots/comparison/JSONPath. Xcode Cloud [build 14](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/xcode-cloud/products/503e6b3e-e4f0-497c-84de-827b8c8b88bd/builds/6c67c58d-d4e4-4508-a160-21e74978dd32/summary) archived and distributed commit `393e127` to internal TestFlight. [GitHub Actions passed](https://github.com/iebb/Monkeytail/actions/runs/36647768958).
+
+Validation passed: 34 core tests, 22 Release hosted integration tests, and the two new Release UI flows on iPhone iOS 27; the full Debug suite also passed. Live transfer between two signed-in iCloud devices remains unverified; merge and offline behavior are covered by tests. Credentials use the local Keychain, and sync excludes secret values and file bytes by default. `ITSAppUsesNonExemptEncryption` remains false. The signed archive has one deprecation warning for the legacy iCloud identity-token decoder.
+
+The release is configured to become available automatically after approval, with no app sign-in required. Kitta Co privacy/support pages were updated in commit `f4d4037` of `kitta-co/privacy-policy`.
+
+![Version 1.1 submission confirmation](submission-1.1.jpg)
