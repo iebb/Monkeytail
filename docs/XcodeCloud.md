@@ -2,7 +2,7 @@
 
 - Apple Developer organization: Kitta Ltd (Kitta Co)
 - Team: `7P8CLHDH5G`
-- App: Monkeytail, version 1.2
+- App: Monkeytail, version 1.3
 - Bundle ID: `co.kitta.monkeytail`
 - Repository: [iebb/Monkeytail](https://github.com/iebb/Monkeytail), private
 - Branch: `main`; project: `Monkeytail.xcodeproj`; shared scheme: `Monkeytail`
@@ -57,6 +57,6 @@ Version 1.2 adds the `MonkeytailMac` scheme, sharing bundle ID `co.kitta.monkeyt
 
 ## 1.3 native visionOS and Watch
 
-The `Monkeytail visionOS CI` workflow archives scheme `MonkeytailVision` for `ANY_VISIONOS_DEVICE`. `Monkeytail Vision and Watch Tests` runs both native UI schemes on Apple Vision Pro / visionOS 27 and Apple Watch Series 12 (42 mm) / watchOS 27. The iOS archive embeds `MonkeytailWatch`; the Watch companion is distributed with iOS, not as a separate App Store platform. The iPhone test scheme includes Watch transfer/redaction checks. All release targets declare `ITSAppUsesNonExemptEncryption=false` and collect no data.
+The `Monkeytail visionOS CI` workflow archives scheme `MonkeytailVision` for `ANY_VISIONOS_DEVICE`. `Monkeytail Vision and Watch Tests` runs both native UI schemes on Apple Vision Pro / visionOS 27 and Apple Watch Series 12 (42 mm and 46 mm) / watchOS 27. The iOS archive embeds `MonkeytailWatch`; the Watch companion is distributed with iOS, not as a separate App Store platform. The iPhone test scheme includes Watch transfer/redaction checks. All release targets declare `ITSAppUsesNonExemptEncryption=false` and collect no data.
 
-Existing iOS/Mac 1.2 review submissions are preserved. A later iOS version containing Watch can be submitted when App Store Connect permits a new version; uploads to TestFlight can proceed meanwhile.
+The pending iOS/Mac 1.2 submissions were canceled and replaced with 1.3 to include the Watch companion and shared favourites. Signed Cloud archives 43 (visionOS), 44 (Mac), and 45 (iOS/Watch) are processed as valid and all three platforms are Waiting for Review. Review states and submission links are recorded in [the release log](app-store/README.md). Cloud run 42 passed all 40 iOS hosted/UI tests at `e7e7920`. Run 46 passed native visionOS and both 42 mm/46 mm Watch UI flows, producing the 46 mm Watch store screenshot. GitHub run 37048779581 passed all 50 core/payload and nine Mac integration tests.

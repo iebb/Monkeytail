@@ -74,9 +74,9 @@ The selected environment and inherited headers/auth are resolved when copied. **
 
 Watch supports System HTTP/GraphQL, verified HTTPS, and manual basic/bearer/API-key headers. Proxies, browser TLS presets, client identities, cookies, OAuth/AWS, scripts, mocks, WebSocket, and SSE remain in the full app. Unsupported configurations produce an error before copying. Timeout is at most 30 seconds, a copied body at most 32 KB, the transfer at most 60 KB, a response at most 256 KB, and a displayed body at most 16 KB.
 
-The visionOS window shares the full workspace editor, response viewers, API tools, and optional iCloud container with iPhone and Mac. Browser TLS presets require System transport on visionOS. The system-only and Watch Swift packages link canonical sources through checked-in symlinks, avoiding the iOS/Mac curl binary on unsupported platforms.
+The visionOS window shares the full workspace editor, response viewers, API tools, and optional iCloud container with iPhone and Mac. Select System TLS on visionOS; browser TLS presets are unavailable there. The system-only and Watch Swift packages link canonical sources through checked-in symlinks, avoiding the iOS/Mac curl binary on unsupported platforms.
 
-New platform source targets are present; store availability depends on their respective App Store review.
+Version 1.3 is submitted for iOS with the Watch companion, native macOS, and visionOS. All three are Waiting for Review; see the [release record](docs/app-store/README.md) for builds and validation. Physical paired Watch transfer and live iCloud transfer remain unverified.
 
 ## Interchange scope
 
@@ -126,6 +126,9 @@ Monkeytail/Views/       Native adaptive SwiftUI interface
 Tests/                 Core Swift package tests
 MonkeytailMac/         Mac sandbox/iCloud entitlements and app metadata
 MonkeytailMacTests/    Shared advanced hosted integration tests
+MonkeytailVision/      Native visionOS app and shared iCloud entitlements
+MonkeytailWatch/       Compact favourite-request companion and WatchConnectivity
+Packages/              System-only visionOS and bounded Watch core packages
 MonkeytailTests/       Hosted simulator integration tests
 MonkeytailUITests/     End-to-end device UI tests
 Scripts/               Local verification, samples, icon packaging
