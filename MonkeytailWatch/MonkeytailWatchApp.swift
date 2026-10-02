@@ -27,7 +27,6 @@ import MonkeytailWatchCore
 private struct WatchRequestView: View {
     @Bindable var store: WatchStore
     let request: WatchRequest
-    @State private var format = "Pretty"
     private var current: WatchRequest? { store.requests.first { $0.id == request.id } }
     private var response: WatchResponse? { store.responses[request.id] }
     var body: some View {
@@ -42,14 +41,24 @@ private struct WatchRequestView: View {
                 NavigationLink("Headers") {
                     List(response.headers.keys.sorted(), id: \.self) { key in VStack(alignment: .leading) { Text(key).font(.caption); Text(response.headers[key] ?? "").font(.caption2).foregroundStyle(.secondary) } }.navigationTitle("Headers")
                 }
-                Picker("Body", selection: $format) { ForEach(["Pretty", "Raw", "Hex"], id: \.self) { Text($0) } }
-                let text = format == "Pretty" ? response.pretty : format == "Hex" ? response.hex : response.text
-                ForEach(Array(text.split(separator: "\n", omittingEmptySubsequences: false).enumerated()), id: \.offset) { _, line in
-                    Text(String(line)).font(.system(.caption2, design: .monospaced)).accessibilityIdentifier("Watch response body")
-                }
-                if response.body.count > 16 * 1024 { Text("Preview limited to 16 KB.").font(.caption2).foregroundStyle(.secondary) }
+                NavigationLink("Body") { WatchBodyView(response: response) }.accessibilityIdentifier("Watch view body")
             }
         }.navigationTitle(request.name)
             .onDisappear { if store.runningID == request.id { store.cancel() } }
+    }
+}
+private struct WatchBodyView: View {
+    let response: WatchResponse
+    @State private var format = "Pretty"
+    var body: some View {
+        VStack(spacing: 4) {
+            Picker("Format", selection: $format) { ForEach(["Pretty", "Raw", "Hex"], id: \.self) { Text($0) } }.labelsHidden()
+            ScrollView {
+                Text(format == "Pretty" ? response.pretty : format == "Hex" ? response.hex : response.text)
+                    .font(.system(.caption2, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("Watch response body")
+                if response.body.count > 16 * 1024 { Text("Preview limited to 16 KB.").font(.caption2).foregroundStyle(.secondary) }
+            }
+        }.navigationTitle("Body")
     }
 }

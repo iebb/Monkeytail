@@ -8,6 +8,6 @@ final class VisionUITests: XCTestCase {
         let body = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "#0000000")).firstMatch
         XCTAssertTrue(body.waitForExistence(timeout: 10)); XCTAssertTrue(body.isHittable)
         XCTAssertTrue(send.isHittable)
-        let shot = XCTAttachment(screenshot: app.screenshot()); shot.name = "Native visionOS JSON response"; shot.lifetime = .keepAlways; add(shot)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.name = "Native visionOS JSON response"; shot.lifetime = .keepAlways; add(shot)
     }
 }

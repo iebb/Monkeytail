@@ -97,3 +97,5 @@ Run `swift test` for core tests or `Scripts/test.sh` for the complete local fixt
 - The native visionOS target shares the canonical core through a system-only package. The Watch target shares only the bounded companion transport/models and is embedded in iOS. The pinned browser framework remains on iOS/Mac.
 - Dedicated UI tests send a loopback JSON request and assert visible response content on visionOS and a compact Watch. Hosted iOS tests cover private-field omission, explicit inclusion, private URL handling, and unsupported transports. Mac fixture tests cover Watch transport byte formatting, cross-origin credential removal, no-redirect behavior, oversize response rejection, and cancellation.
 - Local new-platform UI execution and physical WatchConnectivity transfer are not yet verified. See release records for subsequent Cloud results.
+
+- GitHub run 37042258122 passed at `15a7d97`: all 50 core/payload tests and nine Mac hosted integration tests. A separate local Mac run passed all three Watch HTTP fixture tests. Final iOS and visionOS simulator test bundles compiled successfully, including the corrected visionOS icon stack dimensions.
