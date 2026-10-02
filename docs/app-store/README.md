@@ -18,6 +18,8 @@ Signed Xcode Cloud archives 43–45 use `e7e7920` and are valid with `usesNonExe
 
 The [visionOS screenshot](screenshots/visionos/json-response.png) is an unedited native 3840 × 2160 capture. The [Watch screenshot](screenshots/watch/response-body-large.png) is a native 416 × 496 Cloud test capture. Both were uploaded to App Store Connect. Homem’s simulator and app were restored after the visionOS capture. Physical paired iPhone–Watch transfer and live iCloud transfer remain unverified; payload, merge, secret handling, and HTTP behavior have automated coverage.
 
+The [public Kitta product page](https://docs.kitta.co/monkeytail/) was updated in `kitta-co/privacy-policy` commit `cd0b6cb`; Pages deployment 37052004195 succeeded. The published Vision and Watch images were verified at their native 3840 × 2160 and 416 × 496 sizes. [Published page proof](proofs/public-platforms-1.3.png).
+
 ![iOS, Mac, and visionOS 1.3 Waiting for Review](proofs/all-platforms-1.3-waiting-review.png)
 
 ## Earlier releases
