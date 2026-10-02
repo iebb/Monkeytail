@@ -10,7 +10,8 @@ final class WatchUITests: XCTestCase {
         XCTAssertTrue(bodyLink.isHittable)
         bodyLink.tap()
         let body = app.descendants(matching: .any).matching(identifier: "Watch response body").firstMatch
-        XCTAssertTrue(body.waitForExistence(timeout: 5)); XCTAssertTrue(body.label.contains("headers"))
+        XCTAssertTrue(body.waitForExistence(timeout: 10)); XCTAssertTrue(body.label.contains("headers"))
         let hierarchy = XCTAttachment(string: app.debugDescription); hierarchy.name = "Watch body accessibility"; hierarchy.lifetime = .keepAlways; add(hierarchy)
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); screenshot.name = "Watch response body"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
 }

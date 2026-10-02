@@ -27,6 +27,8 @@ import MonkeytailWatchCore
 private struct WatchRequestView: View {
     @Bindable var store: WatchStore
     let request: WatchRequest
+    @State private var showBody = false
+    @State private var showHeaders = false
     private var current: WatchRequest? { store.requests.first { $0.id == request.id } }
     private var response: WatchResponse? { store.responses[request.id] }
     var body: some View {
@@ -39,13 +41,17 @@ private struct WatchRequestView: View {
             if let issue = store.issue { Text(issue).font(.caption).foregroundStyle(.red) }
             if let response {
                 Text("\(response.status) · \(Int(response.duration * 1000)) ms · \(response.body.count) B").font(.caption2).monospacedDigit().accessibilityIdentifier("Watch response status")
-                NavigationLink("Body") { WatchBodyView(response: response) }.buttonStyle(.bordered).accessibilityIdentifier("Watch view body")
-                NavigationLink("Headers") {
-                    List(response.headers.keys.sorted(), id: \.self) { key in VStack(alignment: .leading) { Text(key).font(.caption); Text(response.headers[key] ?? "").font(.caption2).foregroundStyle(.secondary) } }.navigationTitle("Headers")
-                }.buttonStyle(.plain).font(.caption2)
+                Button("Body") { showBody = true }.buttonStyle(.bordered).accessibilityIdentifier("Watch view body")
+                Button("Headers") { showHeaders = true }.buttonStyle(.plain).font(.caption2)
             }
         }.padding(.horizontal, 6)
         }.navigationTitle(request.name)
+            .sheet(isPresented: $showBody) { if let response { WatchBodyView(response: response) } }
+            .sheet(isPresented: $showHeaders) {
+                if let response {
+                    List(response.headers.keys.sorted(), id: \.self) { key in VStack(alignment: .leading) { Text(key).font(.caption); Text(response.headers[key] ?? "").font(.caption2).foregroundStyle(.secondary) } }.navigationTitle("Headers")
+                }
+            }
             .onDisappear { if store.runningID == request.id { store.cancel() } }
     }
 }

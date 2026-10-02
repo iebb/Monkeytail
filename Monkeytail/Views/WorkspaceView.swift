@@ -269,7 +269,7 @@ struct RequestWorkspace: View {
                     if transport == .websocket { request.url.wrappedValue = request.url.wrappedValue.replacingOccurrences(of: "https://", with: "wss://").replacingOccurrences(of: "http://", with: "ws://") }
                     else { request.url.wrappedValue = request.url.wrappedValue.replacingOccurrences(of: "wss://", with: "https://").replacingOccurrences(of: "ws://", with: "http://") }
                 } }
-            } label: { Image(systemName: request.wrappedValue.transport == .websocket ? "arrow.left.arrow.right" : request.wrappedValue.transport == .graphql ? "point.3.connected.trianglepath.dotted" : "network").frame(width: 36, height: 44) }.accessibilityLabel("Request protocol")
+            } label: { Image(systemName: request.wrappedValue.transport == .websocket ? "arrow.left.arrow.right" : request.wrappedValue.transport == .graphql ? "point.3.connected.trianglepath.dotted" : "network").frame(width: 36, height: 44) }.buttonStyle(.plain).accessibilityLabel("Request protocol")
             Menu {
                 ForEach(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], id: \.self) { method in Button(method) { request.method.wrappedValue = method } }
             } label: {
@@ -277,7 +277,7 @@ struct RequestWorkspace: View {
                     Text(request.method.wrappedValue).font(.system(.footnote, design: .monospaced, weight: .semibold))
                     Image(systemName: "chevron.down").font(.system(size: 8))
                 }.foregroundStyle(Palette.method(request.method.wrappedValue)).padding(.horizontal, 12).frame(minHeight: 44)
-            }.accessibilityLabel("HTTP method")
+            }.buttonStyle(.plain).accessibilityLabel("HTTP method")
             Divider().frame(height: 20)
             TextField("https://api.example.com", text: request.url)
                 .font(.system(.footnote, design: .monospaced)).urlInput()
