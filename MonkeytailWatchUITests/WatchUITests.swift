@@ -6,12 +6,11 @@ final class WatchUITests: XCTestCase {
         let request = app.buttons["Watch request Sample JSON"]; XCTAssertTrue(request.waitForExistence(timeout: 15)); request.tap()
         let send = app.buttons["Watch send request"]; XCTAssertTrue(send.waitForExistence(timeout: 5)); send.tap()
         let status = app.staticTexts["Watch response status"]; XCTAssertTrue(status.waitForExistence(timeout: 15)); XCTAssertTrue(status.label.hasPrefix("200"))
-        let detail = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); detail.name = "Watch favourite status"; detail.lifetime = .keepAlways; add(detail)
         let bodyLink = app.buttons["Watch view body"]
         if !bodyLink.isHittable { app.swipeUp() }
         bodyLink.tap()
         let body = app.descendants(matching: .any).matching(identifier: "Watch response body").firstMatch
-        XCTAssertTrue(body.waitForExistence(timeout: 5)); XCTAssertTrue(body.isHittable)
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.name = "Watch favourite response"; shot.lifetime = .keepAlways; add(shot)
+        XCTAssertTrue(body.waitForExistence(timeout: 5)); XCTAssertTrue(body.label.contains("headers"))
+        let hierarchy = XCTAttachment(string: app.debugDescription); hierarchy.name = "Watch body accessibility"; hierarchy.lifetime = .keepAlways; add(hierarchy)
     }
 }
