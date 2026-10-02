@@ -5,6 +5,27 @@ public enum JSONPath {
     /// Supports $, .key, ['key'], ["key"], [index], and .* / [*]. Filters and recursive descent are intentionally rejected.
     public static func extract(_ expression: String, from data: Data) throws -> String {
         guard data.count <= 2 * 1024 * 1024 else { throw ClientError("JSONPath is limited to 2 MB JSON bodies.") }
+        let (segments, many) = try parse(expression)
+        var values: [Any] = [try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])]
+        for segment in segments {
+            var next: [Any] = []
+            for value in values {
+                switch segment {
+                case .key(let key): if let value = (value as? [String: Any])?[key] { next.append(value) }
+                case .index(let index): if let array = value as? [Any], array.indices.contains(index) { next.append(array[index]) }
+                case .wildcard:
+                    if let array = value as? [Any] { next += array }
+                    else if let object = value as? [String: Any] { next += object.keys.sorted().compactMap { object[$0] } }
+                }
+                guard next.count <= 5000 else { throw ClientError("JSONPath matches more than 5,000 values.") }
+            }
+            values = next
+        }
+        guard !values.isEmpty else { throw ClientError("No values match this path.") }
+        let object: Any = many ? values : values[0]
+        return String(decoding: try JSONSerialization.data(withJSONObject: object, options: [.fragmentsAllowed, .prettyPrinted, .sortedKeys, .withoutEscapingSlashes]), as: UTF8.self)
+    }
+    private static func parse(_ expression: String) throws -> ([Segment], Bool) {
         let chars = Array(expression.trimmingCharacters(in: .whitespacesAndNewlines))
         guard chars.first == "$" else { throw ClientError("Start JSONPath with $.") }
         var i = 1, segments: [Segment] = [], many = false
@@ -41,25 +62,22 @@ public enum JSONPath {
                 }
             } else { throw ClientError("Invalid JSONPath. Use $, .key, [index], or [*].") }
         }
-        var values: [Any] = [try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])]
-        for segment in segments {
-            var next: [Any] = []
-            for value in values {
-                switch segment {
-                case .key(let key): if let value = (value as? [String: Any])?[key] { next.append(value) }
-                case .index(let index): if let array = value as? [Any], array.indices.contains(index) { next.append(array[index]) }
-                case .wildcard:
-                    if let array = value as? [Any] { next += array }
-                    else if let object = value as? [String: Any] { next += object.keys.sorted().compactMap { object[$0] } }
-                }
-                guard next.count <= 5000 else { throw ClientError("JSONPath matches more than 5,000 values.") }
-            }
-            values = next
-        }
-        guard !values.isEmpty else { throw ClientError("No values match this path.") }
-        let object: Any = many ? values : values[0]
-        return String(decoding: try JSONSerialization.data(withJSONObject: object, options: [.fragmentsAllowed, .prettyPrinted, .sortedKeys, .withoutEscapingSlashes]), as: UTF8.self)
+        return (segments, many)
     }
+    public static func javascript(_ expression: String) throws -> String {
+        let (segments, many) = try parse(expression)
+        func q(_ text: String) -> String { String(decoding: try! JSONSerialization.data(withJSONObject: text, options: [.fragmentsAllowed]), as: UTF8.self) }
+        var body = "let values = [value];"
+        for segment in segments {
+            switch segment {
+            case .key(let key): body += "values = values.flatMap(v => v !== null && typeof v === 'object' && Object.prototype.hasOwnProperty.call(v, \(q(key))) ? [v[\(q(key))]] : []);"
+            case .index(let index): body += "values = values.flatMap(v => Array.isArray(v) && v.length > \(index) ? [v[\(index)]] : []);"
+            case .wildcard: body += "values = values.flatMap(v => Array.isArray(v) ? v : v !== null && typeof v === 'object' ? Object.keys(v).sort().map(k => v[k]) : []);"
+            }
+        }
+        return "(value => {" + body + "if (!values.length) throw new Error('No values match'); return " + (many ? "values" : "values[0]") + ";})(response.json())"
+    }
+
 }
 
 public struct ResponseChange: Identifiable, Equatable, Sendable {

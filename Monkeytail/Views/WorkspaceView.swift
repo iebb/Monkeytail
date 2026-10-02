@@ -10,8 +10,14 @@ struct WorkspaceView: View {
     @State private var newCollection = false
     @State private var collectionName = ""
     @State private var renameID: UUID?
+    @State private var folderCollectionID: UUID?
+    @State private var folderParentID: UUID?
+    @State private var addingFolder = false
+    @State private var folderName = ""
+    @State private var editingCollectionID: UUID?
+    @State private var editingFolderID: UUID?
 
-    enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, history, snapshots, curl; var id: String { rawValue } }
+    enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, history, snapshots, curl, code, network, defaults; var id: String { rawValue } }
 
     var body: some View {
         GeometryReader { geometry in
@@ -22,7 +28,7 @@ struct WorkspaceView: View {
                 RequestWorkspace(store: store, requestID: request.id)
                     .id(request.id)
                     .navigationTitle(request.name)
-                    .navigationBarTitleDisplayMode(.inline)
+                    .inlineTitle()
                     .toolbar { workspaceToolbar }
             } else {
                 EmptyPanel(title: "No request selected", message: "Create or import a request.")
@@ -39,7 +45,10 @@ struct WorkspaceView: View {
             case .settings: SettingsView(store: store)
             case .history: HistoryView(store: store)
             case .snapshots: SnapshotsView(store: store)
-            case .curl: if let request = store.selectedRequest { CurlExportView(request: request, variables: store.variables) }
+            case .curl: if let request = store.selectedRequest, let resolved = try? store.effective(request) { CurlExportView(request: resolved.request, variables: resolved.variables) }
+            case .code: if let request = store.selectedRequest { CodeExportView(store: store, request: request) }
+            case .network: NetworkToolsView(store: store)
+            case .defaults: if let id = editingCollectionID { FolderSettingsView(store: store, collectionID: id, folderID: editingFolderID) }
             }
         }
         .alert("Workspace", isPresented: Binding(get: { sheet == nil && (store.issue != nil || store.notice != nil) }, set: { if !$0 { store.issue = nil; store.notice = nil } })) {
@@ -56,7 +65,16 @@ struct WorkspaceView: View {
                 renameID = nil
             }
         }
+        .alert("New folder", isPresented: $addingFolder) {
+            TextField("Folder name", text: $folderName)
+            Button("Cancel", role: .cancel) {}
+            Button("Add") {
+                guard let c = store.workspace.collections.firstIndex(where: { $0.id == folderCollectionID }), !folderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                store.workspace.collections[c].folders = (store.workspace.collections[c].folders ?? []) + [RequestFolder(name: folderName, parentID: folderParentID)]
+            }
+        }
         .onOpenURL { url in
+            if url.scheme == "monkeytail" { return }
             let granted = url.startAccessingSecurityScopedResource()
             defer { if granted { url.stopAccessingSecurityScopedResource() } }
             do { try store.importContent(String(contentsOf: url, encoding: .utf8)) }
@@ -77,21 +95,16 @@ struct WorkspaceView: View {
             }.padding(.leading, 16).padding(.trailing, 4)
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Find a request", text: $search).font(.subheadline).textInputAutocapitalization(.never).autocorrectionDisabled()
+                TextField("Find a request", text: $search).font(.subheadline).noCapitalization().autocorrectionDisabled()
             }.padding(10).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8)).padding(.horizontal, 12).padding(.bottom, 4)
             List(selection: $store.selectedRequestID) {
                 ForEach(store.workspace.collections) { collection in
                     Section {
-                        ForEach(collection.requests.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) || $0.url.localizedCaseInsensitiveContains(search) }) { request in
-                            HStack(spacing: 10) {
-                                Text(request.method).font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(Palette.method(request.method)).frame(width: 39, alignment: .leading)
-                                Text(request.name).font(.subheadline).lineLimit(2)
-                            }.padding(.vertical, 7).tag(request.id)
-                                .listRowBackground(store.selectedRequestID == request.id ? Palette.mint.opacity(0.1) : Color.clear)
-                                .contextMenu {
-                                    Button("Duplicate", systemImage: "plus.square.on.square") { store.duplicate(request) }
-                                    Button("Delete request", systemImage: "trash", role: .destructive) { store.delete(request.id) }
-                                }
+                        if search.isEmpty {
+                            FolderRows(store: store, collectionID: collection.id, edit: { id in editingCollectionID = collection.id; editingFolderID = id; sheet = .defaults }, add: { parent in folderCollectionID = collection.id; folderParentID = parent; folderName = ""; addingFolder = true })
+                        }
+                        ForEach(collection.requests.filter { search.isEmpty ? $0.folderID == nil : $0.name.localizedCaseInsensitiveContains(search) || $0.url.localizedCaseInsensitiveContains(search) }) { request in
+                            RequestSidebarRow(store: store, request: request, collectionID: collection.id)
                         }
                     } header: {
                         HStack {
@@ -99,6 +112,8 @@ struct WorkspaceView: View {
                             Spacer()
                             Menu {
                                 Button("Add request", systemImage: "plus") { store.addRequest(to: collection.id) }
+                                Button("New folder", systemImage: "folder.badge.plus") { folderCollectionID = collection.id; folderParentID = nil; folderName = ""; addingFolder = true }
+                                Button("Collection settings", systemImage: "slider.horizontal.3") { editingCollectionID = collection.id; editingFolderID = nil; sheet = .defaults }
                                 Button("Rename", systemImage: "pencil") { renameID = collection.id; collectionName = collection.name; newCollection = true }
                                 if collection.requests.isEmpty {
                                     Button("Delete empty collection", systemImage: "trash", role: .destructive) { store.workspace.collections.removeAll { $0.id == collection.id } }
@@ -114,10 +129,11 @@ struct WorkspaceView: View {
                 sidebarButton("Environments", symbol: "square.stack.3d.up", sheet: .environment)
                 sidebarButton("Request history", symbol: "clock.arrow.circlepath", sheet: .history)
                 sidebarButton("Snapshots", symbol: "camera", sheet: .snapshots)
+                sidebarButton("Cookies & certificates", symbol: "lock.shield", sheet: .network)
                 sidebarButton("Connection settings", symbol: "slider.horizontal.3", sheet: .settings)
             }.padding(8)
         }.background(Palette.canvas)
-            .toolbar(.hidden, for: .navigationBar)
+            .hideNavigationBar()
             .onChange(of: store.selectedRequestID) { _, _ in compactColumn = .detail }
     }
 
@@ -133,7 +149,7 @@ struct WorkspaceView: View {
                     .accessibilityIdentifier("Request name")
             }
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .workspaceTrailing) {
             Menu {
                 Button("No environment") { store.workspace.selectedEnvironmentID = nil }
                 ForEach(store.workspace.environments) { env in Button(env.name) { store.workspace.selectedEnvironmentID = env.id } }
@@ -143,9 +159,11 @@ struct WorkspaceView: View {
                 Text(store.environment?.name ?? "Env").font(.caption.weight(.medium)).lineLimit(1).frame(maxWidth: 80)
             }.accessibilityLabel("Select environment")
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .workspaceTrailing) {
             Menu {
                 Button("New request", systemImage: "plus") { store.addRequest() }
+                Button("Client code", systemImage: "curlybraces") { sheet = .code }.disabled(store.selectedRequest == nil)
+                Button("Cookies & certificates", systemImage: "lock.shield") { sheet = .network }
                 Button("Export cURL", systemImage: "terminal") { sheet = .curl }.disabled(store.selectedRequest == nil)
                 Button("Import & export", systemImage: "arrow.down.doc") { sheet = .transfer }.accessibilityIdentifier("Import workspace")
                 Button("History", systemImage: "clock.arrow.circlepath") { sheet = .history }
@@ -167,6 +185,7 @@ struct RequestWorkspace: View {
     var body: some View {
         GeometryReader { geometry in
             let sideBySide = geometry.size.width >= 640 && geometry.size.height >= 440 && !dynamicType.isAccessibilitySize
+            let stream = request.wrappedValue.transport == .websocket || request.wrappedValue.transport == .sse
             let paneLayout = sideBySide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(ZStackLayout(alignment: .topLeading))
             VStack(spacing: 0) {
                 addressBar
@@ -174,14 +193,17 @@ struct RequestWorkspace: View {
                 // Keep both panes alive and fully sized on iPhone. A zero-width
                 // hidden pane gives its scroll views an invalid initial viewport.
                 paneLayout {
-                    RequestEditor(request: request)
+                    RequestEditor(request: request, store: store)
                         .disabled(!sideBySide && pane != "Request")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped().opacity(sideBySide || pane == "Request" ? 1 : 0)
                         .allowsHitTesting(sideBySide || pane == "Request")
                         .accessibilityHidden(!sideBySide && pane != "Request")
                     if sideBySide { Divider() }
-                    ResponseView(store: store, requestID: requestID)
+                    Group {
+                        if stream { LiveView(store: store, requestID: requestID) }
+                        else { ResponseView(store: store, requestID: requestID) }
+                    }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped().opacity(sideBySide || pane == "Response" ? 1 : 0)
                         .allowsHitTesting(sideBySide || pane == "Response")
@@ -196,7 +218,7 @@ struct RequestWorkspace: View {
                                     dismissKeyboard()
                                     pane = value
                                 } label: {
-                                    Text(value).font(.subheadline.weight(pane == value ? .semibold : .regular))
+                                    Text(stream && value == "Response" ? "Messages" : value).font(.subheadline.weight(pane == value ? .semibold : .regular))
                                         .frame(maxWidth: .infinity, minHeight: 44)
                                         .background(pane == value ? Palette.surface : .clear, in: RoundedRectangle(cornerRadius: 6))
                                 }.buttonStyle(.plain).accessibilityAddTraits(pane == value ? .isSelected : [])
@@ -205,12 +227,14 @@ struct RequestWorkspace: View {
                             .frame(maxWidth: 300).accessibilityIdentifier("Workspace pane")
                     }
                     Spacer(minLength: 0)
+                    if !stream {
                     Button(action: send) {
                         Label(store.runningID == requestID ? "Cancel" : "Send", systemImage: store.runningID == requestID ? "stop.fill" : "arrow.up")
                             .font(.subheadline.weight(.semibold)).padding(.horizontal, 16).frame(minHeight: 44)
                             .foregroundStyle(Palette.canvas).background(Palette.mint, in: RoundedRectangle(cornerRadius: 8))
                     }.buttonStyle(.plain).disabled(store.runningID != nil && store.runningID != requestID)
                         .keyboardShortcut(.return, modifiers: .command).accessibilityIdentifier("Send request")
+                    }
                 }.padding(.horizontal, 12).padding(.vertical, 4).background(Palette.surface)
             }.background(Palette.canvas).environment(\.inputDismissal, inputDismissal)
                 .onChange(of: pane) { _, _ in dismissKeyboard() }
@@ -222,6 +246,15 @@ struct RequestWorkspace: View {
     private var addressBar: some View {
         HStack(spacing: 0) {
             Menu {
+                ForEach(RequestTransport.allCases, id: \.self) { transport in Button(transport.rawValue) {
+                    request.transport.wrappedValue = transport
+                    if transport == .graphql { request.method.wrappedValue = "POST" }
+                    if transport == .sse { request.method.wrappedValue = "GET" }
+                    if transport == .websocket { request.url.wrappedValue = request.url.wrappedValue.replacingOccurrences(of: "https://", with: "wss://").replacingOccurrences(of: "http://", with: "ws://") }
+                    else { request.url.wrappedValue = request.url.wrappedValue.replacingOccurrences(of: "wss://", with: "https://").replacingOccurrences(of: "ws://", with: "http://") }
+                } }
+            } label: { Image(systemName: request.wrappedValue.transport == .websocket ? "arrow.left.arrow.right" : request.wrappedValue.transport == .graphql ? "point.3.connected.trianglepath.dotted" : "network").frame(width: 36, height: 44) }.accessibilityLabel("Request protocol")
+            Menu {
                 ForEach(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], id: \.self) { method in Button(method) { request.method.wrappedValue = method } }
             } label: {
                 HStack(spacing: 4) {
@@ -231,8 +264,8 @@ struct RequestWorkspace: View {
             }.accessibilityLabel("HTTP method")
             Divider().frame(height: 20)
             TextField("https://api.example.com", text: request.url)
-                .font(.system(.footnote, design: .monospaced)).keyboardType(.URL)
-                .textInputAutocapitalization(.never).autocorrectionDisabled().focused($urlFocused)
+                .font(.system(.footnote, design: .monospaced)).urlInput()
+                .noCapitalization().autocorrectionDisabled().focused($urlFocused)
                 .submitLabel(.go).onSubmit(send).padding(.horizontal, 10).frame(minHeight: 44)
                 .accessibilityIdentifier("Request URL")
         }.background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
@@ -243,9 +276,11 @@ struct RequestWorkspace: View {
     private func dismissKeyboard() {
         urlFocused = false
         inputDismissal += 1
+        #if os(iOS)
         for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) where scene.activationState == .foregroundActive {
             for window in scene.windows where window.isKeyWindow { window.endEditing(true) }
         }
+        #endif
     }
     private func send() {
         dismissKeyboard()

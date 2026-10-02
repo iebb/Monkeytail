@@ -22,7 +22,9 @@ public enum RequestBuilder {
         let rawURL = try resolve(model.url.trimmingCharacters(in: .whitespacesAndNewlines), variables: variables)
         guard var components = URLComponents(string: rawURL), ["http", "https"].contains(components.scheme?.lowercased() ?? ""),
               let host = components.host, !host.isEmpty else { throw ClientError("Enter a complete http:// or https:// URL.") }
-        let fields = try model.query.filter { $0.enabled && !$0.name.isEmpty }.map {
+        var query = model.query
+        if model.auth.kind == .apiKey, let key = model.auth.apiKey, key.inQuery { query.append(Field(key.name, key.value)) }
+        let fields = try query.filter { $0.enabled && !$0.name.isEmpty }.map {
             try formEncode(resolve($0.name, variables: variables)) + "=" + formEncode(resolve($0.value, variables: variables))
         }
         if !fields.isEmpty {
@@ -43,6 +45,18 @@ public enum RequestBuilder {
         }
         switch model.auth.kind {
         case .none: break
+        case .inherit: throw ClientError("Resolve inherited authentication before building the request.")
+        case .apiKey:
+            if let key = model.auth.apiKey, !key.inQuery {
+                let name = try resolve(key.name, variables: variables), value = try resolve(key.value, variables: variables)
+                guard isToken(name), !value.contains("\r"), !value.contains("\n") else { throw ClientError("Invalid API key header.") }
+                request.setValue(value, forHTTPHeaderField: name)
+            }
+        case .oauth2:
+            let token = try resolve(model.auth.oauth?.accessToken ?? model.auth.token, variables: variables)
+            guard !token.isEmpty, !token.contains("\r"), !token.contains("\n") else { throw ClientError("Get an OAuth access token before sending.") }
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        case .aws: break
         case .bearer:
             let token = try resolve(model.auth.token, variables: variables)
             guard !token.unicodeScalars.contains(where: { $0.value == 10 || $0.value == 13 }) else { throw ClientError("Invalid bearer token.") }
@@ -77,7 +91,21 @@ public enum RequestBuilder {
             request.httpBody = data
             if request.value(forHTTPHeaderField: "Content-Type") == nil { request.setValue(try MultipartEncoder.mime(file.mimeType), forHTTPHeaderField: "Content-Type") }
         }
+        if model.transport == .graphql {
+            request.httpBody = try (model.graphql ?? GraphQLRequest()).body(values: variables)
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        if let schema = model.requestSchema, !schema.isEmpty, let body = request.httpBody {
+            let errors = try JSONSchema.validate(body, schema: schema)
+            if !errors.isEmpty { throw ClientError("Request schema: " + errors.prefix(5).joined(separator: "; ")) }
+        }
         if let body = request.httpBody, body.count > MultipartEncoder.maximumBytes { throw ClientError("Upload exceeds the 20 MB limit.") }
+        if model.auth.kind == .aws {
+            var auth = model.auth.aws ?? AWSAuth()
+            auth.accessKey = try resolve(auth.accessKey, variables: variables); auth.secretKey = try resolve(auth.secretKey, variables: variables)
+            auth.sessionToken = try resolve(auth.sessionToken, variables: variables); auth.region = try resolve(auth.region, variables: variables); auth.service = try resolve(auth.service, variables: variables)
+            request = try AWSSigner.sign(request, credentials: auth)
+        }
         return request
     }
 

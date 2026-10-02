@@ -45,7 +45,7 @@ struct UploadFileEditor: View {
                 TextField("MIME type", text: Binding(get: { file?.mimeType ?? "" }, set: { file?.mimeType = $0 })).font(.system(.caption, design: .monospaced)).dismissibleInput()
             }
             if let error { Text(error).font(.caption).foregroundStyle(.red) }
-        }.textInputAutocapitalization(.never).autocorrectionDisabled()
+        }.noCapitalization().autocorrectionDisabled()
             .sheet(item: $share) { item in ShareSheet(items: [item.url]) }
             .fileImporter(isPresented: $choosing, allowedContentTypes: [.data]) { result in
                 switch result {
@@ -107,7 +107,7 @@ struct MultipartEditor: View {
                 Spacer()
                 Button { parts.append(MultipartPart(file: RequestFile(filename: ""))) } label: { Label("Add file", systemImage: "paperclip") }.frame(minHeight: 44)
             }
-        }.textInputAutocapitalization(.never).autocorrectionDisabled()
+        }.noCapitalization().autocorrectionDisabled()
     }
 }
 

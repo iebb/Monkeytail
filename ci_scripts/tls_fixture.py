@@ -12,6 +12,7 @@ from pathlib import Path
 captures = []
 lock = threading.Lock()
 ca_pem = b''
+client_p12 = b''
 context = None
 _certificate_directory = None
 
@@ -95,7 +96,7 @@ class Capture(socketserver.BaseRequestHandler):
 
 
 def make_server(port=8769):
-    global context, ca_pem, _certificate_directory
+    global context, ca_pem, client_p12, _certificate_directory
     _certificate_directory = tempfile.TemporaryDirectory(prefix='monkeytail-test-ca-')
     root = Path(_certificate_directory.name)
     config = root/'certificate.cnf'
@@ -112,6 +113,8 @@ subjectAltName = DNS:localhost,IP:127.0.0.1
 ''')
     subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2', '-config', str(config), '-keyout', str(root/'key.pem'), '-out', str(root/'ca.pem')], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     ca_pem = (root/'ca.pem').read_bytes()
+    subprocess.run(['openssl', 'pkcs12', '-export', '-inkey', str(root/'key.pem'), '-in', str(root/'ca.pem'), '-out', str(root/'client.p12'), '-passout', 'pass:fixture', '-keypbe', 'PBE-SHA1-3DES', '-certpbe', 'PBE-SHA1-3DES', '-macalg', 'SHA1'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    client_p12 = (root/'client.p12').read_bytes()
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(str(root/'ca.pem'), str(root/'key.pem'))
     context.set_alpn_protocols(['h2', 'http/1.1'])

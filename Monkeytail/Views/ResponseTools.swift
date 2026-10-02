@@ -8,6 +8,19 @@ struct DiagnosticsView: View {
             if let diagnostics = response.diagnostics {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(diagnostics.transport).font(.subheadline.weight(.medium))
+                    if let tls = diagnostics.tlsDetails {
+                        DisclosureGroup("TLS certificates") {
+                            Text("Version: " + (tls.version == "0x0304" ? "TLS 1.3" : tls.version == "0x0303" ? "TLS 1.2" : tls.version ?? "—") + " · Cipher: " + (tls.cipher ?? "—") + " · ALPN: " + (tls.alpn ?? "—")).font(.caption.monospaced())
+                            ForEach(tls.certificates) { certificate in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(certificate.subject).font(.caption.weight(.medium))
+                                    if let start = certificate.notBefore { Text("Valid from " + start.formatted()).font(.caption2) }
+                                    if let end = certificate.notAfter { Text("Expires " + end.formatted()).font(.caption2).foregroundStyle(end < Date() ? Color.red : Color.secondary) }
+                                    Text("SHA-256 " + certificate.sha256).font(.caption2.monospaced()).textSelection(.enabled)
+                                }.padding(.vertical, 4)
+                            }
+                        }
+                    }
                     ForEach(Array(diagnostics.transactions.enumerated()), id: \.element.id) { index, transaction in
                         VStack(alignment: .leading, spacing: 10) {
                             HStack { Text("\(index + 1) · \(transaction.status)").font(.headline); Spacer(); Text(transaction.protocolName ?? "—").font(.caption.monospaced()) }
@@ -49,13 +62,13 @@ struct JSONPathView: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    TextField("$.data.items[*].id", text: $path).textInputAutocapitalization(.never).autocorrectionDisabled().font(.body.monospaced()).textFieldStyle(.roundedBorder).accessibilityIdentifier("JSONPath expression")
+                    TextField("$.data.items[*].id", text: $path).noCapitalization().autocorrectionDisabled().font(.body.monospaced()).textFieldStyle(.roundedBorder).accessibilityIdentifier("JSONPath expression")
                     Button("Extract") { extract() }.disabled(extracting).frame(minHeight: 44)
                 }
                 if let error { Text(error).font(.caption).foregroundStyle(.red) }
                 ScrollView([.horizontal, .vertical]) { Text(result).font(.footnote.monospaced()).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.surface)
-                HStack { Text("Keys, indices, and wildcards").font(.caption).foregroundStyle(.secondary); Spacer(); Button { UIPasteboard.general.string = result } label: { Image(systemName: "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Copy extracted JSON").disabled(result.isEmpty) }
-            }.padding(12).background(Palette.canvas).navigationTitle("JSONPath").navigationBarTitleDisplayMode(.inline)
+                HStack { Text("Keys, indices, and wildcards").font(.caption).foregroundStyle(.secondary); Spacer(); Button { Clipboard.copy(result )} label: { Image(systemName: "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Copy extracted JSON").disabled(result.isEmpty) }
+            }.padding(12).background(Palette.canvas).navigationTitle("JSONPath").inlineTitle()
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }
     }
@@ -90,7 +103,7 @@ struct SnapshotsView: View {
                         }.swipeActions { Button("Delete", role: .destructive) { store.removeSnapshot(item.id) } }
                     }.searchable(text: $search, prompt: "Find snapshot")
                 }
-            }.navigationTitle("Snapshots").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("Snapshots").inlineTitle()
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }
     }
@@ -100,15 +113,23 @@ struct SnapshotDetailView: View {
     @Bindable var store: WorkspaceStore
     let summary: SnapshotSummary
     @State private var prepared: PreparedResponse?
+    @State private var snapshot: ResponseSnapshot?
     @State private var error: String?
     var body: some View {
         Group {
             if let prepared { ResponseView(store: store, requestID: summary.requestID, savedResponse: prepared) }
             else if let error { EmptyPanel(title: error) }
             else { ProgressView() }
-        }.navigationTitle(summary.name).navigationBarTitleDisplayMode(.inline)
+        }.navigationTitle(summary.name).inlineTitle()
+            .toolbar { ToolbarItem(placement: .workspaceTrailing) {
+                Button("Use as mock") {
+                    guard let snapshot else { return }
+                    do { try store.useSnapshotAsMock(snapshot); error = nil }
+                    catch { self.error = error.localizedDescription }
+                }.disabled(snapshot == nil)
+            } }
             .task(id: summary.id) {
-                do { let snapshot = try await store.loadSnapshot(summary.id); prepared = await Task.detached { PreparedResponse(response: snapshot.response) }.value }
+                do { let snapshot = try await store.loadSnapshot(summary.id); self.snapshot = snapshot; prepared = await Task.detached { PreparedResponse(response: snapshot.response) }.value }
                 catch { self.error = error.localizedDescription }
             }
     }
@@ -142,7 +163,7 @@ struct SnapshotCompareView: View {
                         }
                     }
                 } else { EmptyPanel(title: store.snapshots.isEmpty ? "Save a snapshot first" : "Choose a baseline") }
-            }.navigationTitle("Compare response").navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle("Compare response").inlineTitle()
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
                 .task(id: selection) {
                     changes = nil; error = nil

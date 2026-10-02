@@ -27,7 +27,7 @@ final class ScriptRunner: NSObject, WKNavigationDelegate {
         let headers = request.headers.filter(\.enabled).reduce(into: [String: String]()) { $0[$1.name] = $1.value }
         var input: [String: Any] = ["request": ["method": request.method, "url": request.url, "headers": headers, "body": request.body], "variables": variables]
         if let response {
-            input["response"] = ["status": response.status, "body": response.text, "headers": response.headers.reduce(into: [String: String]()) { $0[$1.name] = $1.value }]
+            input["response"] = ["status": response.status, "duration": response.duration, "body": response.text, "headers": response.headers.reduce(into: [String: String]()) { $0[$1.name] = $1.value }]
         }
         payload = String(decoding: try JSONSerialization.data(withJSONObject: input), as: UTF8.self)
         return try await withTaskCancellationHandler {

@@ -17,6 +17,15 @@ public enum SecretPolicy {
             }
         }
         for c in copy.collections.indices {
+            func cleanDefaults(_ value: RequestDefaults, scope: String) -> RequestDefaults {
+                var value = value
+                value.headers = clean(value.headers, scope: scope + ".headers"); value.variables = clean(value.variables, scope: scope + ".variables")
+                stripAllAuth(&value.auth, scope: scope + ".auth", secrets: &secrets)
+                if files { value.scriptsEnabled = false }; return value
+            }
+            let scope = "collection.\(copy.collections[c].id)"
+            copy.collections[c].defaults = copy.collections[c].defaults.map { cleanDefaults($0, scope: scope) }
+            copy.collections[c].folders = copy.collections[c].folders.map { $0.map { folder in var folder = folder; folder.defaults = cleanDefaults(folder.defaults, scope: "folder.\(folder.id)"); return folder } }
             for r in copy.collections[c].requests.indices {
                 var request = copy.collections[c].requests[r]
                 request.headers = clean(request.headers, scope: "request.\(request.id).headers"); request.query = clean(request.query, scope: "request.\(request.id).query"); request.form = clean(request.form, scope: "request.\(request.id).form")
@@ -37,6 +46,8 @@ public enum SecretPolicy {
                 secrets["auth.\(request.id).password"] = request.auth.password
                 secrets["auth.\(request.id).username"] = request.auth.username
                 request.auth.token = ""; request.auth.password = ""; request.auth.username = ""
+                stripAdvancedAuth(&request.auth, scope: "auth.\(request.id)", secrets: &secrets)
+                request.variables = request.variables.map { clean($0, scope: "request.\(request.id).variables") }
                 if request.multipart != nil {
                     for index in request.multipart!.indices where SecretPolicy.isSensitive(request.multipart![index].name) {
                         secrets["request.\(request.id).part.\(request.multipart![index].id)"] = request.multipart![index].value
@@ -72,6 +83,20 @@ public enum SecretPolicy {
         }
         let localRequests = Dictionary((local?.collections.flatMap(\.requests) ?? []).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         for c in copy.collections.indices {
+            func restoreDefaults(_ value: RequestDefaults, scope: String) -> RequestDefaults {
+                var value = value
+                value.headers = restoreFields(value.headers, scope: scope + ".headers"); value.variables = restoreFields(value.variables, scope: scope + ".variables")
+                restoreAllAuth(&value.auth, scope: scope + ".auth", secrets: secrets); return value
+            }
+            let scope = "collection.\(copy.collections[c].id)"
+            copy.collections[c].defaults = copy.collections[c].defaults.map { restoreDefaults($0, scope: scope) }
+            copy.collections[c].folders = copy.collections[c].folders.map { $0.map { folder in var folder = folder; folder.defaults = restoreDefaults(folder.defaults, scope: "folder.\(folder.id)"); return folder } }
+            if let previous = local?.collections.first(where: { $0.id == copy.collections[c].id }) {
+                copy.collections[c].defaults?.scriptsEnabled = previous.defaults?.scriptsEnabled ?? false
+                if copy.collections[c].folders != nil { for i in copy.collections[c].folders!.indices {
+                    copy.collections[c].folders![i].defaults.scriptsEnabled = previous.folders?.first(where: { $0.id == copy.collections[c].folders![i].id })?.defaults.scriptsEnabled ?? false
+                } }
+            }
             for r in copy.collections[c].requests.indices {
                 var request = copy.collections[c].requests[r]
                 request.headers = restoreFields(request.headers, scope: "request.\(request.id).headers"); request.query = restoreFields(request.query, scope: "request.\(request.id).query"); request.form = restoreFields(request.form, scope: "request.\(request.id).form")
@@ -88,6 +113,8 @@ public enum SecretPolicy {
                 request.auth.token = secrets["auth.\(request.id).token"] ?? request.auth.token
                 request.auth.password = secrets["auth.\(request.id).password"] ?? request.auth.password
                 request.auth.username = secrets["auth.\(request.id).username"] ?? request.auth.username
+                restoreAdvancedAuth(&request.auth, scope: "auth.\(request.id)", secrets: secrets)
+                request.variables = request.variables.map { restoreFields($0, scope: "request.\(request.id).variables") }
                 if request.multipart != nil {
                     for index in request.multipart!.indices where SecretPolicy.isSensitive(request.multipart![index].name) {
                         request.multipart![index].value = secrets["request.\(request.id).part.\(request.multipart![index].id)"] ?? request.multipart![index].value
@@ -113,6 +140,35 @@ public enum SecretPolicy {
         copy.proxy.username = secrets["proxy.username"] ?? copy.proxy.username
         return copy
     }
+    private static func stripAdvancedAuth(_ auth: inout RequestAuth, scope: String, secrets: inout [String: String]) {
+        if var key = auth.apiKey { secrets[scope + ".apiKey"] = key.value; key.value = ""; auth.apiKey = key }
+        if var oauth = auth.oauth {
+            secrets[scope + ".clientSecret"] = oauth.clientSecret; secrets[scope + ".accessToken"] = oauth.accessToken; secrets[scope + ".refreshToken"] = oauth.refreshToken
+            if let expires = oauth.expiresAt { secrets[scope + ".expires"] = String(expires.timeIntervalSince1970) }; oauth.clientSecret = ""; oauth.accessToken = ""; oauth.refreshToken = ""; oauth.expiresAt = nil; auth.oauth = oauth
+        }
+        if var aws = auth.aws {
+            secrets[scope + ".awsAccess"] = aws.accessKey; secrets[scope + ".awsSecret"] = aws.secretKey; secrets[scope + ".awsSession"] = aws.sessionToken
+            aws.accessKey = ""; aws.secretKey = ""; aws.sessionToken = ""; auth.aws = aws
+        }
+    }
+    private static func restoreAdvancedAuth(_ auth: inout RequestAuth, scope: String, secrets: [String: String]) {
+        if var key = auth.apiKey { key.value = secrets[scope + ".apiKey"] ?? key.value; auth.apiKey = key }
+        if var oauth = auth.oauth {
+            oauth.clientSecret = secrets[scope + ".clientSecret"] ?? oauth.clientSecret; oauth.accessToken = secrets[scope + ".accessToken"] ?? oauth.accessToken; oauth.refreshToken = secrets[scope + ".refreshToken"] ?? oauth.refreshToken; if let value = secrets[scope + ".expires"], let seconds = Double(value) { oauth.expiresAt = Date(timeIntervalSince1970: seconds) }; auth.oauth = oauth
+        }
+        if var aws = auth.aws {
+            aws.accessKey = secrets[scope + ".awsAccess"] ?? aws.accessKey; aws.secretKey = secrets[scope + ".awsSecret"] ?? aws.secretKey; aws.sessionToken = secrets[scope + ".awsSession"] ?? aws.sessionToken; auth.aws = aws
+        }
+    }
+    private static func stripAllAuth(_ auth: inout RequestAuth, scope: String, secrets: inout [String: String]) {
+        secrets[scope + ".token"] = auth.token; secrets[scope + ".username"] = auth.username; secrets[scope + ".password"] = auth.password
+        auth.token = ""; auth.username = ""; auth.password = ""; stripAdvancedAuth(&auth, scope: scope, secrets: &secrets)
+    }
+    private static func restoreAllAuth(_ auth: inout RequestAuth, scope: String, secrets: [String: String]) {
+        auth.token = secrets[scope + ".token"] ?? auth.token; auth.username = secrets[scope + ".username"] ?? auth.username; auth.password = secrets[scope + ".password"] ?? auth.password
+        restoreAdvancedAuth(&auth, scope: scope, secrets: secrets)
+    }
+
 }
 
 /// Entity-level last-edit-wins merge. Deletions are retained as tombstones; unrelated edits survive.
@@ -126,7 +182,7 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
     public var device = UUID()
     public var records: [Record] = []
     public init() {}
-    private struct Collection: Codable { var id: UUID; var name: String; var requests: [UUID]; var position: Int }
+    private struct Collection: Codable { var id: UUID; var name: String; var requests: [UUID]; var position: Int; var folders: [RequestFolder]?; var defaults: RequestDefaults? }
     private struct Request: Codable { var collection: UUID; var request: APIRequest; var position: Int }
     private struct Environment: Codable { var environment: APIEnvironment; var position: Int }
 
@@ -136,7 +192,7 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         var current: [String: Data] = [:]
         for (index, collection) in workspace.collections.enumerated() {
-            current["collection.\(collection.id)"] = try encoder.encode(Collection(id: collection.id, name: collection.name, requests: collection.requests.map(\.id), position: index))
+            current["collection.\(collection.id)"] = try encoder.encode(Collection(id: collection.id, name: collection.name, requests: collection.requests.map(\.id), position: index, folders: collection.folders, defaults: collection.defaults))
             for (position, request) in collection.requests.enumerated() { current["request.\(request.id)"] = try encoder.encode(Request(collection: collection.id, request: request, position: position)) }
         }
         for (position, environment) in workspace.environments.enumerated() { current["environment.\(environment.id)"] = try encoder.encode(Environment(environment: environment, position: position)) }
@@ -171,7 +227,7 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
         var result = local
         result.collections = collections.map { item in
             var collection = RequestCollection(name: item.name)
-            collection.id = item.id
+            collection.id = item.id; collection.folders = item.folders; collection.defaults = item.defaults
             collection.requests = requests.filter { $0.collection == item.id }.sorted { $0.position == $1.position ? $0.request.id.uuidString < $1.request.id.uuidString : $0.position < $1.position }.map(\.request)
             return collection
         }

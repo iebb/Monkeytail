@@ -6,6 +6,43 @@ final class MonkeytailUITests: XCTestCase {
         app.buttons["Response format " + name].tap()
     }
 
+
+    func testOpenAPIImportVisualTestsAndOfflineMock() throws {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]; app.launch()
+        app.buttons["Workspace actions"].tap(); app.buttons["Import workspace"].tap()
+        let editor = app.textViews["Import content"]; XCTAssertTrue(editor.waitForExistence(timeout: 5)); editor.tap()
+        editor.typeText("""
+        openapi: 3.0.3
+        info: {title: Local contract, version: '1'}
+        servers: [{url: 'https://unreachable.invalid'}]
+        paths:
+          /mock:
+            get:
+              summary: Test offline API
+              responses:
+                '200':
+                  description: OK
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        required: [mock]
+                        properties:
+                          mock: {type: boolean}
+        """)
+        app.buttons["Confirm import"].tap(); XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5)); app.alerts.buttons["OK"].tap()
+        app.buttons["Tests"].tap(); app.buttons["Add response test"].tap()
+        app.buttons["Response schema"].tap()
+        let schema = app.buttons["Add schema assertion"]; if !schema.isHittable { app.swipeUp() }; schema.tap()
+        app.buttons["Mock"].tap(); app.switches["Enable offline mock"].tap(); app.buttons["Send request"].tap()
+        XCTAssertTrue(app.staticTexts["Response status"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "true")).firstMatch.waitForExistence(timeout: 5))
+        app.buttons["Tests"].tap()
+        XCTAssertTrue(app.staticTexts["Status is 200"].waitForExistence(timeout: 5)); XCTAssertTrue(app.staticTexts["Response schema"].exists)
+        XCTAssertTrue(app.staticTexts["Received 200"].exists)
+        attach(app, name: "OpenAPI visual checks and offline mock")
+    }
+
     func testMIMEBodyPreviewsAndBytes() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]

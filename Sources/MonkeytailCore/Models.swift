@@ -14,12 +14,15 @@ public struct Field: Codable, Identifiable, Equatable, Sendable {
 }
 
 public enum BodyKind: String, Codable, CaseIterable, Sendable { case none = "None", json = "JSON", text = "Text", form = "Form", multipart = "Multipart", file = "File" }
-public enum AuthKind: String, Codable, CaseIterable, Sendable { case none = "None", bearer = "Bearer", basic = "Basic" }
+public enum AuthKind: String, Codable, CaseIterable, Sendable { case none = "None", inherit = "Inherit", bearer = "Bearer", basic = "Basic", apiKey = "API key", oauth2 = "OAuth 2.0", aws = "AWS SigV4" }
 public struct RequestAuth: Codable, Equatable, Sendable {
     public var kind: AuthKind = .none
     public var token = ""
     public var username = ""
     public var password = ""
+    public var apiKey: APIKeyAuth?
+    public var oauth: OAuthConfiguration?
+    public var aws: AWSAuth?
     public init() {}
 }
 
@@ -43,6 +46,16 @@ public struct APIRequest: Codable, Identifiable, Equatable, Sendable {
     public var followRedirects = true
     public var timeout: Double = 30
     public var impersonation: BrowserImpersonation?
+    public var folderID: UUID?
+    public var variables: [Field]?
+    public var transport: RequestTransport?
+    public var graphql: GraphQLRequest?
+    public var assertions: [ResponseAssertion]?
+    public var requestSchema: String?
+    public var responseSchema: String?
+    public var parameterHints: [ParameterHint]?
+    public var cookieJarEnabled: Bool?
+    public var mock: MockResponse?
     public init(name: String = "Untitled request", method: String = "GET", url: String = "https://httpbin.org/get") {
         self.name = name; self.method = method; self.url = url
     }
@@ -52,6 +65,8 @@ public struct RequestCollection: Codable, Identifiable, Equatable, Sendable {
     public var id = UUID()
     public var name: String
     public var requests: [APIRequest]
+    public var folders: [RequestFolder]?
+    public var defaults: RequestDefaults?
     public init(name: String, requests: [APIRequest] = []) { self.name = name; self.requests = requests }
 }
 
@@ -92,6 +107,7 @@ public struct APIResponse: Codable, Identifiable, Equatable, Sendable {
     public var receivedAt = Date()
     public var logs: [ScriptLog] = []
     public var diagnostics: RequestDiagnostics?
+    public var sessionCookies: [StoredCookie]?
     public var text: String { String(data: body, encoding: .utf8) ?? String(data: body, encoding: .isoLatin1) ?? "Binary response (\(body.count) bytes)" }
     public init(status: Int, headers: [Field], body: Data, duration: Double, url: String) {
         self.status = status; self.headers = headers; self.body = body; self.duration = duration; self.url = url

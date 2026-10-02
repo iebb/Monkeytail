@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#else
 import UIKit
+#endif
 import MonkeytailCore
 
 private struct InputDismissalKey: EnvironmentKey {
@@ -26,9 +30,15 @@ extension View {
 }
 
 enum Palette {
+    #if os(macOS)
+    static let mint = Color(nsColor: NSColor(name: nil) { appearance in appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(red: 0.36, green: 0.89, blue: 0.75, alpha: 1) : NSColor(red: 0.04, green: 0.43, blue: 0.35, alpha: 1) })
+    static let canvas = Color(nsColor: .windowBackgroundColor)
+    static let surface = Color(nsColor: .controlBackgroundColor)
+    #else
     static let mint = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.36, green: 0.89, blue: 0.75, alpha: 1) : UIColor(red: 0.04, green: 0.43, blue: 0.35, alpha: 1) })
     static let canvas = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.045, green: 0.065, blue: 0.09, alpha: 1) : UIColor(red: 0.96, green: 0.97, blue: 0.975, alpha: 1) })
     static let surface = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.075, green: 0.10, blue: 0.13, alpha: 1) : .white })
+    #endif
     static let border = Color.primary.opacity(0.09)
     static func method(_ value: String) -> Color {
         switch value { case "GET": return mint; case "POST": return .orange; case "PUT", "PATCH": return .blue; case "DELETE": return .pink; default: return .purple }
@@ -92,7 +102,7 @@ struct FieldEditor: View {
             Button { fields.append(Field()) } label: { Label("Add \(name.lowercased())", systemImage: "plus").font(.subheadline).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(.horizontal, 12) }
                 .buttonStyle(.plain).foregroundStyle(Palette.mint)
         }
-        .textInputAutocapitalization(.never).autocorrectionDisabled()
+        .noCapitalization().autocorrectionDisabled()
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.border))
     }
@@ -106,7 +116,7 @@ struct CodeEditor: View {
         TextEditor(text: $text)
             .dismissibleInput()
             .font(.system(.footnote, design: .monospaced))
-            .textInputAutocapitalization(.never).autocorrectionDisabled()
+            .noCapitalization().autocorrectionDisabled()
             .scrollContentBackground(.hidden).padding(6)
             .frame(minHeight: minimumHeight).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.border))
@@ -133,8 +143,11 @@ struct PillTabs: View {
     }
 }
 
+#if os(iOS)
 struct ShareSheet: UIViewControllerRepresentable {
     var items: [Any]
     func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: items, applicationActivities: nil) }
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+
+#endif

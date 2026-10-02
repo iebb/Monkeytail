@@ -12,23 +12,24 @@ final class BrowserHTTPClient: @unchecked Sendable {
         self.followRedirects = followRedirects; self.certificateAuthorities = certificateAuthorities
     }
 
-    func send(_ request: URLRequest, proxy: ProxySettings, impersonation: BrowserImpersonation) async throws -> APIResponse {
+    func send(_ request: URLRequest, proxy: ProxySettings, impersonation: BrowserImpersonation, cookies: CookieJar? = nil, sensitiveHeaders: [String] = []) async throws -> APIResponse {
         let cancellation = CurlCancellation()
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
             return try await withCheckedThrowingContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
-                    do { continuation.resume(returning: try self.perform(request, proxy: proxy, impersonation: impersonation, cancellation: cancellation)) }
+                    do { continuation.resume(returning: try self.perform(request, proxy: proxy, impersonation: impersonation, cancellation: cancellation, cookies: cookies, sensitiveHeaders: sensitiveHeaders)) }
                     catch { continuation.resume(throwing: error) }
                 }
             }
         } onCancel: { cancellation.cancel() }
     }
 
-    private func perform(_ original: URLRequest, proxy: ProxySettings, impersonation: BrowserImpersonation, cancellation: CurlCancellation) throws -> APIResponse {
+    private func perform(_ original: URLRequest, proxy: ProxySettings, impersonation: BrowserImpersonation, cancellation: CurlCancellation, cookies: CookieJar?, sensitiveHeaders: [String]) throws -> APIResponse {
         try check(Self.initialized)
         let started = ContinuousClock.now
         var request = original
+        var jar = cookies
         var transactions: [HTTPTransaction] = []
         for hop in 0...10 {
             if cancellation.isCancelled { throw CancellationError() }
@@ -37,6 +38,7 @@ final class BrowserHTTPClient: @unchecked Sendable {
             guard remaining > 0 else { throw URLError(.timedOut) }
             request.timeoutInterval = remaining
             var response = try transfer(request, proxy: proxy, impersonation: impersonation, cancellation: cancellation)
+            if let url = request.url { jar?.capture(headers: response.headers, url: url) }; response.sessionCookies = jar?.cookies
             transactions += response.diagnostics?.transactions ?? []
             response.diagnostics = RequestDiagnostics(transport: impersonation.profile.title, transactions: transactions)
             response.duration = seconds(started.duration(to: .now))
@@ -48,7 +50,7 @@ final class BrowserHTTPClient: @unchecked Sendable {
                   ["http", "https"].contains(target.scheme?.lowercased() ?? ""), target.host != nil,
                   target.user == nil, target.password == nil else { throw ClientError("Unsupported redirect URL.") }
             if origin(current) != origin(target) {
-                for header in ["Authorization", "Cookie", "Proxy-Authorization"] { request.setValue(nil, forHTTPHeaderField: header) }
+                for header in (request.allHTTPHeaderFields ?? [:]).keys where SecretPolicy.isSensitive(header) || sensitiveHeaders.contains(where: { $0.caseInsensitiveCompare(header) == .orderedSame }) || header.lowercased() == "x-amz-security-token" { request.setValue(nil, forHTTPHeaderField: header) }
             }
             // Host is regenerated for the redirect target, as it is in URLSession.
             request.setValue(nil, forHTTPHeaderField: "Host")
@@ -58,6 +60,7 @@ final class BrowserHTTPClient: @unchecked Sendable {
                 for header in ["Content-Type", "Content-Length", "Transfer-Encoding"] { request.setValue(nil, forHTTPHeaderField: header) }
             }
             request.url = target
+            if let jar { let header = jar.header(for: target); if !header.isEmpty { request.setValue(header, forHTTPHeaderField: "Cookie") } }
         }
         throw ClientError("Too many redirects.")
     }

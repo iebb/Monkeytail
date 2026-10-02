@@ -69,8 +69,8 @@ struct ResponseView: View {
                 } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }.accessibilityLabel("Response actions")
             }.padding(.leading, 12).padding(.trailing, 4).padding(.vertical, 2)
             Divider()
-            if !compactSearch { PillTabs(tabs: ["Body", "Headers", "Console", "Diagnostics"], selection: $tab) }
-            if tab == "Diagnostics" { DiagnosticsView(response: response) } else if tab == "Headers" {
+            if !compactSearch { PillTabs(tabs: ["Body", "Headers", "Console", "Tests", "Diagnostics"], selection: $tab) }
+            if tab == "Tests" { TestResultsView(results: store.testResults[requestID] ?? []) } else if tab == "Diagnostics" { DiagnosticsView(response: response) } else if tab == "Headers" {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(response.headers) { header in
@@ -118,7 +118,7 @@ struct ResponseView: View {
                     if ["Pretty", "Raw", "Tree"].contains(format) {
                         HStack {
                             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                            TextField("Find in response", text: $search).font(.caption).textInputAutocapitalization(.never).autocorrectionDisabled().focused($searchFocused).submitLabel(.done).onSubmit { searchFocused = false }
+                            TextField("Find in response", text: $search).font(.caption).noCapitalization().autocorrectionDisabled().focused($searchFocused).submitLabel(.done).onSubmit { searchFocused = false }
                             if !search.isEmpty { Button { search = ""; searchFocused = false } label: { Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44) }.accessibilityLabel("Clear search") }
                         }.padding(.leading, 10).frame(minHeight: 44).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                     }
@@ -159,7 +159,7 @@ struct ResponseView: View {
                 default: return preview.formatted
                 }
             }.value
-            UIPasteboard.general.string = text
+            Clipboard.copy(text)
             if self.response?.id == response.id && format == selectedFormat { copied = true }
         }
     }

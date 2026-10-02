@@ -36,5 +36,6 @@ public struct HTTPTransaction: Codable, Identifiable, Equatable, Sendable {
 public struct RequestDiagnostics: Codable, Equatable, Sendable {
     public var transport: String
     public var transactions: [HTTPTransaction]
+    public var tlsDetails: TLSDetails?
     public init(transport: String, transactions: [HTTPTransaction]) { self.transport = transport; self.transactions = transactions }
 }

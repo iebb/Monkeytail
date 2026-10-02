@@ -5,6 +5,7 @@ let package = Package(
     name: "MonkeytailCore",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [.library(name: "MonkeytailCore", targets: ["MonkeytailCore"])],
+    dependencies: [.package(url: "https://github.com/jpsim/Yams.git", exact: "6.2.2")],
     targets: [
         .binaryTarget(name: "CurlImpersonate", path: "Vendor/CurlImpersonate.xcframework"),
         .target(name: "MonkeytailCurl", dependencies: ["CurlImpersonate"], linkerSettings: [
@@ -12,7 +13,7 @@ let package = Package(
             .linkedFramework("SystemConfiguration"), .linkedLibrary("c++"), .linkedLibrary("resolv"),
             .linkedLibrary("iconv"), .linkedLibrary("icucore")
         ]),
-        .target(name: "MonkeytailCore", dependencies: ["MonkeytailCurl"], resources: [.process("Resources")]),
+        .target(name: "MonkeytailCore", dependencies: ["MonkeytailCurl", "Yams"], resources: [.process("Resources")]),
         .testTarget(name: "MonkeytailCoreTests", dependencies: ["MonkeytailCore"])
     ]
 )

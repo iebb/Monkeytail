@@ -3,21 +3,27 @@ import MonkeytailCore
 
 struct RequestEditor: View {
     @Binding var request: APIRequest
+    let store: WorkspaceStore
     @State private var tab = "Headers"
     @State private var scriptTab = "Before"
     @State private var editorError: String?
 
     var body: some View {
         VStack(spacing: 0) {
-            PillTabs(tabs: ["Params", "Headers", "Body", "Auth", "Scripts"], selection: $tab)
+            PillTabs(tabs: ["Params", "Headers", "Body", "Auth", "Tests", "Scripts", "Mock"], selection: $tab)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     switch tab {
-                    case "Params": FieldEditor(fields: $request.query, name: "Parameter")
+                    case "Params":
+                        FieldEditor(fields: $request.query, name: "Parameter")
+                        FieldEditor(fields: Binding(get: { request.variables ?? [] }, set: { request.variables = $0 }), name: "Variable")
+                        if let hints = request.parameterHints, !hints.isEmpty { DisclosureGroup("API parameters") { ForEach(hints) { hint in Text(hint.name + " · " + hint.location + " · " + hint.type + (hint.required ? " · required" : "") + (hint.description.isEmpty ? "" : "\n" + hint.description)).font(.caption) } } }
                     case "Headers": FieldEditor(fields: $request.headers)
                     case "Body": bodyEditor
                     case "Auth": authEditor
+                    case "Tests": TestsEditor(request: $request)
+                    case "Mock": MockEditor(request: $request, response: store.responses[request.id]?.response)
                     default: scriptsEditor
                     }
                     if let editorError { Label(editorError, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red) }
@@ -28,6 +34,8 @@ struct RequestEditor: View {
 
     private var bodyEditor: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if request.transport == .graphql { GraphQLEditor(request: $request, store: store) }
+            else {
             Picker("Body type", selection: $request.bodyKind) { ForEach(BodyKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
             switch request.bodyKind {
             case .none: Text("No body").font(.footnote).foregroundStyle(.secondary).padding(.vertical, 12)
@@ -45,6 +53,7 @@ struct RequestEditor: View {
                 }
                 CodeEditor(text: $request.body, label: "Request body", minimumHeight: 300)
             }
+            }
         }
     }
 
@@ -55,14 +64,8 @@ struct RequestEditor: View {
 
     private var authEditor: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("Authentication type", selection: $request.auth.kind) { ForEach(AuthKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
-            switch request.auth.kind {
-            case .none: EmptyView()
-            case .bearer: SecureField("Token or {{token}}", text: $request.auth.token).dismissibleInput().textFieldStyle(.roundedBorder)
-            case .basic:
-                TextField("Username", text: $request.auth.username).dismissibleInput().textFieldStyle(.roundedBorder)
-                SecureField("Password", text: $request.auth.password).dismissibleInput().textFieldStyle(.roundedBorder)
-            }
+            AuthEditor(auth: $request.auth, proxy: store.workspace.proxy)
+            Toggle("Use cookie jar", isOn: Binding(get: { request.cookieJarEnabled ?? false }, set: { request.cookieJarEnabled = $0 }))
             Divider()
             HStack {
                 Text("TLS profile")
@@ -81,7 +84,7 @@ struct RequestEditor: View {
             }
             Toggle("Follow redirects", isOn: $request.followRedirects).font(.subheadline)
             Stepper("Timeout: \(Int(request.timeout))s", value: $request.timeout, in: 1...300, step: 5).font(.subheadline)
-        }.textInputAutocapitalization(.never).autocorrectionDisabled()
+        }.noCapitalization().autocorrectionDisabled()
     }
 
     private var scriptsEditor: some View {
@@ -124,9 +127,9 @@ struct CurlExportView: View {
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                 HStack {
                     ShareLink(item: curl) { Label("Share", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
-                    Button { UIPasteboard.general.string = curl; dismiss() } label: { Label("Copy", systemImage: "doc.on.doc").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+                    Button { Clipboard.copy(curl); dismiss() } label: { Label("Copy", systemImage: "doc.on.doc").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
                 }.disabled(curl.isEmpty)
-            }.padding(12).background(Palette.canvas).navigationTitle("cURL").navigationBarTitleDisplayMode(.inline)
+            }.padding(12).background(Palette.canvas).navigationTitle("cURL").inlineTitle()
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }.task {
             do { curl = try CurlCodec.encode(request, variables: variables) } catch { self.error = error.localizedDescription }

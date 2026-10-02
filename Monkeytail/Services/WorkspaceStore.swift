@@ -10,6 +10,9 @@ final class WorkspaceStore {
     var errors: [UUID: String] = [:]
     var history: [HistoryEntry] = []
     var runningID: UUID?
+    var testResults: [UUID: [AssertionResult]] = [:]
+    let network: LocalNetworkStorage
+    let mockServer = MockServer()
     var issue: String?
     var notice: String?
     private var sendTask: Task<Void, Never>?
@@ -35,6 +38,7 @@ final class WorkspaceStore {
         let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
         self.directory = directory ?? (testing ? FileManager.default.temporaryDirectory.appendingPathComponent("MonkeytailUITests") : URL.applicationSupportDirectory.appendingPathComponent("Monkeytail", isDirectory: true))
         if testing { try? FileManager.default.removeItem(at: self.directory) }
+        network = LocalNetworkStorage(directory: self.directory)
         vault = SecretVault(directory: self.directory)
         snapshotStorage = SnapshotStorage(directory: self.directory)
         let location = self.directory.appendingPathComponent("workspace.json")
@@ -120,9 +124,11 @@ final class WorkspaceStore {
             } }
         }
         guard workspaceAttachmentBytes + attachmentBytes(request) <= 40 * 1024 * 1024 else { issue = "Workspace attachments exceed 40 MB."; return }
+        let destination = workspace.collections.firstIndex { $0.requests.contains { $0.id == request.id } } ?? 0
+        if !workspace.collections.indices.contains(destination) || !(workspace.collections[destination].folders ?? []).contains(where: { $0.id == request.folderID }) { request.folderID = nil }
         request.id = UUID(); request.name += " · replay"
         if workspace.collections.isEmpty { workspace.collections.append(RequestCollection(name: "History")) }
-        workspace.collections[0].requests.append(request); selectedRequestID = request.id
+        workspace.collections[destination].requests.append(request); selectedRequestID = request.id
     }
     func importContent(_ text: String) throws {
         guard text.utf8.count <= 40 * 1024 * 1024 else { throw ClientError("Imports must be smaller than 40 MB.") }
@@ -134,7 +140,10 @@ final class WorkspaceStore {
             if let proxy = result.proxy { workspace.proxy = proxy }
             notice = (["Imported 1 request."] + result.warnings).joined(separator: "\n\n")
         } else {
-            let result = try CollectionCodec.decode(Data(text.utf8))
+            let data = Data(text.utf8)
+            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            let specification = object?["openapi"] != nil || object?["swagger"] != nil || (object == nil && (text.contains("openapi:") || text.contains("swagger:")))
+            let result = try specification ? OpenAPICodec.decode(data) : CollectionCodec.decode(data)
             var incoming = result.workspace
             let incomingBytes = incoming.collections.flatMap(\.requests).reduce(0) { $0 + attachmentBytes($1) }
             guard workspaceAttachmentBytes + incomingBytes <= 40 * 1024 * 1024 else { throw ClientError("Workspace attachments exceed 40 MB.") }
@@ -142,8 +151,14 @@ final class WorkspaceStore {
             var importedSelection: UUID?
             for c in incoming.collections.indices {
                 incoming.collections[c].id = UUID()
+                let folderIDs = Dictionary((incoming.collections[c].folders ?? []).map { ($0.id, UUID()) }, uniquingKeysWith: { first, _ in first })
+                incoming.collections[c].folders = incoming.collections[c].folders.map { $0.map { folder in
+                    var folder = folder; folder.id = folderIDs[folder.id]!; folder.parentID = folder.parentID.flatMap { folderIDs[$0] }; folder.defaults.scriptsEnabled = false; return folder
+                } }
+                incoming.collections[c].defaults?.scriptsEnabled = false
                 for r in incoming.collections[c].requests.indices {
                     incoming.collections[c].requests[r].id = UUID()
+                    incoming.collections[c].requests[r].folderID = incoming.collections[c].requests[r].folderID.flatMap { folderIDs[$0] }
                     incoming.collections[c].requests[r].scriptsEnabled = false
                 }
             }
@@ -163,32 +178,58 @@ final class WorkspaceStore {
     }
 
     func send() {
-        guard let saved = selectedRequest, runningID == nil else { return }
+        guard let saved = selectedRequest, runningID == nil, saved.transport != .websocket, saved.transport != .sse else { return }
         runningID = saved.id; errors[saved.id] = nil
         let environmentID = workspace.selectedEnvironmentID
-        let initialVariables = variables
+        let environmentVariables = variables
         let proxy = workspace.proxy
         sendTask = Task {
             defer { runningID = nil; sendTask = nil }
-            var request = saved, variables = initialVariables, logs: [ScriptLog] = []
+            var request = saved, variables = environmentVariables, logs: [ScriptLog] = []
             do {
-                if saved.scriptsEnabled && !saved.preScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    let result = try await ScriptRunner().run(saved.preScript, request: request, variables: variables)
+                let resolved = try effective(saved)
+                request = resolved.request; variables = resolved.variables
+                let initialVariables = variables
+                if request.auth.kind == .oauth2, let oauth = request.auth.oauth, let expires = oauth.expiresAt, expires < Date().addingTimeInterval(30), !oauth.refreshToken.isEmpty {
+                    request.auth.oauth = try await OAuthAuthorizer().refresh(oauth, proxy: proxy)
+                    persistAuth(request.auth, for: saved)
+                }
+                if request.scriptsEnabled && !request.preScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let result = try await ScriptRunner().run(request.preScript, request: request, variables: variables)
                     request.method = result.request.method; request.url = result.request.url
                     request.headers = result.request.headers.sorted { $0.key < $1.key }.map { Field($0.key, $0.value) }
                     if request.body != result.request.body && request.bodyKind == .none { request.bodyKind = .text }
                     request.body = result.request.body
                     variables = result.variables; logs += result.logs.map { ScriptLog($0.level, $0.message) }
-                    applyVariables(variables, to: environmentID)
+                    applyScriptVariables(variables, original: initialVariables, to: environmentID)
                 }
                 try Task.checkCancellation()
-                let built = try RequestBuilder.build(request, variables: variables)
-                var response = try await HTTPClient(followRedirects: request.followRedirects).send(built, proxy: proxy, impersonation: request.impersonation)
-                if saved.scriptsEnabled && !saved.postScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                var built = try RequestBuilder.build(request, variables: variables)
+                let cookiesEnabled = request.cookieJarEnabled ?? false
+                if cookiesEnabled, let issue = network.issue { throw ClientError(issue) }
+                let jar = cookiesEnabled ? network.jar(environmentID) : nil
+                if let url = built.url, let jar, built.value(forHTTPHeaderField: "Cookie") == nil {
+                    let value = jar.header(for: url)
+                    if !value.isEmpty {
+                        request.headers.append(Field("Cookie", value))
+                        built = try RequestBuilder.build(request, variables: variables)
+                    }
+                }
+                var response: APIResponse
+                if let mock = request.mock, mock.enabled { response = try await mock.response(url: built.url!.absoluteString) }
+                else {
+                    let protectedHeaders = request.headers.filter(\.isSecret).map(\.name) + (request.auth.apiKey.map { $0.inQuery ? [] : [$0.name] } ?? [])
+                    response = try await HTTPClient(followRedirects: request.followRedirects).send(built, proxy: proxy, impersonation: request.impersonation, cookies: jar, tls: network.identity(for: built.url), sensitiveHeaders: protectedHeaders)
+                }
+                if cookiesEnabled, let received = response.sessionCookies { var jar = CookieJar(); jar.cookies = received; try network.setJar(jar, environment: environmentID) }
+                let assertionResults = await Task.detached { [request, response] in ResponseTests.evaluate(request.assertions ?? [], response: response, schema: request.responseSchema) }.value
+                testResults[saved.id] = assertionResults
+                logs += assertionResults.map { ScriptLog($0.passed ? "pass" : "fail", $0.name + ": " + $0.message) }
+                if request.scriptsEnabled && !request.postScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     do {
-                        let result = try await ScriptRunner().run(saved.postScript, request: request, response: response, variables: variables)
+                        let result = try await ScriptRunner().run(request.postScript, request: request, response: response, variables: variables)
                         logs += result.logs.map { ScriptLog($0.level, $0.message) }
-                        applyVariables(result.variables, to: environmentID)
+                        applyScriptVariables(result.variables, original: variables, to: environmentID)
                     } catch {
                         if Task.isCancelled { throw CancellationError() }
                         logs.append(ScriptLog("error", error.localizedDescription))
@@ -217,6 +258,26 @@ final class WorkspaceStore {
                 return entry
             }; persistHistory()
         }
+    }
+    func effective(_ request: APIRequest) throws -> ResolvedRequest {
+        try RequestInheritance.resolve(request, collection: workspace.collections.first { $0.requests.contains { $0.id == request.id } }, environment: variables)
+    }
+    func persistAuth(_ auth: RequestAuth, for request: APIRequest) {
+        guard let c = workspace.collections.firstIndex(where: { $0.requests.contains { $0.id == request.id } }) else { return }
+        if request.auth.kind != .inherit { var value = request; value.auth = auth; update(value); return }
+        var parent = request.folderID, visited = Set<UUID>()
+        while let id = parent, visited.insert(id).inserted, let index = workspace.collections[c].folders?.firstIndex(where: { $0.id == id }) {
+            if workspace.collections[c].folders![index].defaults.auth.kind != .inherit { workspace.collections[c].folders![index].defaults.auth = auth; return }
+            parent = workspace.collections[c].folders![index].parentID
+        }
+        workspace.collections[c].defaults?.auth = auth
+    }
+    private func applyScriptVariables(_ values: [String: String], original: [String: String], to id: UUID?) {
+        guard let index = workspace.environments.firstIndex(where: { $0.id == id }) else { return }
+        var result = workspace.environments[index].values
+        for (key, value) in values where original[key] != value { result[key] = value }
+        for key in original.keys where values[key] == nil { result[key] = nil }
+        applyVariables(result, to: id)
     }
     func cancel() { sendTask?.cancel() }
     func clearHistory() { history = []; persistHistory() }
@@ -274,6 +335,18 @@ final class WorkspaceStore {
         }
     }
     func loadSnapshot(_ id: UUID) async throws -> ResponseSnapshot { try await snapshotStorage.load(id) }
+    func useSnapshotAsMock(_ snapshot: ResponseSnapshot) throws {
+        guard let text = String(data: snapshot.response.body, encoding: .utf8), snapshot.response.body.count <= 2 * 1024 * 1024 else { throw ClientError("Mocks require a UTF-8 response up to 2 MB.") }
+        var mock = MockResponse(); mock.enabled = true; mock.status = snapshot.response.status; mock.body = text
+        mock.headers = snapshot.response.headers.filter { !["content-length", "transfer-encoding", "content-encoding", "connection"].contains($0.name.lowercased()) }
+        if let c = workspace.collections.firstIndex(where: { $0.requests.contains { $0.id == snapshot.requestID } }), let r = workspace.collections[c].requests.firstIndex(where: { $0.id == snapshot.requestID }) {
+            workspace.collections[c].requests[r].mock = mock; selectedRequestID = snapshot.requestID
+        } else {
+            var request = APIRequest(name: snapshot.name, method: snapshot.method, url: snapshot.url); request.mock = mock
+            workspace.collections.append(RequestCollection(name: "Mocks", requests: [request])); selectedRequestID = request.id
+        }
+        notice = "Offline mock saved."
+    }
     func removeSnapshot(_ id: UUID) {
         Task { do { snapshots = try await snapshotStorage.remove(id) } catch { issue = error.localizedDescription } }
     }

@@ -55,7 +55,7 @@ struct TransferView: View {
                     }
                     if let error { Label(error, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red) }
                 }.padding(12)
-            }.background(Palette.canvas).navigationTitle("Import & export").navigationBarTitleDisplayMode(.inline)
+            }.background(Palette.canvas).navigationTitle("Import & export").inlineTitle()
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) {
@@ -119,7 +119,7 @@ struct EnvironmentView: View {
                     }
                     Text("Secrets stay on this device. Exports include values.").font(.caption).foregroundStyle(.secondary)
                 }.padding(12)
-            }.background(Palette.canvas).navigationTitle("Environments").navigationBarTitleDisplayMode(.inline)
+            }.background(Palette.canvas).navigationTitle("Environments").inlineTitle()
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
                 .onAppear { editingID = store.workspace.selectedEnvironmentID ?? store.workspace.environments.first?.id }
         }
@@ -135,8 +135,8 @@ struct SettingsView: View {
                 Section {
                     Picker("Proxy", selection: $store.workspace.proxy.kind) { ForEach(ProxyKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
                     if store.workspace.proxy.kind != .system {
-                        TextField("Hostname or IP address", text: $store.workspace.proxy.host).keyboardType(.URL)
-                        TextField("Port", text: $store.workspace.proxy.port).keyboardType(.numberPad)
+                        TextField("Hostname or IP address", text: $store.workspace.proxy.host).urlInput()
+                        TextField("Port", text: $store.workspace.proxy.port).numberInput()
                         TextField("Username (optional)", text: $store.workspace.proxy.username)
                         SecureField("Password (optional)", text: $store.workspace.proxy.password)
                     }
@@ -180,8 +180,8 @@ struct SettingsView: View {
                             .navigationTitle("Licenses")
                     }
                 }
-            }.textInputAutocapitalization(.never).autocorrectionDisabled()
-                .navigationTitle("Connection settings").navigationBarTitleDisplayMode(.inline)
+            }.noCapitalization().autocorrectionDisabled()
+                .navigationTitle("Connection settings").inlineTitle()
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
     }
@@ -206,7 +206,7 @@ struct HistoryView: View {
                         }.buttonStyle(.plain)
                     }
                 }
-            }.background(Palette.canvas).navigationTitle("Request history").navigationBarTitleDisplayMode(.inline)
+            }.background(Palette.canvas).navigationTitle("Request history").inlineTitle()
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }
     }

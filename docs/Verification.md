@@ -74,3 +74,12 @@ Run `swift test` for core tests or `Scripts/test.sh` for the complete local fixt
 - Multipart and raw binary uploads matched fixture bytes on System and browser transports. Both reported redirect hops, sent headers, bounded bodies, and timings.
 - Automatic workspace encoding/writes run on a serial background queue; superseded saves are skipped. Attachments are capped at 40 MB per workspace. Responses/uploads remain capped at 20 MB each. Snapshots retain at most 50 entries within 60 MB.
 - Dedicated `iCloud.co.kitta.monkeytail` container registered and assigned to the production App ID. Sync remains off by default. Offline/no-session behavior preserves the local workspace. Live transfer between two signed-in iCloud devices has not been exercised in the simulator; merge behavior is covered independently.
+
+
+## 1.2 Mac and API tools
+
+- 48 core tests passed: nested inheritance, OAuth PKCE/refresh, official AWS S3 signing vectors, cookie scoping/public suffixes, OpenAPI YAML/local references, portable JSON Schema, GraphQL, SSE parsing, code redaction, mock cancellation, and advanced-credential sync exclusion.
+- Six native Mac integration tests passed on October 2, 2026: OAuth refresh plus inherited scripts/assertions, scoped cookie redirects on both HTTP transports, offline/loopback mocks and snapshot reuse, WebSocket text/binary plus SSE, local cookie persistence, and valid/wrong-password PKCS#12 import with certificate validity and exact-host identity selection.
+- The provisioned universal Mac Release archive succeeded with the production bundle ID, shared iCloud Documents container, app sandbox, network client/server, and user-selected file entitlements.
+- Native Mac UI sent an HTTPS request to httpbin, displayed its JSON body, and showed a passing visual status assertion. The actual 2560 × 1600 screenshot is included under `docs/app-store/screenshots/mac`.
+- Live iCloud transfer between a physical iPhone and Mac has not been independently observed. The shared record format, merge/secret rules, and production signing entitlements are verified.

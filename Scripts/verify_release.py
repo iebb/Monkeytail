@@ -22,4 +22,14 @@ assert icon[:8] == b'\x89PNG\r\n\x1a\n'
 width, height, depth, colour = struct.unpack('>IIBB', icon[16:26])
 assert (width, height) == (1024, 1024), 'App Store icon must be 1024 × 1024'
 assert colour == 2, 'App Store icon must be RGB with no alpha channel'
-print('Release identity, privacy manifest, exempt-encryption declaration, and icon passed.')
+mac_info = plistlib.loads((root / 'MonkeytailMac/Info.plist').read_bytes())
+mac_entitlements = plistlib.loads((root / 'MonkeytailMac/Monkeytail.entitlements').read_bytes())
+ios_entitlements = plistlib.loads((root / 'Monkeytail/Monkeytail.entitlements').read_bytes())
+assert mac_info['ITSAppUsesNonExemptEncryption'] is False
+assert mac_entitlements['com.apple.security.app-sandbox'] is True
+assert mac_entitlements['com.apple.security.network.client'] is True
+assert mac_entitlements['com.apple.security.network.server'] is True
+for key in ['com.apple.developer.icloud-container-identifiers', 'com.apple.developer.ubiquity-container-identifiers']:
+    assert mac_entitlements[key] == ios_entitlements[key], 'Platforms must share the production iCloud container'
+assert 'MonkeytailMac' in project, 'Native Mac target missing'
+print('iOS/Mac release identity, shared iCloud, sandbox, privacy, encryption declaration, and icon passed.')

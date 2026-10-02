@@ -16,7 +16,7 @@ The generated project is committed, so Cloud does not need XcodeGen. Regenerate 
 
 `ci_post_clone.sh` validates the bundle ID, team, privacy manifest, encryption declaration, and opaque 1024px app icon. `ci_pre_xcodebuild.sh` starts HTTP, CONNECT, and SOCKS5 fixtures on the separate test worker. `ci_post_xcodebuild.sh` stops them after testing. The fixture is self-contained in `ci_scripts` so it is available in the testing environment.
 
-The shared scheme runs hosted integration tests and UI tests without parallel execution. GitHub Actions separately runs the core Swift package tests. Tests use loopback servers and require no production credentials.
+The shared scheme runs hosted integration tests and UI tests without parallel execution. GitHub Actions separately runs core tests and the native Mac integration suite. Tests use loopback servers and require no production credentials.
 
 ## Active workflow
 
@@ -33,6 +33,13 @@ The shared scheme runs hosted integration tests and UI tests without parallel ex
 
 Public URLs: [product](https://docs.kitta.co/monkeytail/), [privacy](https://docs.kitta.co/monkeytail/privacy/), [support](https://docs.kitta.co/monkeytail/support/).
 
-The app includes no telemetry, advertising, tracking, account service, or cloud sync. Its App Store privacy answer is Data Not Collected. Requests go to user-selected servers and proxies. System requests use Apple's networking stack; browser profiles bundle curl-impersonate and BoringSSL. The developer classifies the app's standard HTTPS/TLS use as exempt encryption and has directed that `ITSAppUsesNonExemptEncryption` remain `false`. This declares no non-exempt encryption; it does not claim that HTTPS is unencrypted or disable certificate verification. See [Apple's definition of the declaration](https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption).
+The app includes no telemetry, advertising, tracking, account service, or Kitta-operated backend. Optional iCloud Drive sync uses the existing Apple session. Its App Store privacy answer is Data Not Collected. Requests go to user-selected servers and proxies. System requests use Apple's networking stack; browser profiles bundle curl-impersonate and BoringSSL. The developer classifies the app's standard HTTPS/TLS use as exempt encryption and has directed that `ITSAppUsesNonExemptEncryption` remain `false`. This declares no non-exempt encryption; it does not claim that HTTPS is unencrypted or disable certificate verification. See [Apple's definition of the declaration](https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption).
 
 Apple references: [custom scripts](https://developer.apple.com/documentation/xcode/writing-custom-build-scripts), [environment variables](https://developer.apple.com/documentation/xcode/environment-variable-reference).
+
+
+## Native Mac release
+
+Version 1.2 adds the `MonkeytailMac` scheme, sharing bundle ID `co.kitta.monkeytail` and iCloud container `iCloud.co.kitta.monkeytail` with iOS. The Mac release uses sandbox, user-selected file access, network client/server, and iCloud Documents entitlements. Debug ad-hoc builds omit iCloud signing entitlements; use a provisioned Release build for iCloud.
+
+`Monkeytail Mac CI` archives the Mac scheme for App Store eligibility on pushes to `main`, using the latest Xcode and macOS release. Workflow ID: `757bc878-8cdd-42e4-baeb-d4ef08de99ee`. Local Mac integration tests cover OAuth refresh, cookies and redirects, identity import and certificate validity, mocks/snapshots, and WebSocket/SSE. No production credentials are used in tests.

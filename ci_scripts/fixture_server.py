@@ -1,5 +1,7 @@
 """Local HTTP / CONNECT / SOCKS5 fixtures. No external services required."""
 import http.server
+import base64
+import hashlib
 import json
 import io
 import math
@@ -31,6 +33,34 @@ class API(http.server.BaseHTTPRequestHandler):
 
     def respond(self):
         path = urlsplit(self.path)
+        if path.path == '/websocket':
+            self.websocket()
+            return
+        if path.path == '/events':
+            data = b': heartbeat\r\nid: 1\r\nevent: update\r\ndata: {"value":42}\r\n\r\n'
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        if path.path == '/oauth/token':
+            body = parse_qs(self.rfile.read(int(self.headers.get('Content-Length', 0))).decode())
+            valid = body.get('grant_type') == ['refresh_token'] and body.get('refresh_token') == ['fixture-refresh']
+            data = json.dumps({'access_token': 'fixture-access', 'refresh_token': 'fixture-rotated', 'expires_in': 3600, 'token_type': 'Bearer'} if valid else {'error': 'invalid_grant'}).encode()
+            self.send_response(200 if valid else 400)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        if path.path == '/cookie-redirect':
+            self.send_response(302)
+            self.send_header('Location', '/echo')
+            self.send_header('Set-Cookie', 'fixture=redirect; Path=/; HttpOnly')
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
         if path.path.startswith('/media/'):
             kind = path.path.rsplit('/', 1)[-1]
             mime, data = 'application/octet-stream', bytes(range(256))
@@ -60,9 +90,9 @@ class API(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
-        if path.path in ['/tls-ca', '/tls-captures']:
+        if path.path in ['/tls-ca', '/tls-captures', '/client-identity']:
             with tls_fixture.lock:
-                data = tls_fixture.ca_pem if path.path == '/tls-ca' else json.dumps(tls_fixture.captures).encode()
+                data = tls_fixture.ca_pem if path.path == '/tls-ca' else tls_fixture.client_p12 if path.path == '/client-identity' else json.dumps(tls_fixture.captures).encode()
             self.send_response(200)
             self.send_header('Content-Length', str(len(data)))
             self.end_headers()
@@ -116,6 +146,46 @@ class API(http.server.BaseHTTPRequestHandler):
             self.wfile.write(encoded)
         except BrokenPipeError:
             pass
+
+    def websocket(self):
+        self.protocol_version = 'HTTP/1.1'
+        key = self.headers.get('Sec-WebSocket-Key')
+        if not key:
+            self.send_error(400)
+            return
+        accept = base64.b64encode(hashlib.sha1((key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).decode()
+        self.send_response(101)
+        self.send_header('Upgrade', 'websocket')
+        self.send_header('Connection', 'Upgrade')
+        self.send_header('Sec-WebSocket-Accept', accept)
+        self.end_headers()
+        self.connection.settimeout(10)
+        try:
+            while True:
+                first = self.rfile.read(2)
+                if len(first) != 2:
+                    return
+                opcode, size = first[0] & 15, first[1] & 127
+                if size == 126:
+                    size = struct.unpack('!H', self.rfile.read(2))[0]
+                elif size == 127:
+                    size = struct.unpack('!Q', self.rfile.read(8))[0]
+                if size > 1024 * 1024:
+                    return
+                mask = self.rfile.read(4) if first[1] & 128 else b''
+                data = self.rfile.read(size)
+                if len(data) != size:
+                    return
+                if mask:
+                    data = bytes(value ^ mask[i % 4] for i, value in enumerate(data))
+                if opcode == 8:
+                    return
+                opcode = 10 if opcode == 9 else opcode
+                header = bytes([128 | opcode, len(data)]) if len(data) < 126 else bytes([128 | opcode, 126]) + struct.pack('!H', len(data)) if len(data) < 65536 else bytes([128 | opcode, 127]) + struct.pack('!Q', len(data))
+                self.wfile.write(header + data)
+                self.wfile.flush()
+        except (OSError, ValueError):
+            return
 
 
 def relay(client, remote):

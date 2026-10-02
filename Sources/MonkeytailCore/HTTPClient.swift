@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import Security
 
 public final class HTTPClient: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     private let followRedirects: Bool
@@ -24,11 +25,12 @@ public final class HTTPClient: NSObject, URLSessionTaskDelegate, @unchecked Send
         return configuration
     }
 
-    public func send(_ request: URLRequest, proxy: ProxySettings = ProxySettings(), impersonation: BrowserImpersonation? = nil) async throws -> APIResponse {
+    public func send(_ request: URLRequest, proxy: ProxySettings = ProxySettings(), impersonation: BrowserImpersonation? = nil, cookies: CookieJar? = nil, tls: TLSConfiguration? = nil, sensitiveHeaders: [String] = []) async throws -> APIResponse {
         if let impersonation {
-            return try await BrowserHTTPClient(followRedirects: followRedirects).send(request, proxy: proxy, impersonation: impersonation)
+            guard tls == nil else { throw ClientError("Client certificates require the System TLS profile.") }
+            return try await BrowserHTTPClient(followRedirects: followRedirects).send(request, proxy: proxy, impersonation: impersonation, cookies: cookies, sensitiveHeaders: sensitiveHeaders)
         }
-        let trace = SessionTrace(followRedirects: followRedirects, original: request)
+        let trace = SessionTrace(followRedirects: followRedirects, original: request, cookies: cookies, tls: tls, sensitiveHeaders: sensitiveHeaders)
         let session = URLSession(configuration: try Self.configuration(proxy: proxy, timeout: request.timeoutInterval), delegate: trace, delegateQueue: nil)
         defer { session.invalidateAndCancel() }
         let started = ContinuousClock.now
@@ -48,6 +50,8 @@ public final class HTTPClient: NSObject, URLSessionTaskDelegate, @unchecked Send
         let headers = http.allHeaderFields.map { Field(String(describing: $0.key), String(describing: $0.value)) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         var result = APIResponse(status: http.statusCode, headers: headers, body: body, duration: duration, url: http.url?.absoluteString ?? request.url!.absoluteString)
         result.diagnostics = RequestDiagnostics(transport: "System", transactions: await trace.transactions())
+        result.diagnostics?.tlsDetails = trace.tlsDetails()
+        result.sessionCookies = trace.cookies(response: http)?.cookies
         return result
     }
 
@@ -56,11 +60,32 @@ public final class HTTPClient: NSObject, URLSessionTaskDelegate, @unchecked Send
 private final class SessionTrace: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     private let followRedirects: Bool
     private let original: URLRequest
+    private let identity: TLSConfiguration?
+    private let sensitiveHeaders: [String]
+    private var jar: CookieJar?
+    private var tls = TLSDetails()
     private let lock = NSLock()
     private var requests: [URLRequest] = []
     private var captured: [HTTPTransaction]?
     private var pending: CheckedContinuation<[HTTPTransaction], Never>?
-    init(followRedirects: Bool, original: URLRequest) { self.followRedirects = followRedirects; self.original = original; requests = [original] }
+    init(followRedirects: Bool, original: URLRequest, cookies: CookieJar?, tls: TLSConfiguration?, sensitiveHeaders: [String]) { self.followRedirects = followRedirects; self.original = original; self.jar = cookies; self.identity = tls; self.sensitiveHeaders = sensitiveHeaders; requests = [original] }
+    func tlsDetails() -> TLSDetails { lock.lock(); defer { lock.unlock() }; return tls }
+    func cookies(response: HTTPURLResponse) -> CookieJar? {
+        lock.lock(); defer { lock.unlock() }
+        if let url = response.url { jar?.capture(headers: response.allHeaderFields.map { Field(String(describing: $0.key), String(describing: $0.value)) }, url: url) }; return jar
+    }
+    func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        let space = challenge.protectionSpace
+        if space.authenticationMethod == NSURLAuthenticationMethodClientCertificate, let identity,
+           space.host.lowercased() == identity.host, space.port == identity.port {
+            completionHandler(.useCredential, URLCredential(identity: identity.identity, certificates: identity.certificates, persistence: .forSession)); return
+        }
+        if space.authenticationMethod == NSURLAuthenticationMethodServerTrust, let trust = space.serverTrust {
+            let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate] ?? []
+            lock.lock(); tls.certificates = chain.map(CertificateDetails.init); lock.unlock()
+        }
+        completionHandler(.performDefaultHandling, nil)
+    }
     func transactions() async -> [HTTPTransaction] {
         await withCheckedContinuation { continuation in
             lock.lock()
@@ -85,6 +110,12 @@ private final class SessionTrace: NSObject, URLSessionTaskDelegate, @unchecked S
                 download: interval(item.responseStartDate, item.responseEndDate), total: interval(item.fetchStartDate, item.responseEndDate),
                 protocolName: item.networkProtocolName, remoteAddress: item.remoteAddress, proxy: item.isProxyConnection, reusedConnection: item.isReusedConnection)
         }
+        if let last = metrics.transactionMetrics.last {
+            lock.lock()
+            tls.version = last.negotiatedTLSProtocolVersion.map { String(format: "0x%04X", $0.rawValue) }
+            tls.cipher = last.negotiatedTLSCipherSuite.map { String(format: "0x%04X", $0.rawValue) }
+            tls.alpn = last.networkProtocolName; lock.unlock()
+        }
         finish(transactions)
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) { finish([]) }
@@ -99,9 +130,12 @@ private final class SessionTrace: NSObject, URLSessionTaskDelegate, @unchecked S
         var next = request
         if let previous = task.currentRequest?.url, let target = request.url,
            previous.host != target.host || previous.port != target.port || previous.scheme != target.scheme {
-            for header in ["Authorization", "Cookie", "Proxy-Authorization"] { next.setValue(nil, forHTTPHeaderField: header) }
+            for header in (next.allHTTPHeaderFields ?? [:]).keys where SecretPolicy.isSensitive(header) || sensitiveHeaders.contains(where: { $0.caseInsensitiveCompare(header) == .orderedSame }) || header.lowercased() == "x-amz-security-token" { next.setValue(nil, forHTTPHeaderField: header) }
         }
-        lock.lock(); requests.append(next); lock.unlock()
+        lock.lock()
+        if let url = response.url { jar?.capture(headers: response.allHeaderFields.map { Field(String(describing: $0.key), String(describing: $0.value)) }, url: url) }
+        if let url = next.url, let jar { let value = jar.header(for: url); if !value.isEmpty { next.setValue(value, forHTTPHeaderField: "Cookie") } }
+        requests.append(next); lock.unlock()
         completionHandler(next)
     }
 }

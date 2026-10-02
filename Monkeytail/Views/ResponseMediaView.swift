@@ -30,6 +30,7 @@ struct ResponseBytesView: View {
 }
 
 /// Zoom without decoding the original image again on the main thread.
+#if os(iOS)
 struct ResponseImageView: UIViewRepresentable {
     let image: CGImage
     func makeUIView(context: Context) -> ImageScrollView { ImageScrollView(image: image) }
@@ -66,6 +67,20 @@ struct ResponseImageView: UIViewRepresentable {
         }
     }
 }
+
+#else
+struct ResponseImageView: NSViewRepresentable {
+    let image: CGImage
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSScrollView(); scroll.hasHorizontalScroller = true; scroll.hasVerticalScroller = true
+        scroll.allowsMagnification = true; scroll.minMagnification = 0.1; scroll.maxMagnification = 8
+        let view = NSImageView(frame: NSRect(x: 0, y: 0, width: image.width, height: image.height))
+        view.image = NSImage(cgImage: image, size: view.frame.size); view.imageScaling = .scaleNone
+        view.setAccessibilityLabel("Response image preview"); scroll.documentView = view; return scroll
+    }
+    func updateNSView(_ view: NSScrollView, context: Context) {}
+}
+#endif
 
 struct ResponseMediaView: View {
     let url: URL?

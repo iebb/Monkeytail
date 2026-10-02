@@ -183,11 +183,14 @@ final class CoreTests: XCTestCase {
         """#
         let result = try CollectionCodec.decode(Data(source.utf8))
         let request = result.workspace.collections[0].requests[0]
-        XCTAssertEqual(request.name, "Users / List")
-        XCTAssertEqual(request.auth.token, "abc")
+        XCTAssertEqual(request.name, "List")
+        XCTAssertEqual(result.workspace.collections[0].folders?.first?.name, "Users")
+        var collection = result.workspace.collections[0]; collection.defaults?.scriptsEnabled = true
+        let resolved = try RequestInheritance.resolve(request, collection: collection, environment: [:])
+        XCTAssertEqual(resolved.request.auth.token, "abc")
         XCTAssertEqual(request.url, "https://example.com")
         XCTAssertEqual(request.query.count, 2)
-        XCTAssertTrue(request.preScript.contains("root"))
+        XCTAssertTrue(resolved.request.preScript.contains("root"))
         XCTAssertFalse(result.warnings.isEmpty)
     }
 
