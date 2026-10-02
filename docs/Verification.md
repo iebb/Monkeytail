@@ -83,3 +83,9 @@ Run `swift test` for core tests or `Scripts/test.sh` for the complete local fixt
 - The provisioned universal Mac Release archive succeeded with the production bundle ID, shared iCloud Documents container, app sandbox, network client/server, and user-selected file entitlements.
 - Native Mac UI sent an HTTPS request to httpbin, displayed its JSON body, and showed a passing visual status assertion. The actual 2560 × 1600 screenshot is included under `docs/app-store/screenshots/mac`.
 - Live iCloud transfer between a physical iPhone and Mac has not been independently observed. The shared record format, merge/secret rules, and production signing entitlements are verified.
+
+- GitHub Actions independently passed all 48 core tests and six native Mac hosted integration tests at `6aafc12`. A local final Mac run had one WebKit startup timeout while simulators were heavily loaded; that test passed when rerun alone. No execution deadline was increased.
+- Xcode Cloud archives for Mac build 17 and iOS build 18 succeeded; both were processed as valid for App Store submission.
+
+- Xcode Cloud run 19 passed 28 hosted integration and all ten UI tests on iPhone 18 Pro / iOS 27.0, including OpenAPI import → visual assertions → offline mock, body lifecycle/format changes, and MIME previews. The certificate-import test emitted Apple's main-thread performance warning and passed.
+- A fresh local iOS 27 Release UI run stalled before launching tests and was stopped; no local UI pass is claimed for that run. The iOS Release app build succeeded.

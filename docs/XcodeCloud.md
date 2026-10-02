@@ -2,7 +2,7 @@
 
 - Apple Developer organization: Kitta Ltd (Kitta Co)
 - Team: `7P8CLHDH5G`
-- App: Monkeytail, version 1.0
+- App: Monkeytail, version 1.2
 - Bundle ID: `co.kitta.monkeytail`
 - Repository: [iebb/Monkeytail](https://github.com/iebb/Monkeytail), private
 - Branch: `main`; project: `Monkeytail.xcodeproj`; shared scheme: `Monkeytail`
@@ -20,7 +20,7 @@ The shared scheme runs hosted integration tests and UI tests without parallel ex
 
 ## Active workflow
 
-`Monkeytail CI` runs on changes to `main` and can be started manually for any branch. It cancels superseded push builds and archives for App Store Connect with automatic signing, followed by TestFlight internal distribution. As observed for build 13, the Cloud workflow runs Archive only; hosted integration and UI tests are run locally. Both Xcode and macOS track the latest release. GitHub Actions runs core tests for pushes and pull requests to `main`.
+`Monkeytail CI` runs on changes to `main` and can be started manually for any branch. It cancels superseded push builds and archives for App Store Connect with automatic signing, followed by TestFlight internal distribution. This workflow runs Archive only. A separate `Monkeytail iOS Tests` workflow runs hosted integration and UI tests on an iPhone 18 Pro with iOS 27.0. Both Xcode and macOS track the latest release. GitHub Actions runs core and native Mac integration tests for pushes and pull requests to `main`.
 
 - [App Store Connect app](https://appstoreconnect.apple.com/apps/6814706725/distribution): `6814706725`
 - [Cloud workflow](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/xcode-cloud/products/503e6b3e-e4f0-497c-84de-827b8c8b88bd/workflows/31C47B5F-652E-4FB9-8998-248C9C0E2CB8)
@@ -43,3 +43,13 @@ Apple references: [custom scripts](https://developer.apple.com/documentation/xco
 Version 1.2 adds the `MonkeytailMac` scheme, sharing bundle ID `co.kitta.monkeytail` and iCloud container `iCloud.co.kitta.monkeytail` with iOS. The Mac release uses sandbox, user-selected file access, network client/server, and iCloud Documents entitlements. Debug ad-hoc builds omit iCloud signing entitlements; use a provisioned Release build for iCloud.
 
 `Monkeytail Mac CI` archives the Mac scheme for App Store eligibility on pushes to `main`, using the latest Xcode and macOS release. Workflow ID: `757bc878-8cdd-42e4-baeb-d4ef08de99ee`. Local Mac integration tests cover OAuth refresh, cookies and redirects, identity import and certificate validity, mocks/snapshots, and WebSocket/SSE. No production credentials are used in tests.
+
+## Version 1.2 workflows and submission
+
+- `Monkeytail iOS Tests`: workflow `3cd3a64f-c5e7-46ff-808a-61f1084dc966`, required Test action using scheme settings, iPhone 18 Pro / iOS 27.0, clean build, latest Xcode/macOS. Runs on main pushes and supports manual runs.
+- GitHub Actions [run 37034278033](https://github.com/iebb/Monkeytail/actions/runs/37034278033) passed core tests and all six native Mac integration tests at `6aafc12`.
+- Cloud Mac archive 17 and iOS archive 18 succeeded at the same commit. App Store Connect processed both builds as valid with `usesNonExemptEncryption=false`.
+- Mac version `1.2 (17)` was submitted on October 3, 2026 (Singapore time), under [review submission 2cbc5088-bc7b-48b1-8c7f-ebe0ce5ea0fe](https://appstoreconnect.apple.com/apps/6814706725/distribution/reviewsubmissions/details/2cbc5088-bc7b-48b1-8c7f-ebe0ce5ea0fe). The verified submission state was Waiting for Review.
+
+- iOS version `1.2 (18)` was submitted under [review submission f63062a6-f0cb-45b8-8517-65dc67834c90](https://appstoreconnect.apple.com/apps/6814706725/distribution/reviewsubmissions/details/f63062a6-f0cb-45b8-8517-65dc67834c90). The verified submission state was Waiting for Review.
+- Cloud test run 19 at `6aafc12` passed the 28 hosted integration and ten UI test cases on iPhone 18 Pro / iOS 27.0.

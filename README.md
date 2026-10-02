@@ -70,7 +70,7 @@ Selection and editor state survive width changes, rotation, iPad window resizing
 
 Monkeytail workspace JSON preserves all model fields, environments, and proxy settings. Imports append collections and environments and generate fresh IDs; native imports also apply their saved proxy settings. Scripts are disabled on every import until reviewed and enabled.
 
-Postman export preserves nested folders and exports the **active environment** as collection variables. Postman imports preserve folder hierarchy and inherited headers, authentication, variables, and scripts. Raw, URL-encoded, multipart, file, and GraphQL JSON bodies are supported. Scripts are preserved, but only the APIs in [API tools](docs/APITools.md) · [Scripting](docs/Scripting.md) execute here.
+Postman export preserves nested folders and exports the **active environment** as collection variables. Postman imports preserve folder hierarchy and inherited headers, authentication, variables, and scripts. Raw, URL-encoded, multipart, file, and GraphQL JSON bodies are supported. Scripts are preserved; execution supports the APIs documented in [Scripting](docs/Scripting.md).
 
 Insomnia supports the v4 JSON resource format and normalizes `{{ _.variable }}` references. Environments are imported as named flat dictionaries. Nested environment inheritance and dynamic template tags are not emulated. YAML/v5 workspaces should be converted to a supported JSON format in the source tool.
 
