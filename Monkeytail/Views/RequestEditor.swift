@@ -18,7 +18,7 @@ struct RequestEditor: View {
                     case "Params":
                         FieldEditor(fields: $request.query, name: "Parameter")
                         FieldEditor(fields: Binding(get: { request.variables ?? [] }, set: { request.variables = $0 }), name: "Variable")
-                        if let hints = request.parameterHints, !hints.isEmpty { DisclosureGroup("API parameters") { ForEach(hints) { hint in Text(hint.name + " · " + hint.location + " · " + hint.type + (hint.required ? " · required" : "") + (hint.description.isEmpty ? "" : "\n" + hint.description)).font(.caption) } } }
+                        if let hints = request.parameterHints, !hints.isEmpty { DisclosureGroup("API parameters") { ForEach(hints) { hint in Text(parameterSummary(hint)).font(.caption) } } }
                     case "Headers": FieldEditor(fields: $request.headers)
                     case "Body": bodyEditor
                     case "Auth": authEditor
@@ -30,6 +30,13 @@ struct RequestEditor: View {
                 }.padding(12)
             }.scrollDismissesKeyboard(.interactively)
         }
+    }
+
+    private func parameterSummary(_ hint: ParameterHint) -> String {
+        var result = "\(hint.name) · \(hint.location) · \(hint.type)"
+        if hint.required { result += " · required" }
+        if !hint.description.isEmpty { result += "\n" + hint.description }
+        return result
     }
 
     private var bodyEditor: some View {

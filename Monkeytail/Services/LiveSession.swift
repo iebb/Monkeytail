@@ -18,7 +18,7 @@ import MonkeytailCore
     func connect(_ model: APIRequest, variables: [String: String], proxy: ProxySettings, tls: TLSConfiguration? = nil, cookies: CookieJar? = nil) {
         disconnect(); error = nil; connecting = true; lastEventID = nil
         let current = generation
-        task = Task {
+        task = Task { [self] in
             defer { if generation == current { connected = false; connecting = false; socket = nil; session?.invalidateAndCancel(); session = nil } }
             var retry = 2000
             repeat {

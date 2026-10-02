@@ -10,7 +10,7 @@ struct DiagnosticsView: View {
                     Text(diagnostics.transport).font(.subheadline.weight(.medium))
                     if let tls = diagnostics.tlsDetails {
                         DisclosureGroup("TLS certificates") {
-                            Text("Version: " + (tls.version == "0x0304" ? "TLS 1.3" : tls.version == "0x0303" ? "TLS 1.2" : tls.version ?? "—") + " · Cipher: " + (tls.cipher ?? "—") + " · ALPN: " + (tls.alpn ?? "—")).font(.caption.monospaced())
+                            Text(tlsSummary(tls)).font(.caption.monospaced())
                             ForEach(tls.certificates) { certificate in
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(certificate.subject).font(.caption.weight(.medium))
@@ -45,6 +45,11 @@ struct DiagnosticsView: View {
                 }.padding(12)
             } else { EmptyPanel(title: "No diagnostics") }
         }.accessibilityIdentifier("Response diagnostics")
+    }
+    private func tlsSummary(_ tls: TLSDetails) -> String {
+        let version: String
+        switch tls.version { case "0x0304": version = "TLS 1.3"; case "0x0303": version = "TLS 1.2"; default: version = tls.version ?? "—" }
+        return "Version: \(version) · Cipher: \(tls.cipher ?? "—") · ALPN: \(tls.alpn ?? "—")"
     }
     private func timing(_ name: String, _ seconds: Double?) -> some View {
         HStack { Text(name); Spacer(); Text(seconds.map { String(format: "%.1f ms", $0 * 1000) } ?? "—").monospacedDigit() }.font(.caption)
@@ -121,6 +126,9 @@ struct SnapshotDetailView: View {
             else if let error { EmptyPanel(title: error) }
             else { ProgressView() }
         }.navigationTitle(summary.name).inlineTitle()
+            .alert("Could not create mock", isPresented: Binding(get: { error != nil && prepared != nil }, set: { if !$0 { error = nil } })) {
+                Button("OK") { error = nil }
+            } message: { Text(error ?? "") }
             .toolbar { ToolbarItem(placement: .workspaceTrailing) {
                 Button("Use as mock") {
                     guard let snapshot else { return }
