@@ -1,7 +1,11 @@
 import SwiftUI
 import AVKit
 import Combine
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 struct ResponseBytesView: View {
     let bytes: [UInt8]
@@ -30,7 +34,7 @@ struct ResponseBytesView: View {
 }
 
 /// Zoom without decoding the original image again on the main thread.
-#if os(iOS)
+#if os(iOS) || os(visionOS)
 struct ResponseImageView: UIViewRepresentable {
     let image: CGImage
     func makeUIView(context: Context) -> ImageScrollView { ImageScrollView(image: image) }

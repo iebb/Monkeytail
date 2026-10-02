@@ -1,7 +1,11 @@
 import Foundation
 import Network
 import Observation
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 @MainActor @Observable final class MockServer {
     private(set) var address: String?

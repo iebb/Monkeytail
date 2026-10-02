@@ -1,5 +1,9 @@
 import Foundation
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 actor SnapshotStorage {
     private let directory: URL

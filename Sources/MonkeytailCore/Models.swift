@@ -56,6 +56,7 @@ public struct APIRequest: Codable, Identifiable, Equatable, Sendable {
     public var parameterHints: [ParameterHint]?
     public var cookieJarEnabled: Bool?
     public var mock: MockResponse?
+    public var favorite: Bool?
     public init(name: String = "Untitled request", method: String = "GET", url: String = "https://httpbin.org/get") {
         self.name = name; self.method = method; self.url = url
     }

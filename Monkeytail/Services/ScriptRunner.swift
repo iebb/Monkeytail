@@ -1,6 +1,10 @@
 import Foundation
 import WebKit
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 struct ScriptResult: Decodable {
     struct Request: Decodable { var method: String; var url: String; var headers: [String: String]; var body: String }

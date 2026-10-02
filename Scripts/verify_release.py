@@ -32,4 +32,15 @@ assert mac_entitlements['com.apple.security.network.server'] is True
 for key in ['com.apple.developer.icloud-container-identifiers', 'com.apple.developer.ubiquity-container-identifiers']:
     assert mac_entitlements[key] == ios_entitlements[key], 'Platforms must share the production iCloud container'
 assert 'MonkeytailMac' in project, 'Native Mac target missing'
-print('iOS/Mac release identity, shared iCloud, sandbox, privacy, encryption declaration, and icon passed.')
+for target in ['MonkeytailVision', 'MonkeytailWatch']:
+    platform_info = plistlib.loads((root / target / 'Info.plist').read_bytes())
+    assert platform_info['ITSAppUsesNonExemptEncryption'] is False
+    assert target in project
+watch_privacy = plistlib.loads((root / 'MonkeytailWatch/PrivacyInfo.xcprivacy').read_bytes())
+assert watch_privacy['NSPrivacyCollectedDataTypes'] == [] and watch_privacy['NSPrivacyTracking'] is False
+vision_entitlements = plistlib.loads((root / 'MonkeytailVision/Monkeytail.entitlements').read_bytes())
+for key in ['com.apple.developer.icloud-container-identifiers', 'com.apple.developer.ubiquity-container-identifiers']:
+    assert vision_entitlements[key] == ios_entitlements[key]
+assert (root / 'Packages/MonkeytailSystemCore/Sources/MonkeytailSystemCore').resolve() == root / 'Sources/MonkeytailCore'
+assert (root / 'Packages/MonkeytailWatchCore/Sources/MonkeytailWatchCore').resolve() == root / 'Sources/MonkeytailCompanion'
+print('Four-platform identity, shared iCloud, Mac sandbox, privacy, encryption declarations, icon, and canonical shared sources passed.')

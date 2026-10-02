@@ -2,7 +2,7 @@
 
 # Monkeytail
 
-**A native request debugger for iPhone, iPad, and Mac.** Import a command, edit your request, and inspect the response. Built in SwiftUI with a compact iPhone editor and an adaptive desktop workspace.
+**A native request debugger for iPhone, iPad, Mac, and visionOS, with a compact Apple Watch companion.** Import a command, edit your request, and inspect the response. Built in SwiftUI with a compact iPhone editor and an adaptive desktop workspace.
 
 Free. No in-app purchases. No account. No data collected by Kitta Co.
 
@@ -14,7 +14,7 @@ See [verification results and device screenshots](docs/Verification.md). Importa
 
 ## Run
 
-Open **`Monkeytail.xcodeproj`**. Select **Monkeytail** for iPhone/iPad or **MonkeytailMac** for the native macOS app, then Run. Requires iOS 17 or macOS 14; client certificate import on Mac requires macOS 15. Builds and verification use Xcode 27. Choose your signing team for physical devices and iCloud-enabled Mac builds. Mac Debug builds use separate sandbox entitlements for ad-hoc local testing; Release enables the shared iCloud container.
+Open **`Monkeytail.xcodeproj`**. Select **Monkeytail** for iPhone/iPad, **MonkeytailMac** for Mac, **MonkeytailVision** for visionOS, or **MonkeytailWatch** for the Watch companion. Requires iOS 17, macOS 14, visionOS 1, or watchOS 10; client certificate import on Mac requires macOS 15. Builds and verification use Xcode 27. Choose your signing team for physical devices and iCloud-enabled Mac builds. Mac Debug builds use separate sandbox entitlements for ad-hoc local testing; Release enables the shared iCloud container.
 
 The generated Xcode project is checked in. If you change target settings in `project.yml`, regenerate it with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
 
@@ -31,7 +31,7 @@ The starter collection uses httpbin.org. Requests are only sent when you tap **S
 - Collections and nested folders with inherited headers, authentication, variables, and scripts; add, rename, duplicate, delete, search, and automatic local persistence. Optional iCloud Drive sync uses the device’s existing session; no Monkeytail account.
 - Named environments and `{{variable}}` substitution throughout requests; nested variables with missing-variable and cycle detection.
 - Real HTTP transport, cancellation, response sharing, and per-hop DNS/connect/TLS/upload/server/download diagnostics with transport-reported headers and bounded sent bodies.
-- Optional [browser TLS and HTTP/2 profiles](docs/BrowserProfiles.md) for Chrome, Firefox, and Safari, including iOS and Android presets. Runs locally using pinned curl-impersonate; certificate verification stays enabled.
+- Optional [browser TLS and HTTP/2 profiles](docs/BrowserProfiles.md) for Chrome, Firefox, and Safari, including iOS and Android presets on iOS and Mac. visionOS uses System TLS; the pinned browser library has no visionOS slice. Runs locally using pinned curl-impersonate; certificate verification stays enabled.
 - JSON pretty printing, minification in the core library, syntax colors, expandable tree, line search, copying, and request-body formatting.
 - MIME-aware image previews with pinch zoom, native audio/video playback, and offset/ASCII Hex and Binary viewers. Unsupported media can be inspected as bytes or saved.
 - Local JavaScript before-request and after-response hooks, console logs, assertions, tests, and environment updates.
@@ -65,6 +65,18 @@ Layout follows the **available window size**:
 | Accessibility text sizes | Single-pane editor to preserve readable text |
 
 Selection and editor state survive width changes, rotation, iPad window resizing, and foldable size changes. iPhone Duo is tested in its installed simulator configuration; the layout makes no assumption about an undocumented hinge position or APIs for independent physical displays.
+
+## Apple Watch companion
+
+Star a request in the actions menu on iPhone. Open **Apple Watch**, tap a favourite to copy it, then tap **Sync** when the paired app is installed. The Watch lists up to ten copies: open one and tap **Send** or **Cancel**, then inspect status, time, headers, or Pretty/Raw/Hex text. There is no request editor or automatic polling on Watch.
+
+The selected environment and inherited headers/auth are resolved when copied. **Include credentials & body** is off by default; opt in for authenticated or POST requests. Copies use device-only Keychain storage and WatchConnectivity's latest application context. Editing a request or changing environments requires copying it again; Sync removes copies that are no longer favourites. The Watch makes its own HTTP request, so the server must be reachable from Watch. Responses stay in memory. Transfer between physical paired devices still needs hardware verification.
+
+Watch supports System HTTP/GraphQL, verified HTTPS, and manual basic/bearer/API-key headers. Proxies, browser TLS presets, client identities, cookies, OAuth/AWS, scripts, mocks, WebSocket, and SSE remain in the full app. Unsupported configurations produce an error before copying. Timeout is at most 30 seconds, a copied body at most 32 KB, the transfer at most 60 KB, a response at most 256 KB, and a displayed body at most 16 KB.
+
+The visionOS window shares the full workspace editor, response viewers, API tools, and optional iCloud container with iPhone and Mac. Browser TLS presets require System transport on visionOS. The system-only and Watch Swift packages link canonical sources through checked-in symlinks, avoiding the iOS/Mac curl binary on unsupported platforms.
+
+New platform source targets are present; store availability depends on their respective App Store review.
 
 ## Interchange scope
 

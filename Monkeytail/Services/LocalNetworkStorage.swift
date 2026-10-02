@@ -1,6 +1,10 @@
 import Foundation
 import Observation
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 @MainActor @Observable final class LocalNetworkStorage {
     private let vault: SecretVault

@@ -53,3 +53,10 @@ Version 1.2 adds the `MonkeytailMac` scheme, sharing bundle ID `co.kitta.monkeyt
 
 - iOS version `1.2 (18)` was submitted under [review submission f63062a6-f0cb-45b8-8517-65dc67834c90](https://appstoreconnect.apple.com/apps/6814706725/distribution/reviewsubmissions/details/f63062a6-f0cb-45b8-8517-65dc67834c90). The verified submission state was Waiting for Review.
 - Cloud test run 19 at `6aafc12` passed the 28 hosted integration and ten UI test cases on iPhone 18 Pro / iOS 27.0.
+
+
+## 1.3 native visionOS and Watch
+
+The `Monkeytail visionOS CI` workflow archives scheme `MonkeytailVision` for `ANY_VISIONOS_DEVICE`. `Monkeytail Vision and Watch Tests` runs both native UI schemes on Apple Vision Pro / visionOS 27 and Apple Watch Series 12 (42 mm) / watchOS 27. The iOS archive embeds `MonkeytailWatch`; the Watch companion is distributed with iOS, not as a separate App Store platform. The iPhone test scheme includes Watch transfer/redaction checks. All release targets declare `ITSAppUsesNonExemptEncryption=false` and collect no data.
+
+Existing iOS/Mac 1.2 review submissions are preserved. A later iOS version containing Watch can be submitted when App Store Connect permits a new version; uploads to TestFlight can proceed meanwhile.

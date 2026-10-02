@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 struct AuthEditor: View {
     @Binding var auth: RequestAuth

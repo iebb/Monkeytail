@@ -6,6 +6,13 @@ public enum BrowserProfile: String, Codable, CaseIterable, Identifiable, Sendabl
     case firefox = "firefox147"
     case safari = "safari2601"
     case safariIOS = "safari260_ios"
+    public static var isSupported: Bool {
+        #if canImport(MonkeytailCurl)
+        true
+        #else
+        false
+        #endif
+    }
     public var id: String { rawValue }
     public var title: String {
         switch self {

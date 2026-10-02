@@ -1,6 +1,10 @@
 import Foundation
 import AuthenticationServices
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 #if os(macOS)
 import AppKit
 #else

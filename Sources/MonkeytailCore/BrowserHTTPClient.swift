@@ -1,3 +1,4 @@
+#if canImport(MonkeytailCurl)
 import Foundation
 import CFNetwork
 import MonkeytailCurl
@@ -237,3 +238,13 @@ private let curlDebugCallback: curl_debug_callback = { _, kind, bytes, count, co
     }
     return 0
 }
+
+#else
+import Foundation
+final class BrowserHTTPClient: @unchecked Sendable {
+    init(followRedirects: Bool = true, certificateAuthorities: Data? = nil) {}
+    func send(_ request: URLRequest, proxy: ProxySettings, impersonation: BrowserImpersonation, cookies: CookieJar? = nil, sensitiveHeaders: [String] = []) async throws -> APIResponse {
+        throw ClientError("Browser TLS profiles are unavailable on this platform. Select System in Auth → TLS profile.")
+    }
+}
+#endif

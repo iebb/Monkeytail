@@ -1,7 +1,11 @@
 import SwiftUI
 import PhotosUI
 import UniformTypeIdentifiers
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 struct UploadFileEditor: View {
     @Binding var file: RequestFile?

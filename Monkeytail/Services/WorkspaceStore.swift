@@ -1,6 +1,10 @@
 import SwiftUI
 import Observation
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 @MainActor @Observable
 final class WorkspaceStore {

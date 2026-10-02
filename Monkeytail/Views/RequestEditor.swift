@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 struct RequestEditor: View {
     @Binding var request: APIRequest
@@ -28,7 +32,7 @@ struct RequestEditor: View {
                     }
                     if let editorError { Label(editorError, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red) }
                 }.padding(12)
-            }.scrollDismissesKeyboard(.interactively)
+            }.dismissKeyboardOnScroll()
         }
     }
 
@@ -82,7 +86,7 @@ struct RequestEditor: View {
                     set: { profile in request.impersonation = profile.map { BrowserImpersonation(profile: $0, browserHeaders: request.impersonation?.browserHeaders ?? true) } }
                 )) {
                     Text("System").tag(BrowserProfile?.none)
-                    ForEach(BrowserProfile.allCases) { Text($0.title).tag(Optional($0)) }
+                    ForEach(BrowserProfile.isSupported ? BrowserProfile.allCases : []) { Text($0.title).tag(Optional($0)) }
                 }.pickerStyle(.menu).labelsHidden().frame(minHeight: 44).accessibilityIdentifier("TLS profile")
             }.font(.subheadline)
             if request.impersonation != nil {

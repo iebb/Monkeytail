@@ -1,5 +1,9 @@
 import Foundation
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 /// Serializes large native workspaces away from the UI. A newer save supersedes queued work.
 final class WorkspacePersistence: @unchecked Sendable {

@@ -1,5 +1,9 @@
 import Foundation
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 /// One file per installation avoids concurrent file writes. Records merge independently across files.
 actor ICloudWorkspace {

@@ -1,6 +1,10 @@
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 struct CollectionDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.json] }

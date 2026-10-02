@@ -1,6 +1,10 @@
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 struct NetworkToolsView: View {
     let store: WorkspaceStore

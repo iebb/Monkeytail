@@ -15,6 +15,13 @@ enum Clipboard {
     }
 }
 extension View {
+    @ViewBuilder func dismissKeyboardOnScroll() -> some View {
+        #if os(visionOS)
+        self
+        #else
+        self.scrollDismissesKeyboard(.interactively)
+        #endif
+    }
     @ViewBuilder func inlineTitle() -> some View {
         #if os(macOS)
         self

@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 struct TestsEditor: View {
     @Binding var request: APIRequest

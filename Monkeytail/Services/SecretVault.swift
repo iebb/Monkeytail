@@ -1,7 +1,11 @@
 import Foundation
 import Security
 import CryptoKit
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 struct SecretVault {
     let account: String

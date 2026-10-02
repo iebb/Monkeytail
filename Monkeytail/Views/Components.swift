@@ -4,7 +4,11 @@ import AppKit
 #else
 import UIKit
 #endif
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 private struct InputDismissalKey: EnvironmentKey {
     static let defaultValue = 0
@@ -143,7 +147,7 @@ struct PillTabs: View {
     }
 }
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
 struct ShareSheet: UIViewControllerRepresentable {
     var items: [Any]
     func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: items, applicationActivities: nil) }

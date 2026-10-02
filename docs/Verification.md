@@ -89,3 +89,11 @@ Run `swift test` for core tests or `Scripts/test.sh` for the complete local fixt
 
 - Xcode Cloud run 19 passed 28 hosted integration and all ten UI tests on iPhone 18 Pro / iOS 27.0, including OpenAPI import → visual assertions → offline mock, body lifecycle/format changes, and MIME previews. The certificate-import test emitted Apple's main-thread performance warning and passed.
 - A fresh local iOS 27 Release UI run stalled before launching tests and was stopped; no local UI pass is claimed for that run. The iOS Release app build succeeded.
+
+
+## 1.3 visionOS and Watch companion
+
+- 48 core tests plus two Watch payload tests pass locally. Watch tests validate exact binary payload round trips, duplicate/ten-request limits, oversize payload/body rejection, URL restrictions, header CR/LF injection, and timeout limits.
+- The native visionOS target shares the canonical core through a system-only package. The Watch target shares only the bounded companion transport/models and is embedded in iOS. The pinned browser framework remains on iOS/Mac.
+- Dedicated UI tests send a loopback JSON request and assert visible response content on visionOS and a compact Watch. Hosted iOS tests cover private-field omission, explicit inclusion, private URL handling, and unsupported transports. Mac fixture tests cover Watch transport byte formatting, cross-origin credential removal, no-redirect behavior, oversize response rejection, and cancellation.
+- Local new-platform UI execution and physical WatchConnectivity transfer are not yet verified. See release records for subsequent Cloud results.

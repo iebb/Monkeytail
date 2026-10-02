@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
 import MonkeytailCore
+#endif
 
 struct WorkspaceView: View {
     @Bindable var store: WorkspaceStore
@@ -17,7 +21,7 @@ struct WorkspaceView: View {
     @State private var editingCollectionID: UUID?
     @State private var editingFolderID: UUID?
 
-    enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, history, snapshots, curl, code, network, defaults; var id: String { rawValue } }
+    enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, history, snapshots, curl, code, network, defaults, watch; var id: String { rawValue } }
 
     var body: some View {
         GeometryReader { geometry in
@@ -48,6 +52,12 @@ struct WorkspaceView: View {
             case .curl: if let request = store.selectedRequest, let resolved = try? store.effective(request) { CurlExportView(request: resolved.request, variables: resolved.variables) }
             case .code: if let request = store.selectedRequest { CodeExportView(store: store, request: request) }
             case .network: NetworkToolsView(store: store)
+            case .watch:
+                #if os(iOS)
+                WatchTransferView(store: store)
+                #else
+                EmptyView()
+                #endif
             case .defaults: if let id = editingCollectionID { FolderSettingsView(store: store, collectionID: id, folderID: editingFolderID) }
             }
         }
@@ -162,6 +172,12 @@ struct WorkspaceView: View {
         ToolbarItem(placement: .workspaceTrailing) {
             Menu {
                 Button("New request", systemImage: "plus") { store.addRequest() }
+                if let request = store.selectedRequest {
+                    Button(request.favorite == true ? "Unfavourite" : "Favourite", systemImage: request.favorite == true ? "star.slash" : "star") { var value = request; value.favorite = request.favorite != true; store.update(value) }.accessibilityIdentifier("Toggle request favourite")
+                }
+                #if os(iOS)
+                Button("Apple Watch", systemImage: "applewatch") { sheet = .watch }
+                #endif
                 Button("Client code", systemImage: "curlybraces") { sheet = .code }.disabled(store.selectedRequest == nil)
                 Button("Cookies & certificates", systemImage: "lock.shield") { sheet = .network }
                 Button("Export cURL", systemImage: "terminal") { sheet = .curl }.disabled(store.selectedRequest == nil)
@@ -276,7 +292,7 @@ struct RequestWorkspace: View {
     private func dismissKeyboard() {
         urlFocused = false
         inputDismissal += 1
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
         for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) where scene.activationState == .foregroundActive {
             for window in scene.windows where window.isKeyWindow { window.endEditing(true) }
         }
