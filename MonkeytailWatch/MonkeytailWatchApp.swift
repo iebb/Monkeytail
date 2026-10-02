@@ -31,7 +31,7 @@ private struct WatchRequestView: View {
     private var response: WatchResponse? { store.responses[request.id] }
     var body: some View {
         List {
-            Text(current.map { $0.method + " " + $0.url } ?? "Removed from Watch").font(.caption2).foregroundStyle(.secondary)
+            Text(current.map { $0.method + " " + $0.url } ?? "Removed from Watch").font(.caption2).foregroundStyle(.secondary).lineLimit(2)
             Button(store.runningID == request.id ? "Cancel" : "Send") {
                 if store.runningID == request.id { store.cancel() } else if let current { store.send(current) }
             }.buttonStyle(.borderedProminent).disabled(current == nil).accessibilityIdentifier("Watch send request")

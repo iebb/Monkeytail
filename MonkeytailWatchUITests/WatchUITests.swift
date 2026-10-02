@@ -8,7 +8,7 @@ final class WatchUITests: XCTestCase {
         let status = app.staticTexts["Watch response status"]; XCTAssertTrue(status.waitForExistence(timeout: 15)); XCTAssertTrue(status.label.hasPrefix("200"))
         let detail = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); detail.name = "Watch favourite status"; detail.lifetime = .keepAlways; add(detail)
         let bodyLink = app.buttons["Watch view body"]
-        if !bodyLink.isHittable { app.scrollViews.firstMatch.swipeUp() }
+        if !bodyLink.isHittable { app.swipeUp() }
         bodyLink.tap()
         let body = app.descendants(matching: .any).matching(identifier: "Watch response body").firstMatch
         XCTAssertTrue(body.waitForExistence(timeout: 5)); XCTAssertTrue(body.isHittable)
