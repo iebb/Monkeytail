@@ -30,19 +30,21 @@ private struct WatchRequestView: View {
     private var current: WatchRequest? { store.requests.first { $0.id == request.id } }
     private var response: WatchResponse? { store.responses[request.id] }
     var body: some View {
-        List {
-            Text(current.map { $0.method + " " + $0.url } ?? "Removed from Watch").font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+        ScrollView {
+        VStack(spacing: 6) {
+            Text(current.map { $0.method + " " + $0.url } ?? "Removed from Watch").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             Button(store.runningID == request.id ? "Cancel" : "Send") {
                 if store.runningID == request.id { store.cancel() } else if let current { store.send(current) }
-            }.buttonStyle(.borderedProminent).disabled(current == nil).accessibilityIdentifier("Watch send request")
+            }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity).disabled(current == nil).accessibilityIdentifier("Watch send request")
             if let issue = store.issue { Text(issue).font(.caption).foregroundStyle(.red) }
             if let response {
-                Text("\(response.status) · \(Int(response.duration * 1000)) ms · \(response.body.count) B").font(.caption).monospacedDigit().accessibilityIdentifier("Watch response status")
+                Text("\(response.status) · \(Int(response.duration * 1000)) ms · \(response.body.count) B").font(.caption2).monospacedDigit().accessibilityIdentifier("Watch response status")
+                NavigationLink("Body") { WatchBodyView(response: response) }.buttonStyle(.bordered).accessibilityIdentifier("Watch view body")
                 NavigationLink("Headers") {
                     List(response.headers.keys.sorted(), id: \.self) { key in VStack(alignment: .leading) { Text(key).font(.caption); Text(response.headers[key] ?? "").font(.caption2).foregroundStyle(.secondary) } }.navigationTitle("Headers")
-                }
-                NavigationLink("Body") { WatchBodyView(response: response) }.accessibilityIdentifier("Watch view body")
+                }.buttonStyle(.plain).font(.caption2)
             }
+        }.padding(.horizontal, 6)
         }.navigationTitle(request.name)
             .onDisappear { if store.runningID == request.id { store.cancel() } }
     }
@@ -52,7 +54,12 @@ private struct WatchBodyView: View {
     @State private var format = "Pretty"
     var body: some View {
         VStack(spacing: 4) {
-            Picker("Format", selection: $format) { ForEach(["Pretty", "Raw", "Hex"], id: \.self) { Text($0) } }.labelsHidden()
+            HStack {
+                ForEach(["Pretty", "Raw", "Hex"], id: \.self) { name in
+                    Button(name) { format = name }.font(.caption2).frame(maxWidth: .infinity, minHeight: 32)
+                        .foregroundStyle(format == name ? Color.mint : Color.secondary)
+                }
+            }.buttonStyle(.plain)
             ScrollView {
                 Text(format == "Pretty" ? response.pretty : format == "Hex" ? response.hex : response.text)
                     .font(.system(.caption2, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)

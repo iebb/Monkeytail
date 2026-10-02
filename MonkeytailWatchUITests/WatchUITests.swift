@@ -7,7 +7,7 @@ final class WatchUITests: XCTestCase {
         let send = app.buttons["Watch send request"]; XCTAssertTrue(send.waitForExistence(timeout: 5)); send.tap()
         let status = app.staticTexts["Watch response status"]; XCTAssertTrue(status.waitForExistence(timeout: 15)); XCTAssertTrue(status.label.hasPrefix("200"))
         let bodyLink = app.buttons["Watch view body"]
-        if !bodyLink.isHittable { app.swipeUp() }
+        XCTAssertTrue(bodyLink.isHittable)
         bodyLink.tap()
         let body = app.descendants(matching: .any).matching(identifier: "Watch response body").firstMatch
         XCTAssertTrue(body.waitForExistence(timeout: 5)); XCTAssertTrue(body.label.contains("headers"))
