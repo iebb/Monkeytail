@@ -27,4 +27,19 @@ final class WatchHTTPTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(100)); task.cancel()
         do { _ = try await task.value; XCTFail("Cancellation ignored") } catch {}
     }
+    func testWatchRequestsSurviveStorageSwitches() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let storage = WatchVault(directory: directory, defaults: defaults)
+        var request = WatchRequest.sample; request.headers["Authorization"] = "Bearer watch-token"
+        try storage.save([request])
+        XCTAssertFalse(storage.useKeychain)
+        XCTAssertEqual(try storage.load()?.first?.headers["Authorization"], "Bearer watch-token")
+        try storage.setUseKeychain(true); XCTAssertTrue(storage.useKeychain)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("watch-requests.json").path))
+        XCTAssertEqual(try storage.load()?.first?.headers["Authorization"], "Bearer watch-token")
+        try storage.setUseKeychain(false); XCTAssertFalse(storage.useKeychain)
+        XCTAssertEqual(try storage.load()?.first?.headers["Authorization"], "Bearer watch-token")
+    }
+
 }

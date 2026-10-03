@@ -53,24 +53,70 @@ public enum WatchPayload {
         return value
     }
 }
-/// Device-only storage on both sides of the paired Watch transfer.
+/// Local request storage, with Keychain available as an opt-in.
 public struct WatchVault {
-    private var query: [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "co.kitta.monkeytail.watch-requests", kSecAttrAccount as String: "saved", kSecAttrSynchronizable as String: false] }
-    public init() {}
+    private let directory: URL
+    private let defaults: UserDefaults
+    private let customDirectory: Bool
+    private let preference = "monkeytail.watch.useKeychain"
+    public var useKeychain: Bool { defaults.bool(forKey: preference) }
+    private var file: URL { directory.appendingPathComponent("watch-requests.json") }
+    private var query: [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "co.kitta.monkeytail.watch-requests", kSecAttrAccount as String: customDirectory ? directory.path : "saved", kSecAttrSynchronizable as String: false] }
+    public init(directory: URL? = nil, defaults: UserDefaults = .standard) {
+        self.directory = directory ?? URL.applicationSupportDirectory.appendingPathComponent("Monkeytail")
+        self.defaults = defaults; self.customDirectory = directory != nil
+    }
     public func load() throws -> [WatchRequest]? {
+        if !useKeychain {
+            guard FileManager.default.fileExists(atPath: file.path) else { return nil }
+            return try WatchPayload.decode(Data(contentsOf: file))
+        }
+        if let data = try loadKeychain() {
+            return try WatchPayload.decode(data)
+        }
+        if FileManager.default.fileExists(atPath: file.path) {
+            let value = try WatchPayload.decode(Data(contentsOf: file))
+            try save(value); try FileManager.default.removeItem(at: file); return value
+        }
+        return nil
+    }
+    private func loadKeychain() throws -> Data? {
         var query = query; query[kSecReturnData as String] = true; query[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?; let status = SecItemCopyMatching(query as CFDictionary, &item)
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess, let data = item as? Data else { throw WatchError("Unlock your device to load Watch requests.") }
-        return try WatchPayload.decode(data)
+        return data
     }
-    public func save(_ value: [WatchRequest]) throws {
-        let data = try WatchPayload.encode(value)
-        var status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-        if status == errSecItemNotFound {
-            var create = query; create[kSecValueData as String] = data; create[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            status = SecItemAdd(create as CFDictionary, nil)
+    public func save(_ value: [WatchRequest], useKeychain choice: Bool? = nil) throws {
+        let data = try WatchPayload.encode(value), enabled = choice ?? useKeychain, previous = useKeychain
+        if enabled {
+            var status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+            if status == errSecItemNotFound {
+                var create = query; create[kSecValueData as String] = data; create[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+                status = SecItemAdd(create as CFDictionary, nil)
+            }
+            guard status == errSecSuccess else { throw WatchError("Could not save Watch requests (\(status)).") }
+        } else {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try data.write(to: file, options: [.atomic, .completeFileProtectionUnlessOpen])
         }
-        guard status == errSecSuccess else { throw WatchError("Could not save Watch requests (\(status)).") }
+        defaults.set(enabled, forKey: preference)
+        if previous != enabled {
+            if enabled, FileManager.default.fileExists(atPath: file.path) { try FileManager.default.removeItem(at: file) }
+            else if !enabled { try removeKeychain() }
+        }
+    }
+    public func setUseKeychain(_ enabled: Bool) throws {
+        guard enabled != useKeychain else { return }
+        var value = try load() ?? []
+        if enabled, let data = try loadKeychain() {
+            let ids = Set(value.map(\.id))
+            value = try WatchPayload.decode(data).filter { !ids.contains($0.id) } + value
+        }
+        try save(value, useKeychain: enabled)
+    }
+    private func removeKeychain() throws {
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw WatchError("Could not remove previous Watch storage (\(status)).") }
     }
 }

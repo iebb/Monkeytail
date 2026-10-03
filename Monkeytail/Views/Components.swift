@@ -96,7 +96,7 @@ struct FieldEditor: View {
                     }.opacity(field.enabled ? 1 : 0.5)
                         .font(.system(.footnote, design: .monospaced))
                     Menu {
-                        Button(field.isSecret ? "Allow iCloud sync" : "Keep value on this device") { field.secret = !field.isSecret }
+                        Button(field.isSecret ? "Mark ordinary" : "Mark sensitive") { field.secret = !field.isSecret }
                         Button("Remove field", role: .destructive) { fields.removeAll { $0.id == field.id } }
                     } label: { Image(systemName: field.isSecret ? "lock" : "ellipsis").foregroundStyle(.secondary).frame(width: 44, height: 44) }
                         .buttonStyle(.plain).accessibilityLabel("Options for \(field.name)")

@@ -121,7 +121,7 @@ struct EnvironmentView: View {
                             store.workspace.environments.removeAll { $0.id == editingID }; editingID = store.workspace.environments.first?.id
                         }.font(.footnote).padding(.top, 16)
                     }
-                    Text("Secrets stay on this device. Exports include values.").font(.caption).foregroundStyle(.secondary)
+                    Text("Exports include values.").font(.caption).foregroundStyle(.secondary)
                 }.padding(12)
             }.background(Palette.canvas).navigationTitle("Environments").inlineTitle()
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
@@ -144,50 +144,51 @@ struct SettingsView: View {
                         TextField("Username (optional)", text: $store.workspace.proxy.username)
                         SecureField("Password (optional)", text: $store.workspace.proxy.password)
                     }
-                } header: { Text("Connection") } footer: {
-                    Text(store.workspace.proxy.kind == .system ? "Uses device network and proxy settings." : "All requests use this proxy. HTTP/HTTPS use CONNECT. No direct fallback.")
-                }
+                } header: { Text("Connection") }
                 Section {
                     Toggle("iCloud sync", isOn: Binding(get: { store.syncEnabled }, set: { store.setSyncEnabled($0) }))
                     if store.syncEnabled {
-                        Text(store.syncStatus).font(.caption).foregroundStyle(.secondary)
-                        Button("Sync now") { Task { await store.synchronize() } }.disabled(store.syncing)
+                        Toggle("Include credentials", isOn: Binding(get: { store.syncCredentials }, set: { store.setSyncCredentials($0) }))
+                        HStack {
+                            Text(store.syncStatus).font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Sync now") { Task { await store.synchronize() } }.disabled(store.syncing)
+                        }
                     }
-                } header: { Text("Workspace") } footer: {
-                    Text("Uses your device’s iCloud Drive. No Monkeytail account. Credentials, marked secrets, uploads, and snapshots stay local. Check request bodies and scripts before syncing.")
-                }
-                Section("Transport") {
-                    Label("TLS certificates are verified", systemImage: "lock.shield")
-                    Text("Choose a browser TLS profile in each request’s Auth tab.").font(.footnote).foregroundStyle(.secondary)
-                    DisclosureGroup("Certificates & cookies") {
-                        Text("For debugging proxies, install the CA profile and enable full trust in iOS Settings. HTTP and local APIs are supported.").font(.footnote).foregroundStyle(.secondary)
-                        Text("Send cookies with a Cookie header. There is no shared cookie jar.").font(.footnote).foregroundStyle(.secondary)
+                    Toggle("Use Keychain", isOn: Binding(get: { store.useKeychain }, set: { store.setUseKeychain($0) }))
+                        .help("When off, credentials are stored with the local workspace.")
+                    Toggle("Hide in client code", isOn: Binding(get: { store.hideCredentials }, set: { store.setHideCredentials($0) }))
+                    DisclosureGroup("Storage & limits") {
+                        LabeledContent("Storage", value: store.syncEnabled ? "Local + iCloud" : "Local")
+                        LabeledContent("History", value: "50 requests")
+                        LabeledContent("Response", value: "20 MB")
+                        LabeledContent("Scripts", value: "3 seconds")
+                        LabeledContent("Snapshots", value: "50 / 60 MB")
+                        LabeledContent("TLS certificates", value: "Verified")
+                        Button("Clear request history", role: .destructive) { store.clearHistory() }
+                            .disabled(store.history.isEmpty)
                     }
-                }
-                Section("On your device") {
-                    LabeledContent("Storage", value: store.syncEnabled ? "Local + iCloud" : "Local workspace")
-                    LabeledContent("History", value: "Last 50 requests")
-                    LabeledContent("Response limit", value: "20 MB")
-                    LabeledContent("Script time limit", value: "3 seconds")
-                    LabeledContent("Snapshots", value: "50 / 60 MB")
-                    Text("Workspace credentials use the device Keychain. History and saved snapshots use iOS file protection.").font(.footnote).foregroundStyle(.secondary)
-                    Button("Clear request history", role: .destructive) { store.clearHistory() }
-                }
-                Section("About") {
-                    LabeledContent("Monkeytail", value: "1.1")
-                    LabeledContent("Developer", value: "Kitta Co")
-                    Text("No data collected. No tracking or analytics.").font(.footnote).foregroundStyle(.secondary)
-                    Link("Privacy policy", destination: URL(string: "https://docs.kitta.co/monkeytail/privacy/")!)
-                    Link("Support", destination: URL(string: "https://docs.kitta.co/monkeytail/support/")!)
-                    NavigationLink("Open source licenses") {
+                } header: { Text("Workspace") }
+                Section {
+                    LabeledContent("Monkeytail", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3")
+                    HStack(spacing: 20) {
+                        Link("Privacy", destination: URL(string: "https://docs.kitta.co/monkeytail/privacy/")!)
+                        Link("Support", destination: URL(string: "https://docs.kitta.co/monkeytail/support/")!)
+                        Spacer(minLength: 0)
+                    }
+                    NavigationLink("Licenses") {
                         ScrollView { Text(BrowserImpersonation.thirdPartyNotices).font(.system(.caption, design: .monospaced)).textSelection(.enabled).padding() }
                             .navigationTitle("Licenses")
                     }
-                }
-            }.noCapitalization().autocorrectionDisabled()
-                .navigationTitle("Connection settings").inlineTitle()
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                } header: { Text("About") } footer: { Text("Kitta Co · No data collected") }
+            }.formStyle(.grouped).toggleStyle(.switch).noCapitalization().autocorrectionDisabled()
+                .navigationTitle("Settings").inlineTitle()
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.keyboardShortcut(.defaultAction) } }
         }
+        #if os(macOS)
+        .frame(width: 520, height: 560)
+        #endif
+        .tint(Palette.mint)
     }
 }
 

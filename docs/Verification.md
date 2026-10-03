@@ -105,3 +105,12 @@ Run `swift test` for core tests or `Scripts/test.sh` for the complete local fixt
 - Xcode Cloud signed archives 43 (visionOS), 44 (Mac), and 45 (iOS with embedded Watch) are processed and valid. All report `usesNonExemptEncryption: false`. Cloud iOS run 32 passed all 30 hosted and ten UI tests.
 - The final Cloud iOS run 42 at `e7e7920` passed all 30 hosted and ten UI tests. Cloud run 46 passed visionOS and both 42 mm and 46 mm Watch checks; its native 416 × 496 response screenshot is used for the Watch store listing.
 - iOS/Watch 1.3 (45), Mac 1.3 (44), and visionOS 1.3 (43) were submitted and verified Waiting for Review on October 3, 2026. The former pending 1.2 reviews were canceled and replaced. See [the release record](app-store/README.md).
+
+## Credential options and layout follow-up — October 3, 2026
+
+- Keychain storage is optional and off by default. The file backend does not query Keychain at launch. Legacy Keychain entries remain untouched until the user enables the option to recover them. Existing credential-sharing and code-hiding preferences are preserved.
+- Four focused native Mac integration tests pass: workspace file/Keychain round trips, optional legacy recovery, cookie storage switching, and Watch-copy storage switching. The core and payload suite passes 51 tests, including credential-inclusive sync and subsequent exclusion.
+- Final Debug simulator builds pass for iOS with its embedded Watch app and visionOS. The native Mac build and focused tests pass after the Settings layout changes. Release identity/privacy checks pass for all four platforms.
+- Sidebar symbols use one fixed-width column and all titles start at the same position. Settings uses native grouped rows, right-aligned switches, a compact Mac sheet, and collapsed storage limits. Rebuilt Mac UI was inspected directly; normal launch showed no Keychain password prompt.
+- [Aligned Mac sidebar](screenshots/mac-sidebar-aligned.png). [Compact Settings with Keychain off](screenshots/mac-optional-keychain.png).
+- These follow-up source changes are newer than submitted builds 43–45. Those earlier review submissions were not replaced during this follow-up.

@@ -140,7 +140,7 @@ struct WorkspaceView: View {
                 sidebarButton("Request history", symbol: "clock.arrow.circlepath", sheet: .history)
                 sidebarButton("Snapshots", symbol: "camera", sheet: .snapshots)
                 sidebarButton("Cookies & certificates", symbol: "lock.shield", sheet: .network)
-                sidebarButton("Connection settings", symbol: "slider.horizontal.3", sheet: .settings)
+                sidebarButton("Settings", symbol: "slider.horizontal.3", sheet: .settings)
             }.padding(8)
         }.background(Palette.canvas)
             .hideNavigationBar()
@@ -148,7 +148,12 @@ struct WorkspaceView: View {
     }
 
     private func sidebarButton(_ title: String, symbol: String, sheet value: WorkspaceSheet) -> some View {
-        Button { sheet = value } label: { Label(title, systemImage: symbol).font(.subheadline).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 10).frame(height: 42) }.buttonStyle(.plain).foregroundStyle(.secondary)
+        Button { sheet = value } label: {
+            HStack(spacing: 10) {
+                Image(systemName: symbol).frame(width: 22, alignment: .center).accessibilityHidden(true)
+                Text(title).frame(maxWidth: .infinity, alignment: .leading)
+            }.font(.subheadline).padding(.horizontal, 10).frame(height: 42).contentShape(Rectangle())
+        }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(title)
     }
 
     @ToolbarContentBuilder private var workspaceToolbar: some ToolbarContent {

@@ -7,7 +7,7 @@ import MonkeytailCore
 #endif
 
 @MainActor @Observable final class LocalNetworkStorage {
-    private let vault: SecretVault
+    private var vault: SecretVault
     private var values: [String: String]
     private(set) var issue: String?
     private(set) var jars: [String: CookieJar] = [:]
@@ -16,13 +16,27 @@ import MonkeytailCore
         var id: String { host.lowercased() + ":" + String(port) }
     }
     private(set) var identities: [IdentityRecord] = []
-    init(directory: URL) {
-        vault = SecretVault(directory: directory.appendingPathComponent("network-secrets")); values = [:]
+    init(directory: URL, useKeychain: Bool = false) {
+        vault = SecretVault(directory: directory.appendingPathComponent("network-secrets"), useKeychain: useKeychain); values = [:]
         do {
             values = try vault.load()
             if let raw = values["jars"] { jars = try JSONDecoder().decode([String: CookieJar].self, from: Data(raw.utf8)) }
             if let raw = values["identities"] { identities = try JSONDecoder().decode([IdentityRecord].self, from: Data(raw.utf8)) }
         } catch { issue = error.localizedDescription }
+    }
+    func setUseKeychain(_ enabled: Bool) throws {
+        try requireAvailable()
+        guard vault.useKeychain != enabled else { return }
+        let previous = vault, target = SecretVault(directory: vault.directory, useKeychain: enabled)
+        if enabled {
+            let stored = try target.load()
+            if let raw = stored["jars"], let old = try? JSONDecoder().decode([String: CookieJar].self, from: Data(raw.utf8)) { jars = old.merging(jars) { _, current in current } }
+            if let raw = stored["identities"], let old = try? JSONDecoder().decode([IdentityRecord].self, from: Data(raw.utf8)) { identities = old.filter { item in !identities.contains { $0.id == item.id } } + identities }
+            values["jars"] = String(decoding: try JSONEncoder().encode(jars), as: UTF8.self)
+            values["identities"] = String(decoding: try JSONEncoder().encode(identities), as: UTF8.self)
+        }
+        try target.save(values); vault = target
+        try previous.remove()
     }
     func jar(_ id: UUID?) -> CookieJar { jars[id?.uuidString ?? "default"] ?? CookieJar() }
     func setJar(_ jar: CookieJar, environment: UUID?) throws { try requireAvailable(); jars[environment?.uuidString ?? "default"] = jar; try save() }

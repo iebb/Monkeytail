@@ -44,6 +44,7 @@ import MonkeytailCompanion
         _ = try model.request()
         return model
     }
+    func setUseKeychain(_ enabled: Bool) throws { try vault.setUseKeychain(enabled); requests = try vault.load() ?? [] }
     func add(_ request: WatchRequest) throws {
         guard !unavailable else { throw WatchError(issue ?? "Watch storage is unavailable.") }
         var next = requests.filter { $0.id != request.id }; next.append(request)
@@ -60,7 +61,7 @@ import MonkeytailCompanion
             try vault.save(next); requests = next
         }
         guard WCSession.isSupported(), WCSession.default.activationState == .activated, WCSession.default.isPaired, WCSession.default.isWatchAppInstalled else { throw WatchError("Saved on iPhone. Install Monkeytail on your paired Watch, then tap Sync.") }
-        try WCSession.default.updateApplicationContext(["version": 1, "requests": WatchPayload.encode(requests)])
+        try WCSession.default.updateApplicationContext(["version": 1, "requests": WatchPayload.encode(requests), "useKeychain": vault.useKeychain])
     }
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         Task { @MainActor in if let error { self.issue = error.localizedDescription } else { try? self.transfer() } }

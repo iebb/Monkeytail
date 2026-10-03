@@ -38,15 +38,15 @@ final class IntegrationTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(transactions[1].total ?? -1, 0)
         }
     }
-    func testSecretsPersistInKeychainAndSyncIsOffByDefault() throws {
+    func testOptionalKeychainAndSyncIsOffByDefault() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = WorkspaceStore(directory: directory)
         var request = store.selectedRequest!
         request.auth.kind = .bearer; request.auth.token = "fixture-private-token"
         request.headers += [Field("X-API-Key", "fixture-private-key")]
-        store.update(request); store.save()
-        XCTAssertNil(store.issue)
+        store.update(request); store.setUseKeychain(true); store.save()
+        XCTAssertTrue(store.useKeychain); XCTAssertNil(store.issue)
         let raw = try String(contentsOf: directory.appendingPathComponent("workspace.json"), encoding: .utf8)
         XCTAssertFalse(raw.contains("fixture-private-token")); XCTAssertFalse(raw.contains("fixture-private-key"))
         let restored = WorkspaceStore(directory: directory)
@@ -54,7 +54,7 @@ final class IntegrationTests: XCTestCase {
         XCTAssertEqual(restored.selectedRequest?.headers.last?.value, "fixture-private-key")
         XCTAssertFalse(restored.syncEnabled)
     }
-    func testLegacyWorkspaceCredentialsMigrateToKeychain() throws {
+    func testLegacyPlainWorkspaceStaysPlainByDefault() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -70,7 +70,7 @@ final class IntegrationTests: XCTestCase {
         XCTAssertEqual(restored.selectedRequest?.auth.token, "legacy-token")
         XCTAssertEqual(restored.selectedRequest?.headers.last?.value, "legacy-cookie")
         let raw = try String(contentsOf: directory.appendingPathComponent("workspace.json"), encoding: .utf8)
-        XCTAssertFalse(raw.contains("legacy-token")); XCTAssertFalse(raw.contains("legacy-cookie"))
+        XCTAssertTrue(raw.contains("legacy-token")); XCTAssertTrue(raw.contains("legacy-cookie")); XCTAssertFalse(restored.useKeychain)
     }
     func testSnapshotPersistenceAndEviction() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

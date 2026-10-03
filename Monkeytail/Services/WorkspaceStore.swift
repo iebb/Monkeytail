@@ -22,7 +22,8 @@ final class WorkspaceStore {
     private var sendTask: Task<Void, Never>?
     private var saveTask: Task<Void, Never>?
     private let directory: URL
-    private let vault: SecretVault
+    private let managesWatchStorage: Bool
+    private var vault: SecretVault
     private let snapshotStorage: SnapshotStorage
     private let persistence = WorkspacePersistence()
     private var syncState = WorkspaceSyncState()
@@ -35,21 +36,45 @@ final class WorkspaceStore {
     private(set) var syncStatus = "Off"
     private(set) var syncing = false
     var syncEnabled: Bool { settings.syncEnabled }
-    private struct LocalSettings: Codable { var syncEnabled = false; var edited = false; var identity: Data? }
+    var useKeychain: Bool { settings.useKeychain ?? false }
+    var syncCredentials: Bool { settings.syncCredentials ?? false }
+    var hideCredentials: Bool { settings.hideCredentials ?? true }
+    var watchIncludesCredentials: Bool { settings.watchIncludesCredentials ?? false }
+    private struct LocalSettings: Codable {
+        var syncEnabled = false; var edited = false; var identity: Data?
+        var useKeychain: Bool? = false
+        var syncCredentials: Bool? = true
+        var hideCredentials: Bool? = false
+        var watchIncludesCredentials: Bool? = true
+        var legacyKeychain: Bool?
+    }
 
 
     init(directory: URL? = nil) {
         let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
+        managesWatchStorage = directory == nil && !testing
         self.directory = directory ?? (testing ? FileManager.default.temporaryDirectory.appendingPathComponent("MonkeytailUITests") : URL.applicationSupportDirectory.appendingPathComponent("Monkeytail", isDirectory: true))
         if testing { try? FileManager.default.removeItem(at: self.directory) }
-        network = LocalNetworkStorage(directory: self.directory)
-        vault = SecretVault(directory: self.directory)
-        snapshotStorage = SnapshotStorage(directory: self.directory)
         let location = self.directory.appendingPathComponent("workspace.json")
+        var savedSettings = LocalSettings()
+        if !testing, let data = try? Data(contentsOf: self.directory.appendingPathComponent("settings.json")) {
+            if let decoded = try? JSONDecoder().decode(LocalSettings.self, from: data) { savedSettings = decoded }
+            else { savedSettings.useKeychain = nil }
+        } else if !testing, FileManager.default.fileExists(atPath: location.path) { savedSettings.useKeychain = nil }
+        if savedSettings.useKeychain == nil { savedSettings.legacyKeychain = true }
+        settings = savedSettings
+        let keychain = savedSettings.useKeychain ?? false
+        network = LocalNetworkStorage(directory: self.directory, useKeychain: keychain)
+        vault = SecretVault(directory: self.directory, useKeychain: keychain)
+        snapshotStorage = SnapshotStorage(directory: self.directory)
+        var loadedSecrets: [String: String] = [:]
         if !testing, FileManager.default.fileExists(atPath: location.path) {
             do {
                 workspace = try JSONDecoder().decode(Workspace.self, from: Data(contentsOf: location))
-                do { workspace = SecretPolicy.restore(workspace, secrets: try vault.load()) }
+                do {
+                    if keychain || savedSettings.useKeychain == nil { loadedSecrets = try vault.load() }
+                    workspace = SecretPolicy.restore(workspace, secrets: loadedSecrets)
+                }
                 catch { vaultUnavailable = true; issue = error.localizedDescription }
                 guard workspace.version == 1 else { throw ClientError("Unsupported saved workspace version.") }
             } catch {
@@ -61,10 +86,9 @@ final class WorkspaceStore {
             }
         } else { workspace = .starter }
         if !testing, let data = try? Data(contentsOf: self.directory.appendingPathComponent("history.json")), let loaded = try? JSONDecoder().decode([HistoryEntry].self, from: data) {
-            let secrets = (try? vault.load()) ?? [:]
             history = loaded.map { entry in
                 var entry = entry
-                let value = SecretPolicy.restore(Workspace(collections: [RequestCollection(name: "History", requests: [entry.request])]), secrets: secrets)
+                let value = SecretPolicy.restore(Workspace(collections: [RequestCollection(name: "History", requests: [entry.request])]), secrets: loadedSecrets)
                 entry.request = value.collections[0].requests[0]; return entry
             }
         }
@@ -72,9 +96,9 @@ final class WorkspaceStore {
         selectedRequestID = workspace.collections.first?.requests.first?.id
         if !testing {
             if let data = try? Data(contentsOf: self.directory.appendingPathComponent("sync-state.json")), let state = try? JSONDecoder().decode(WorkspaceSyncState.self, from: data) { syncState = state }
-            if let data = try? Data(contentsOf: self.directory.appendingPathComponent("settings.json")), let saved = try? JSONDecoder().decode(LocalSettings.self, from: data) { settings = saved }
-            else { settings.edited = FileManager.default.fileExists(atPath: location.path) }
+            if !FileManager.default.fileExists(atPath: self.directory.appendingPathComponent("settings.json").path) { settings.edited = FileManager.default.fileExists(atPath: location.path) }
         }
+        settings.useKeychain = keychain
         Task { await refreshSnapshots() }
         if settings.syncEnabled { cloud = ICloudWorkspace(accountIdentity: settings.identity); startSyncLoop() }
     }
@@ -303,6 +327,10 @@ final class WorkspaceStore {
     }
     private func persistenceSnapshot() throws -> WorkspacePersistence.Snapshot {
         guard !vaultUnavailable else { throw ClientError("Unlock the device and reopen Monkeytail to load credentials.") }
+        if !useKeychain {
+            return WorkspacePersistence.Snapshot(workspace: workspace, history: history, sync: syncState,
+                settings: try JSONEncoder().encode(settings), secrets: [:], directory: directory)
+        }
         var secrets: [String: String] = [:]
         let protectedHistory = history.map { entry in
             var copy = entry
@@ -312,7 +340,7 @@ final class WorkspaceStore {
         // Current credentials take precedence over older history definitions.
         let protected = SecretPolicy.strip(workspace, secrets: &secrets, files: false)
         return WorkspacePersistence.Snapshot(workspace: protected, history: protectedHistory, sync: syncState,
-            settings: try JSONEncoder().encode(settings), secrets: secrets, directory: directory)
+            settings: try JSONEncoder().encode(settings), secrets: secrets, directory: directory, useKeychain: true)
     }
     private func saveInBackground() {
         do {
@@ -357,8 +385,40 @@ final class WorkspaceStore {
     private func workspaceChanged() {
         guard !applyingSync else { return }
         settings.edited = true
-        do { try syncState.capture(workspace) } catch { issue = error.localizedDescription }
+        do { try syncState.capture(workspace, includeCredentials: syncCredentials) } catch { issue = error.localizedDescription }
     }
+    func setUseKeychain(_ enabled: Bool) {
+        guard enabled != useKeychain, !vaultUnavailable else { return }
+        saveTask?.cancel()
+        let previous = vault, old = useKeychain, oldLegacy = settings.legacyKeychain
+        do {
+            if enabled, settings.legacyKeychain == true {
+                var previousValues = try SecretVault(directory: directory, useKeychain: true).load()
+                var currentValues: [String: String] = [:]
+                _ = SecretPolicy.strip(workspace, secrets: &currentValues, files: false)
+                previousValues.merge(currentValues.filter { !$0.value.isEmpty }) { _, current in current }
+                applyingSync = true
+                workspace = SecretPolicy.restore(workspace, secrets: previousValues)
+                applyingSync = false
+            }
+            try network.setUseKeychain(enabled)
+#if os(iOS)
+            if managesWatchStorage { try WatchCompanionLink.shared.setUseKeychain(enabled) }
+#endif
+            settings.useKeychain = enabled
+            settings.legacyKeychain = false
+            try persistence.save(persistenceSnapshot())
+            vault = SecretVault(directory: directory, useKeychain: enabled)
+            do { try previous.remove() } catch { issue = error.localizedDescription }
+        } catch { settings.useKeychain = old; settings.legacyKeychain = oldLegacy; issue = error.localizedDescription }
+    }
+    func setSyncCredentials(_ enabled: Bool) {
+        settings.syncCredentials = enabled
+        do { try syncState.capture(workspace, includeCredentials: enabled); save() }
+        catch { issue = error.localizedDescription }
+    }
+    func setHideCredentials(_ enabled: Bool) { settings.hideCredentials = enabled; save() }
+    func setWatchIncludesCredentials(_ enabled: Bool) { settings.watchIncludesCredentials = enabled; save() }
     func setSyncEnabled(_ enabled: Bool) {
         settings.syncEnabled = enabled
         syncTask?.cancel(); syncTask = nil
@@ -384,12 +444,15 @@ final class WorkspaceStore {
             settings.identity = await cloud.identity()
             guard settings.syncEnabled, !Task.isCancelled else { return }
             // Fresh installs adopt the existing workspace instead of uploading duplicate starter requests.
-            if settings.edited || remote.isEmpty { try syncState.capture(workspace) }
+            if settings.edited || remote.isEmpty { try syncState.capture(workspace, includeCredentials: syncCredentials) }
             for state in remote { syncState.merge(state) }
-            let merged = try syncState.workspace(local: workspace)
+            let merged = try syncState.workspace(local: workspace, includeCredentials: syncCredentials)
+            // Reapply this device's sharing choice after merging other devices' records.
+            try syncState.capture(merged, includeCredentials: syncCredentials)
             if merged != workspace {
                 var ignored: [String: String] = [:]
-                try write(JSONEncoder().encode(SecretPolicy.strip(workspace, secrets: &ignored, files: false)), name: "workspace-before-sync.json")
+                let recovery = useKeychain ? SecretPolicy.strip(workspace, secrets: &ignored, files: false) : workspace
+                try write(JSONEncoder().encode(recovery), name: "workspace-before-sync.json")
                 applyingSync = true; workspace = merged; applyingSync = false
                 if request(selectedRequestID) == nil { selectedRequestID = workspace.collections.first?.requests.first?.id }
             }

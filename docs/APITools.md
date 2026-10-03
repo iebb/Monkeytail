@@ -6,7 +6,7 @@ Monkeytail is a native request debugger. No Monkeytail login is required. iPhone
 
 Collection and nested-folder defaults supply headers, variables, authentication, and scripts. Request values override folder values; environment variables override collection/folder variables, and request variables override the environment. Disabled child headers suppress matching parent headers. Choose **Inherit** for authentication. Imported scripts require an explicit per-device opt-in.
 
-Auth supports Basic, Bearer, API key in a header or query, OAuth 2.0 authorization code with S256 PKCE, refresh tokens and client credentials, and AWS SigV4. OAuth callbacks use `monkeytail://oauth`; configure that exact callback with your provider. OAuth credentials and tokens stay in the device Keychain. The provider may require its own sign-in. This is independent of Monkeytail, which has no accounts.
+Auth supports Basic, Bearer, API key in a header or query, OAuth 2.0 authorization code with S256 PKCE, refresh tokens and client credentials, and AWS SigV4. OAuth callbacks use `monkeytail://oauth`; configure that exact callback with your provider. OAuth credentials and tokens use local workspace storage, with optional Keychain storage and optional inclusion in iCloud. The provider may require its own sign-in. This is independent of Monkeytail, which has no accounts.
 
 ## Cookies and client certificates
 

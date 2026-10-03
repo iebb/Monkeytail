@@ -90,4 +90,59 @@ import MonkeytailCore
         let restored = LocalNetworkStorage(directory: directory); XCTAssertEqual(restored.jar(environment).cookies, jar.cookies); XCTAssertTrue(restored.jar(UUID()).cookies.isEmpty)
         XCTAssertThrowsError(try TLSConfiguration.importPKCS12(Data("invalid".utf8), password: "wrong", host: "example.test"))
     }
+    func testWorkspaceCredentialsSurviveBothStorageSwitches() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory); try? SecretVault(directory: directory, useKeychain: true).remove() }
+        let store = WorkspaceStore(directory: directory)
+        var request = try XCTUnwrap(store.selectedRequest)
+        request.auth.kind = .bearer; request.auth.token = "storage-token"
+        request.headers.append(Field("X-API-Key", "storage-key"))
+        store.update(request); store.save()
+        XCTAssertFalse(store.useKeychain); XCTAssertTrue(store.syncCredentials); XCTAssertFalse(store.hideCredentials)
+        var raw = try String(contentsOf: directory.appendingPathComponent("workspace.json"), encoding: .utf8)
+        XCTAssertTrue(raw.contains("storage-token")); XCTAssertTrue(raw.contains("storage-key"))
+        store.setUseKeychain(true); XCTAssertNil(store.issue); XCTAssertTrue(store.useKeychain)
+        raw = try String(contentsOf: directory.appendingPathComponent("workspace.json"), encoding: .utf8)
+        XCTAssertFalse(raw.contains("storage-token")); XCTAssertFalse(raw.contains("storage-key"))
+        let secure = WorkspaceStore(directory: directory)
+        XCTAssertEqual(secure.selectedRequest?.auth.token, "storage-token")
+        secure.setUseKeychain(false); XCTAssertNil(secure.issue)
+        let plain = WorkspaceStore(directory: directory)
+        XCTAssertEqual(plain.selectedRequest?.auth.token, "storage-token")
+        XCTAssertEqual(plain.selectedRequest?.headers.last?.value, "storage-key")
+        XCTAssertTrue(try SecretVault(directory: directory, useKeychain: true).load().isEmpty)
+    }
+    func testLegacyKeychainMigrationPreservesSharingPreferences() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory); try? SecretVault(directory: directory, useKeychain: true).remove() }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var workspace = Workspace.starter
+        workspace.collections[0].requests[0].auth.token = "old-vault-token"
+        var secrets: [String: String] = [:]
+        let protected = SecretPolicy.strip(workspace, secrets: &secrets, files: false)
+        try SecretVault(directory: directory, useKeychain: true).save(secrets)
+        try JSONEncoder().encode(protected).write(to: directory.appendingPathComponent("workspace.json"))
+        try Data("{\"syncEnabled\":false,\"edited\":true}".utf8).write(to: directory.appendingPathComponent("settings.json"))
+        let store = WorkspaceStore(directory: directory)
+        XCTAssertFalse(store.useKeychain); XCTAssertFalse(store.syncCredentials); XCTAssertTrue(store.hideCredentials)
+        XCTAssertEqual(store.selectedRequest?.auth.token, "")
+        store.setUseKeychain(true); XCTAssertNil(store.issue)
+        XCTAssertEqual(store.selectedRequest?.auth.token, "old-vault-token")
+        store.setUseKeychain(false); XCTAssertNil(store.issue)
+        store.save(); XCTAssertNil(store.issue)
+        let restored = WorkspaceStore(directory: directory)
+        XCTAssertEqual(restored.selectedRequest?.auth.token, "old-vault-token")
+        XCTAssertTrue(try SecretVault(directory: directory, useKeychain: true).load().isEmpty)
+    }
+    func testCookieStorageCanSwitchBetweenFilesAndKeychain() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let storage = LocalNetworkStorage(directory: directory)
+        var jar = CookieJar(); jar.cookies = [StoredCookie(name: "session", value: "switch-cookie", domain: "example.test")]
+        try storage.setJar(jar, environment: nil)
+        try storage.setUseKeychain(true)
+        XCTAssertEqual(LocalNetworkStorage(directory: directory, useKeychain: true).jar(nil).cookies, jar.cookies)
+        try storage.setUseKeychain(false)
+        XCTAssertEqual(LocalNetworkStorage(directory: directory).jar(nil).cookies, jar.cookies)
+    }
+
 }

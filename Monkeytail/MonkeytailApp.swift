@@ -35,7 +35,7 @@ struct MonkeytailApp: App {
                 }
                 SidebarCommands()
             }
-        Settings { SettingsView(store: store).frame(width: 650, height: 650) }
+        Settings { SettingsView(store: store) }
         #elseif os(visionOS)
         WindowGroup { root.frame(minWidth: 750, minHeight: 550) }
             .defaultSize(width: 1280, height: 800)

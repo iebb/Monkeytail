@@ -187,21 +187,20 @@ struct CodeExportView: View {
     let store: WorkspaceStore
     let request: APIRequest
     @State private var language: CodeLanguage = .swift
-    @State private var redact = true
     @State private var code = ""
     @State private var error: String?
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
             VStack(spacing: 12) {
-                HStack { Picker("Language", selection: $language) { ForEach(CodeLanguage.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu); Toggle("Hide credentials", isOn: $redact) }
+                HStack { Picker("Language", selection: $language) { ForEach(CodeLanguage.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu); Toggle("Hide credentials", isOn: Binding(get: { store.hideCredentials }, set: { store.setHideCredentials($0) })) }
                 if let error { Text(error).font(.caption).foregroundStyle(.red) }
                 ScrollView([.horizontal, .vertical]) { Text(code).font(.footnote.monospaced()).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12) }.background(Palette.surface)
                 HStack { Button("Copy") { Clipboard.copy(code) }; ShareLink(item: code) { Label("Share", systemImage: "square.and.arrow.up") } }.disabled(code.isEmpty).frame(minHeight: 44)
             }.padding(12).navigationTitle("Client code").inlineTitle().toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-        }.task(id: language.rawValue + String(redact)) {
+        }.task(id: language.rawValue + String(store.hideCredentials)) {
             do {
-                let resolved = try store.effective(request), selectedLanguage = language, hideCredentials = redact
+                let resolved = try store.effective(request), selectedLanguage = language, hideCredentials = store.hideCredentials
                 code = try await Task.detached { try CodeGenerator.generate(resolved.request, variables: resolved.variables, language: selectedLanguage, redact: hideCredentials) }.value; error = nil
             }
             catch { self.error = error.localizedDescription; code = "" }

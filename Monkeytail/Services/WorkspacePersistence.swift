@@ -14,6 +14,7 @@ final class WorkspacePersistence: @unchecked Sendable {
         var settings: Data
         var secrets: [String: String]
         var directory: URL
+        var useKeychain: Bool = false
     }
     private let queue = DispatchQueue(label: "co.kitta.monkeytail.persistence", qos: .utility)
     private let lock = NSLock()
@@ -31,11 +32,12 @@ final class WorkspacePersistence: @unchecked Sendable {
     func save(_ snapshot: Snapshot) throws { try persist(snapshot, revision: reserve()) }
     private func persist(_ snapshot: Snapshot, revision: Int) throws {
         let encoder = JSONEncoder()
-        let files = [("history.json", try encoder.encode(snapshot.history)), ("workspace.json", try encoder.encode(snapshot.workspace)), ("sync-state.json", try encoder.encode(snapshot.sync)), ("settings.json", snapshot.settings)]
+        let files = [("workspace.json", try encoder.encode(snapshot.workspace)), ("history.json", try encoder.encode(snapshot.history)), ("sync-state.json", try encoder.encode(snapshot.sync)), ("settings.json", snapshot.settings)]
         lock.lock(); defer { lock.unlock() }
         guard revision == self.revision else { return }
-        try SecretVault(directory: snapshot.directory).save(snapshot.secrets)
+        if snapshot.useKeychain { try SecretVault(directory: snapshot.directory, useKeychain: true).save(snapshot.secrets) }
         try FileManager.default.createDirectory(at: snapshot.directory, withIntermediateDirectories: true)
         for (name, data) in files { try data.write(to: snapshot.directory.appendingPathComponent(name), options: [.atomic, .completeFileProtectionUnlessOpen]) }
+        if !snapshot.useKeychain { try SecretVault(directory: snapshot.directory).save([:]) }
     }
 }

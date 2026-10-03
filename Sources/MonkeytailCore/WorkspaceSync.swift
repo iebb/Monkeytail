@@ -7,12 +7,12 @@ public enum SecretPolicy {
             || ["token", "secret", "password", "api_key", "apikey", "credential"].contains { normalized.contains($0) }
     }
     /// Removes credential values, leaving stable keys so each device can restore its own secrets.
-    public static func strip(_ source: Workspace, secrets: inout [String: String], files: Bool) -> Workspace {
+    public static func strip(_ source: Workspace, secrets: inout [String: String], files: Bool, credentials: Bool = true) -> Workspace {
         var copy = source
         func clean(_ fields: [Field], scope: String) -> [Field] {
             fields.map { field in
                 var field = field
-                if field.isSecret { secrets["\(scope).field.\(field.id)"] = field.value; field.value = ""; field.secret = true }
+                if credentials && field.isSecret { secrets["\(scope).field.\(field.id)"] = field.value; field.value = ""; field.secret = true }
                 return field
             }
         }
@@ -20,7 +20,7 @@ public enum SecretPolicy {
             func cleanDefaults(_ value: RequestDefaults, scope: String) -> RequestDefaults {
                 var value = value
                 value.headers = clean(value.headers, scope: scope + ".headers"); value.variables = clean(value.variables, scope: scope + ".variables")
-                stripAllAuth(&value.auth, scope: scope + ".auth", secrets: &secrets)
+                if credentials { stripAllAuth(&value.auth, scope: scope + ".auth", secrets: &secrets) }
                 if files { value.scriptsEnabled = false }; return value
             }
             let scope = "collection.\(copy.collections[c].id)"
@@ -29,7 +29,7 @@ public enum SecretPolicy {
             for r in copy.collections[c].requests.indices {
                 var request = copy.collections[c].requests[r]
                 request.headers = clean(request.headers, scope: "request.\(request.id).headers"); request.query = clean(request.query, scope: "request.\(request.id).query"); request.form = clean(request.form, scope: "request.\(request.id).form")
-                if var url = URLComponents(string: request.url) {
+                if credentials, var url = URLComponents(string: request.url) {
                     var changed = false
                     if let user = url.user { secrets["url.\(request.id).user"] = user; url.user = ""; changed = true }
                     if let password = url.password { secrets["url.\(request.id).password"] = password; url.password = ""; changed = true }
@@ -42,13 +42,15 @@ public enum SecretPolicy {
                     }
                     if changed { request.url = url.string ?? request.url }
                 }
+                if credentials {
                 secrets["auth.\(request.id).token"] = request.auth.token
                 secrets["auth.\(request.id).password"] = request.auth.password
                 secrets["auth.\(request.id).username"] = request.auth.username
                 request.auth.token = ""; request.auth.password = ""; request.auth.username = ""
                 stripAdvancedAuth(&request.auth, scope: "auth.\(request.id)", secrets: &secrets)
+                }
                 request.variables = request.variables.map { clean($0, scope: "request.\(request.id).variables") }
-                if request.multipart != nil {
+                if credentials, request.multipart != nil {
                     for index in request.multipart!.indices where SecretPolicy.isSensitive(request.multipart![index].name) {
                         secrets["request.\(request.id).part.\(request.multipart![index].id)"] = request.multipart![index].value
                         request.multipart![index].value = ""
@@ -59,7 +61,7 @@ public enum SecretPolicy {
                     if request.multipart != nil {
                         for index in request.multipart!.indices {
                             request.multipart![index].file?.data = nil
-                            if SecretPolicy.isSensitive(request.multipart![index].name) { request.multipart![index].value = "" }
+                            if credentials && SecretPolicy.isSensitive(request.multipart![index].name) { request.multipart![index].value = "" }
                         }
                     }
                     // Enabling scripts is a per-device decision, even for synced scripts.
@@ -69,10 +71,12 @@ public enum SecretPolicy {
             }
         }
         for e in copy.environments.indices { copy.environments[e].variables = clean(copy.environments[e].variables, scope: "environment.\(copy.environments[e].id)") }
+        if credentials {
         secrets["proxy.password"] = copy.proxy.password; secrets["proxy.username"] = copy.proxy.username; copy.proxy.password = ""; copy.proxy.username = ""
+        }
         return copy
     }
-    public static func restore(_ source: Workspace, secrets: [String: String], local: Workspace? = nil) -> Workspace {
+    public static func restore(_ source: Workspace, secrets: [String: String], local: Workspace? = nil, credentials: Bool = true) -> Workspace {
         var copy = source
         func restoreFields(_ fields: [Field], scope: String) -> [Field] {
             fields.map { field in
@@ -126,7 +130,7 @@ public enum SecretPolicy {
                         for i in request.multipart!.indices {
                             if let part = previous.multipart?.first(where: { $0.id == request.multipart![i].id }) {
                                 if part.file?.filename == request.multipart![i].file?.filename { request.multipart![i].file?.data = part.file?.data }
-                                if SecretPolicy.isSensitive(part.name) { request.multipart![i].value = part.value }
+                                if credentials && SecretPolicy.isSensitive(part.name) { request.multipart![i].value = part.value }
                             }
                         }
                     }
@@ -186,9 +190,9 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
     private struct Request: Codable { var collection: UUID; var request: APIRequest; var position: Int }
     private struct Environment: Codable { var environment: APIEnvironment; var position: Int }
 
-    public mutating func capture(_ workspace: Workspace, now: Date = Date()) throws {
+    public mutating func capture(_ workspace: Workspace, now: Date = Date(), includeCredentials: Bool = false) throws {
         var ignored: [String: String] = [:]
-        let workspace = SecretPolicy.strip(workspace, secrets: &ignored, files: true)
+        let workspace = SecretPolicy.strip(workspace, secrets: &ignored, files: true, credentials: !includeCredentials)
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         var current: [String: Data] = [:]
         for (index, collection) in workspace.collections.enumerated() {
@@ -213,7 +217,7 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
         }
         records.sort { $0.key < $1.key }
     }
-    public func workspace(local: Workspace) throws -> Workspace {
+    public func workspace(local: Workspace, includeCredentials: Bool = false) throws -> Workspace {
         let decoder = JSONDecoder()
         var collections: [Collection] = [], requests: [Request] = [], environments: [Environment] = []
         for record in records {
@@ -234,7 +238,7 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
         result.environments = environments.map(\.environment)
         if !result.environments.contains(where: { $0.id == result.selectedEnvironmentID }) { result.selectedEnvironmentID = result.environments.first?.id }
         var secrets: [String: String] = [:]
-        _ = SecretPolicy.strip(local, secrets: &secrets, files: false)
-        return SecretPolicy.restore(result, secrets: secrets, local: local)
+        _ = SecretPolicy.strip(local, secrets: &secrets, files: false, credentials: !includeCredentials)
+        return SecretPolicy.restore(result, secrets: secrets, local: local, credentials: !includeCredentials)
     }
 }

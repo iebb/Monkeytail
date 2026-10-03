@@ -182,4 +182,33 @@ final class AdvancedFeatureTests: XCTestCase {
         let delayed = mock; let task = Task { try await delayed.response(url: "https://example.test") }; task.cancel()
         do { _ = try await task.value; XCTFail("Expected cancellation") } catch { XCTAssertTrue(error is CancellationError) }
     }
+    func testSyncCanIncludeCredentialsAndPropagateTheirEdits() throws {
+        var workspace = Workspace.starter
+        workspace.collections[0].requests[0].auth.kind = .bearer
+        workspace.collections[0].requests[0].auth.token = "first-token"
+        workspace.collections[0].requests[0].headers.append(Field("X-API-Key", "first-key"))
+        workspace.collections[0].requests[0].multipart = [MultipartPart(name: "api_key", value: "first-part")]
+        workspace.environments[0].variables.append(Field("secret_value", "first-value"))
+        var first = WorkspaceSyncState()
+        try first.capture(workspace, includeCredentials: true)
+        var remote = try first.workspace(local: workspace, includeCredentials: true)
+        remote.collections[0].requests[0].auth.token = "new-token"
+        let last = remote.collections[0].requests[0].headers.count - 1
+        remote.collections[0].requests[0].headers[last].value = "new-key"
+        remote.collections[0].requests[0].multipart![0].value = "new-part"
+        var second = first
+        try second.capture(remote, now: Date().addingTimeInterval(10), includeCredentials: true)
+        first.merge(second)
+        let merged = try first.workspace(local: workspace, includeCredentials: true)
+        XCTAssertEqual(merged.collections[0].requests[0].auth.token, "new-token")
+        XCTAssertEqual(merged.collections[0].requests[0].headers.last?.value, "new-key")
+        XCTAssertEqual(merged.collections[0].requests[0].multipart?.first?.value, "new-part")
+        try first.capture(merged, includeCredentials: false)
+        let encoded = String(decoding: try JSONEncoder().encode(first), as: UTF8.self)
+        // Record payloads are base64; inspect their decoded content too.
+        let payloads = first.records.compactMap(\.payload).map { String(decoding: $0, as: UTF8.self) }.joined()
+        XCTAssertFalse(payloads.contains("new-token")); XCTAssertFalse(payloads.contains("new-key")); XCTAssertFalse(payloads.contains("new-part"))
+        XCTAssertFalse(encoded.isEmpty)
+    }
+
 }

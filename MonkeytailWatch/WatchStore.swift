@@ -26,9 +26,9 @@ import MonkeytailWatchCore
         do { requests = try vault.load() ?? []; unavailable = false; issue = nil }
         catch { issue = error.localizedDescription; unavailable = true }
     }
-    func receive(_ data: Data) throws {
+    func receive(_ data: Data, useKeychain: Bool? = nil) throws {
         let value = try WatchPayload.decode(data)
-        if !testing { try vault.save(value) }
+        if !testing { try vault.save(value, useKeychain: useKeychain) }
         cancel(); requests = value; responses = [:]; unavailable = false; issue = nil
     }
     func remove(_ id: UUID) {
@@ -55,15 +55,15 @@ import MonkeytailWatchCore
     }
     func cancel() { generation = UUID(); task?.cancel(); task = nil; runningID = nil }
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        if session.receivedApplicationContext["version"] as? Int == 1, let data = session.receivedApplicationContext["requests"] as? Data { consume(data) }
+        if session.receivedApplicationContext["version"] as? Int == 1, let data = session.receivedApplicationContext["requests"] as? Data { consume(data, useKeychain: session.receivedApplicationContext["useKeychain"] as? Bool) }
         if let error { Task { @MainActor in self.issue = error.localizedDescription } }
     }
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         guard applicationContext["version"] as? Int == 1, let data = applicationContext["requests"] as? Data else { return }
-        consume(data)
+        consume(data, useKeychain: applicationContext["useKeychain"] as? Bool)
     }
-    nonisolated private func consume(_ data: Data) {
+    nonisolated private func consume(_ data: Data, useKeychain: Bool?) {
         guard data.count <= WatchPayload.maximumBytes else { return }
-        Task { @MainActor in do { try self.receive(data) } catch { self.issue = error.localizedDescription } }
+        Task { @MainActor in do { try self.receive(data, useKeychain: useKeychain) } catch { self.issue = error.localizedDescription } }
     }
 }
