@@ -36,6 +36,10 @@ for target in ['MonkeytailVision', 'MonkeytailWatch']:
     platform_info = plistlib.loads((root / target / 'Info.plist').read_bytes())
     assert platform_info['ITSAppUsesNonExemptEncryption'] is False
     assert target in project
+for target in ['Monkeytail', 'MonkeytailMac', 'MonkeytailVision', 'MonkeytailWatch']:
+    platform_info = plistlib.loads((root / target / 'Info.plist').read_bytes())
+    assert platform_info['CFBundleShortVersionString'] == '$(MARKETING_VERSION)', 'Version must follow the release build setting'
+    assert platform_info['CFBundleVersion'] == '$(CURRENT_PROJECT_VERSION)', 'Build number must follow the archive build setting'
 watch_privacy = plistlib.loads((root / 'MonkeytailWatch/PrivacyInfo.xcprivacy').read_bytes())
 assert watch_privacy['NSPrivacyCollectedDataTypes'] == [] and watch_privacy['NSPrivacyTracking'] is False
 vision_entitlements = plistlib.loads((root / 'MonkeytailVision/Monkeytail.entitlements').read_bytes())

@@ -1,6 +1,27 @@
 import XCTest
 
 final class MonkeytailUITests: XCTestCase {
+    func testCollectionsSearchAndReturnNavigation() throws {
+        let app = XCUIApplication(); app.launchArguments = ["--ui-testing"]
+        app.launch()
+        let back = app.navigationBars.buttons.firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 10)); back.tap()
+        let search = app.textFields["Find a request"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        for title in ["Import & export", "Environments", "Request history", "Snapshots", "Cookies & certificates", "Settings"] {
+            XCTAssertTrue(app.buttons[title].isHittable, title)
+        }
+        attach(app, name: "Flat collection list")
+        search.tap(); search.typeText("some JSON")
+        let request = app.buttons.containing(NSPredicate(format: "label CONTAINS %@", "Send some JSON")).firstMatch
+        XCTAssertTrue(request.waitForExistence(timeout: 5)); request.tap()
+        let name = app.textFields["Request name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5)); XCTAssertEqual(name.value as? String, "Send some JSON")
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertEqual(search.value as? String, "some JSON")
+    }
+
     private func selectFormat(_ name: String, in app: XCUIApplication) {
         app.buttons["Response format"].tap()
         app.buttons["Response format " + name].tap()

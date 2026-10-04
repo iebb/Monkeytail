@@ -41,12 +41,14 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: 'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight'
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: 'UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight'
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: 'Connect to API servers and proxies on your local network.'
-        MARKETING_VERSION: '1.3'
-        CURRENT_PROJECT_VERSION: '20'
+        MARKETING_VERSION: '1.4'
+        CURRENT_PROJECT_VERSION: '60'
         CODE_SIGN_ENTITLEMENTS: Monkeytail/Monkeytail.entitlements
     info:
       path: Monkeytail/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleName: Monkeytail
         ITSAppUsesNonExemptEncryption: false
         NSAppTransportSecurity:
@@ -75,8 +77,8 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Monkeytail
         INFOPLIST_KEY_CFBundleName: Monkeytail
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
-        MARKETING_VERSION: '1.3'
-        CURRENT_PROJECT_VERSION: '20'
+        MARKETING_VERSION: '1.4'
+        CURRENT_PROJECT_VERSION: '60'
         CODE_SIGN_ENTITLEMENTS: MonkeytailMac/Monkeytail.entitlements
         ENABLE_HARDENED_RUNTIME: YES
         TARGETED_DEVICE_FAMILY: ''
@@ -86,6 +88,8 @@ targets:
     info:
       path: MonkeytailMac/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleName: Monkeytail
         ITSAppUsesNonExemptEncryption: false
         NSAppTransportSecurity:
@@ -117,13 +121,15 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: Connect to API servers and proxies on your local network.
-        MARKETING_VERSION: '1.3'
-        CURRENT_PROJECT_VERSION: '20'
+        MARKETING_VERSION: '1.4'
+        CURRENT_PROJECT_VERSION: '60'
         CODE_SIGN_ENTITLEMENTS: MonkeytailVision/Monkeytail.entitlements
         TARGETED_DEVICE_FAMILY: '7'
     info:
       path: MonkeytailVision/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleName: Monkeytail
         ITSAppUsesNonExemptEncryption: false
         NSAppTransportSecurity:
@@ -151,13 +157,15 @@ targets:
         INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: co.kitta.monkeytail
         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: NO
-        MARKETING_VERSION: '1.3'
-        CURRENT_PROJECT_VERSION: '20'
+        MARKETING_VERSION: '1.4'
+        CURRENT_PROJECT_VERSION: '60'
         TARGETED_DEVICE_FAMILY: '4'
         SKIP_INSTALL: YES
     info:
       path: MonkeytailWatch/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleName: Monkeytail
         ITSAppUsesNonExemptEncryption: false
         NSAppTransportSecurity:

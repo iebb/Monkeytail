@@ -101,12 +101,18 @@ struct WorkspaceView: View {
                 Menu {
                     Button("New request", systemImage: "plus") { store.addRequest(); compactColumn = .detail }
                     Button("New collection", systemImage: "folder.badge.plus") { collectionName = ""; renameID = nil; newCollection = true }
-                } label: { Image(systemName: "plus").frame(width: 44, height: 44) }.accessibilityLabel("Add request or collection")
-            }.padding(.leading, 16).padding(.trailing, 4)
+                } label: { Image(systemName: "plus").frame(width: 44, height: 44) }
+                #if os(macOS)
+                .menuStyle(.borderlessButton).menuIndicator(.hidden)
+                #endif
+                .accessibilityLabel("Add request or collection")
+            }.padding(.horizontal, 16)
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Find a request", text: $search).font(.subheadline).noCapitalization().autocorrectionDisabled()
-            }.padding(10).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8)).padding(.horizontal, 12).padding(.bottom, 4)
+                TextField("Find a request", text: $search).textFieldStyle(.plain).font(.subheadline).noCapitalization().autocorrectionDisabled()
+            }.padding(.horizontal, 12).frame(minHeight: 44)
+                .background(Palette.surface).overlay(Rectangle().stroke(Palette.border))
+                .padding(.horizontal, 16).padding(.bottom, 8)
             List(selection: $store.selectedRequestID) {
                 ForEach(store.workspace.collections) { collection in
                     Section {
@@ -128,23 +134,30 @@ struct WorkspaceView: View {
                                 if collection.requests.isEmpty {
                                     Button("Delete empty collection", systemImage: "trash", role: .destructive) { store.workspace.collections.removeAll { $0.id == collection.id } }
                                 }
-                            } label: { Image(systemName: "ellipsis").frame(width: 32, height: 32) }.accessibilityLabel("Collection options")
+                            } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }.buttonStyle(.plain).accessibilityLabel("Collection options")
                         }
+                        .frame(minHeight: 44)
                     }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                 }
-            }.listStyle(.sidebar).scrollContentBackground(.hidden)
+            }.listStyle(.plain).scrollContentBackground(.hidden)
+                .contentMargins(.horizontal, 0, for: .scrollContent)
+                .environment(\.defaultMinListRowHeight, 44)
+                .environment(\.defaultMinListHeaderHeight, 44)
             Divider()
-            VStack(spacing: 2) {
+            VStack(spacing: 0) {
                 sidebarButton("Import & export", symbol: "arrow.down.doc", sheet: .transfer)
                 sidebarButton("Environments", symbol: "square.stack.3d.up", sheet: .environment)
                 sidebarButton("Request history", symbol: "clock.arrow.circlepath", sheet: .history)
                 sidebarButton("Snapshots", symbol: "camera", sheet: .snapshots)
                 sidebarButton("Cookies & certificates", symbol: "lock.shield", sheet: .network)
                 sidebarButton("Settings", symbol: "slider.horizontal.3", sheet: .settings)
-            }.padding(8)
+            }.padding(.vertical, 8)
         }.background(Palette.canvas)
             .hideNavigationBar()
-            .onChange(of: store.selectedRequestID) { _, _ in compactColumn = .detail }
+            .onChange(of: store.selectedRequestID) { _, id in
+                if id != nil { compactColumn = .detail }
+            }
     }
 
     private func sidebarButton(_ title: String, symbol: String, sheet value: WorkspaceSheet) -> some View {
@@ -152,7 +165,7 @@ struct WorkspaceView: View {
             HStack(spacing: 10) {
                 Image(systemName: symbol).frame(width: 22, alignment: .center).accessibilityHidden(true)
                 Text(title).frame(maxWidth: .infinity, alignment: .leading)
-            }.font(.subheadline).padding(.horizontal, 10).frame(height: 42).contentShape(Rectangle())
+            }.font(.subheadline).padding(.horizontal, 16).frame(minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(title)
     }
 
@@ -189,7 +202,7 @@ struct WorkspaceView: View {
                 Button("Import & export", systemImage: "arrow.down.doc") { sheet = .transfer }.accessibilityIdentifier("Import workspace")
                 Button("History", systemImage: "clock.arrow.circlepath") { sheet = .history }
                 Button("Snapshots", systemImage: "camera") { sheet = .snapshots }
-                Button("Connection settings", systemImage: "slider.horizontal.3") { sheet = .settings }
+                Button("Settings", systemImage: "slider.horizontal.3") { sheet = .settings }.accessibilityIdentifier("Connection settings")
             } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("Workspace actions")
         }
     }
