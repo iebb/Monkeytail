@@ -2,9 +2,25 @@
 
 Monkeytail is free with no in-app purchases. The publisher is Kitta Co (Apple organization: Kitta Ltd). The app record is [6814706725](https://appstoreconnect.apple.com/apps/6814706725/distribution).
 
-## Version 1.3 — submitted October 3, 2026
+## Version 1.4 — submitted October 5, 2026
 
-All three platform submissions are **Waiting for Review**, with automatic release after approval. The Watch companion is embedded in the iOS build.
+All three submissions are **Waiting for Review**, with automatic release after approval. [Verified App Store Connect states](proofs/release-1.4.json).
+
+| Platform | Version/build | Submission |
+| --- | --- | --- |
+| iPhone/iPad and Apple Watch | 1.4 (54) | [2b64c9ba-79ff-4bf4-877a-79e4b91ce369](https://appstoreconnect.apple.com/apps/6814706725/distribution/reviewsubmissions/details/2b64c9ba-79ff-4bf4-877a-79e4b91ce369) |
+| macOS | 1.4 (52) | [7e23a869-4311-4523-9a92-a2f04dae5963](https://appstoreconnect.apple.com/apps/6814706725/distribution/reviewsubmissions/details/7e23a869-4311-4523-9a92-a2f04dae5963) |
+| visionOS | 1.4 (53) | [51f2c649-6318-4d57-b2d4-7c69eaa9727e](https://appstoreconnect.apple.com/apps/6814706725/distribution/reviewsubmissions/details/51f2c649-6318-4d57-b2d4-7c69eaa9727e) |
+
+Collections now use square rows and search fields, consistent 44-point touch targets, and aligned footer icons and labels. Search and return navigation are covered by a new UI test. The release also includes compact Settings and optional Keychain storage, off by default. Existing Keychain credentials can be recovered explicitly in Settings. Credentials can be included in iCloud and Watch copies by choice, and hiding sensitive values in client code is optional. No Monkeytail accounts or data collection were added.
+
+Signed Xcode Cloud archives 52–54 use `deee096`, have version 1.4, and are valid with `usesNonExemptEncryption=false`. GitHub Actions [run 37214500155](https://github.com/iebb/Monkeytail/actions/runs/37214500155) passed 51 core/payload and 13 Mac integration tests. Cloud run 56 passed all 33 hosted and 11 UI iOS tests on iOS 27; the native visionOS flow passed in runs 55 and 57. The local watchOS 27 favourite → Send → Body test passed. Cloud Watch tests in runs 55 and 57 were terminated with signal 9 when opening Body; that Cloud-only failure remains unresolved, and is not counted as a pass. Watch UI source is unchanged from 1.3. Physical iCloud and paired-device Watch transfers remain unverified.
+
+The unedited [dark iPhone Collections capture](screenshots/phone/collections-1.4.png) (1320 × 2868) and [native Mac capture](screenshots/mac/collections-1.4.jpg) (2560 × 1600) were accepted by App Store Connect. The iPhone layout was also checked in light mode, and Mac returned a visible JSON response from the local fixture. Kitta privacy/support copy was updated in `kitta-co/privacy-policy` commit `580ea49` for the optional credential settings.
+
+## Version 1.3 — released
+
+All three platforms are now **Ready for Distribution**. The Watch companion is embedded in the iOS build.
 
 | Platform | Version/build | Submission |
 | --- | --- | --- |

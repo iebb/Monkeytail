@@ -1,0 +1,36 @@
+{
+  "verifiedAt": "2026-10-04T17:09:23.160632+00:00",
+  "sourceCommit": "deee096f83b175bdb7d1fe34606763e8145a803b",
+  "platforms": {
+    "IOS": {
+      "version": "1.4",
+      "versionState": "WAITING_FOR_REVIEW",
+      "releaseType": "AFTER_APPROVAL",
+      "build": "54",
+      "buildState": "VALID",
+      "usesNonExemptEncryption": false,
+      "submission": "2b64c9ba-79ff-4bf4-877a-79e4b91ce369",
+      "submissionState": "WAITING_FOR_REVIEW"
+    },
+    "MAC_OS": {
+      "version": "1.4",
+      "versionState": "WAITING_FOR_REVIEW",
+      "releaseType": "AFTER_APPROVAL",
+      "build": "52",
+      "buildState": "VALID",
+      "usesNonExemptEncryption": false,
+      "submission": "7e23a869-4311-4523-9a92-a2f04dae5963",
+      "submissionState": "WAITING_FOR_REVIEW"
+    },
+    "VISION_OS": {
+      "version": "1.4",
+      "versionState": "WAITING_FOR_REVIEW",
+      "releaseType": "AFTER_APPROVAL",
+      "build": "53",
+      "buildState": "VALID",
+      "usesNonExemptEncryption": false,
+      "submission": "51f2c649-6318-4d57-b2d4-7c69eaa9727e",
+      "submissionState": "WAITING_FOR_REVIEW"
+    }
+  }
+}
