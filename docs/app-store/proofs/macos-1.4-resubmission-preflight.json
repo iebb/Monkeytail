@@ -1,0 +1,247 @@
+{
+  "checkedAt": "2026-10-11T04:25:50.507259+00:00",
+  "commit": "b783f3a966f70f49388ebadb964f4bdade27d957",
+  "appID": "6814706725",
+  "macVersionID": "968f80de-188c-4aa1-bedc-71f722e426b9",
+  "reviewSubmissionID": "7e23a869-4311-4523-9a92-a2f04dae5963",
+  "submissionStatus": "Not resubmitted: rejection feedback is pending App Store Connect sign-in.",
+  "cloudRun": {
+    "id": "05fa7aba-3b6b-4ee0-a2aa-6e230321ca0b",
+    "number": 63,
+    "issueCounts": null,
+    "executionProgress": "COMPLETE",
+    "startReason": "MANUAL",
+    "createdDate": "2026-10-11T04:18:59.532Z",
+    "isPullRequestBuild": false,
+    "startedDate": "2026-10-11T04:19:18.497Z",
+    "destinationCommit": null,
+    "completionStatus": "SUCCEEDED",
+    "sourceCommit": {
+      "commitSha": "b783f3a966f70f49388ebadb964f4bdade27d957",
+      "message": "Improve native Mac navigation and keyboard workflows",
+      "author": {
+        "displayName": "ieb^",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/2127498?v=4"
+      },
+      "committer": {
+        "displayName": "ieb^",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/2127498?v=4"
+      },
+      "webUrl": "https://github.com/iebb/Monkeytail/commit/b783f3a966f70f49388ebadb964f4bdade27d957"
+    },
+    "cancelReason": null,
+    "finishedDate": "2026-10-11T04:23:34.324Z"
+  },
+  "builds": [
+    {
+      "id": "dae5de6d-403a-445c-a17d-d36a463eb979",
+      "minOsVersion": "14.0",
+      "processingState": "VALID",
+      "buildAudienceType": "APP_STORE_ELIGIBLE",
+      "expired": false,
+      "lsMinimumSystemVersion": "14.0",
+      "iconAssetToken": {
+        "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/43/cf/b0/43cfb0d3-a364-432a-9ddd-86310719d140/AppIcon.icns/{w}x{h}bb.{f}",
+        "width": 256,
+        "height": 256
+      },
+      "usesNonExemptEncryption": false,
+      "uploadedDate": "2026-10-10T21:22:44-07:00",
+      "version": "63",
+      "computedMinVisionOsVersion": null,
+      "computedMinMacOsVersion": null,
+      "expirationDate": "2027-01-08T20:22:44-08:00"
+    }
+  ],
+  "tests": [
+    {
+      "name": "testValidClientIdentityAndCertificateValidity()",
+      "className": "AdvancedIntegrationTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "439b57e3-6b6b-460c-80bd-c0f110e27af8",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.05687403678894043
+        }
+      ]
+    },
+    {
+      "name": "testOversizeAndCancellation()",
+      "className": "WatchHTTPTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "fc8b5d15-0e79-43af-91ed-80f91dfa6328",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.10631895065307617
+        }
+      ]
+    },
+    {
+      "name": "testCookieStorageCanSwitchBetweenFilesAndKeychain()",
+      "className": "AdvancedIntegrationTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "f44103c4-7ce2-42d5-8ed3-1a4aabf6f4a6",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.04482901096343994
+        }
+      ]
+    },
+    {
+      "name": "testWorkspaceCredentialsSurviveBothStorageSwitches()",
+      "className": "AdvancedIntegrationTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "76b234da-2cbd-4686-b892-7116a70985ce",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.03858602046966553
+        }
+      ]
+    },
+    {
+      "name": "testWebSocketTextBinaryAndSSEDisconnect()",
+      "className": "AdvancedIntegrationTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "63194950-798a-45f0-a6ba-ed9b35e62664",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.1170949935913086
+        }
+      ]
+    },
+    {
+      "name": "testRedirectDropsMarkedAndStandardCredentials()",
+      "className": "WatchHTTPTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "b0400f90-11e5-4052-a0f3-08be67da24e8",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.011180996894836426
+        }
+      ]
+    },
+    {
+      "name": "testWatchRequestsSurviveStorageSwitches()",
+      "className": "WatchHTTPTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "bb32f3ab-fd75-45f3-afe1-c37c0e7d5675",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.018327951431274414
+        }
+      ]
+    },
+    {
+      "name": "testStoreRefreshesOAuthAndRunsInheritedScriptsAndAssertions()",
+      "className": "AdvancedIntegrationTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "0ca552b7-9946-4959-a594-0c46da2ff434",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 1.4364970922470093
+        }
+      ]
+    },
+    {
+      "name": "testResponseFormattingPreservesBytesAndBoundsPreview()",
+      "className": "WatchHTTPTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "61c62700-ec52-4455-af1c-b3e627097661",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.004805088043212891
+        }
+      ]
+    },
+    {
+      "name": "testLegacyKeychainMigrationPreservesSharingPreferences()",
+      "className": "AdvancedIntegrationTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "3f32e9ac-6fde-4656-b93a-dc921e7be3ae",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.04118192195892334
+        }
+      ]
+    },
+    {
+      "name": "testRedirectCookiesStayScopedAndAdvancedCredentialsDoNotLeak()",
+      "className": "AdvancedIntegrationTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "d1cd2dc5-d4be-46c6-a41c-b479654ab4ab",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.02453005313873291
+        }
+      ]
+    },
+    {
+      "name": "testOfflineAndLoopbackMocksSnapshotsAndStatus()",
+      "className": "AdvancedIntegrationTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "8359de6e-7f0e-4f4a-85e1-e5c8b06047b9",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.0819709300994873
+        }
+      ]
+    },
+    {
+      "name": "testDeviceLocalCookieStorageAndClientIdentityValidation()",
+      "className": "AdvancedIntegrationTests",
+      "status": "SUCCESS",
+      "destinations": [
+        {
+          "uuid": "f4b9162a-973d-458e-b0f4-924f3b46bb5b",
+          "deviceName": "Virtual Machine",
+          "osVersion": "27.0",
+          "status": "SUCCESS",
+          "duration": 0.003999948501586914
+        }
+      ]
+    }
+  ],
+  "version": {
+    "id": "968f80de-188c-4aa1-bedc-71f722e426b9",
+    "version": "1.4",
+    "state": "PREPARE_FOR_SUBMISSION",
+    "buildID": "dae5de6d-403a-445c-a17d-d36a463eb979"
+  },
+  "reviewState": "UNRESOLVED_ISSUES"
+}

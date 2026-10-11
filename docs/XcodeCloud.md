@@ -12,6 +12,8 @@ For documentation-only pushes, use `[ci skip]` in the commit message ([Apple sta
 
 The generated project is committed, so Cloud does not need XcodeGen. Regenerate with `xcodegen generate` after changing `project.yml`.
 
+The Mac workflow includes required Archive and Test actions. Native Mac integration tests use the scheme settings and the selected builder's macOS version. Run 63 passed all 13 tests on macOS 27 at `b783f3a`. GitHub Actions could not start that commit because of an account billing limit; Cloud provides the independent native Mac check.
+
 ## Build hooks
 
 `ci_post_clone.sh` validates the bundle ID, team, privacy manifest, encryption declaration, and opaque 1024px app icon. `ci_pre_xcodebuild.sh` starts HTTP, CONNECT, and SOCKS5 fixtures on the separate test worker. `ci_post_xcodebuild.sh` stops them after testing. The fixture is self-contained in `ci_scripts` so it is available in the testing environment.
