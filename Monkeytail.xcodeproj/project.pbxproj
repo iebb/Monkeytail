@@ -993,6 +993,8 @@
 				);
 				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
+				PRODUCT_MODULE_NAME = MonkeytailMac;
+				PRODUCT_NAME = Monkeytail;
 				SDKROOT = macosx;
 				TARGETED_DEVICE_FAMILY = "";
 			};
@@ -1017,6 +1019,8 @@
 				);
 				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
+				PRODUCT_MODULE_NAME = MonkeytailMac;
+				PRODUCT_NAME = Monkeytail;
 				SDKROOT = macosx;
 				TARGETED_DEVICE_FAMILY = "";
 			};

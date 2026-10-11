@@ -7,6 +7,9 @@ import AppKit
 struct MonkeytailApp: App {
     @State private var store = WorkspaceStore()
     @Environment(\.scenePhase) private var phase
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
     init() {
         ResponsePreview.removeStaleMedia()
         #if os(iOS)
@@ -23,7 +26,10 @@ struct MonkeytailApp: App {
     }
     var body: some Scene {
         #if os(macOS)
-        WindowGroup { root.frame(minWidth: 800, minHeight: 560) }
+        Window("Monkeytail", id: "workspace") {
+            root.frame(minWidth: 800, minHeight: 560)
+                .onDisappear { store.save(); store.mockServer.stop() }
+        }
             .defaultSize(width: 1280, height: 800)
             .commands {
                 CommandGroup(replacing: .newItem) {
@@ -32,6 +38,10 @@ struct MonkeytailApp: App {
                 }
                 CommandMenu("Workspace") {
                     Button("Reset window size") { if let window = NSApp.keyWindow { var frame = window.frame; frame.origin.y += frame.height - 800; frame.size = NSSize(width: 1280, height: 800); window.setFrame(frame, display: true) } }
+                }
+                CommandGroup(before: .windowArrangement) {
+                    Button("Show Monkeytail") { openWindow(id: "workspace") }
+                        .keyboardShortcut("0", modifiers: .command)
                 }
                 SidebarCommands()
                 WorkspaceCommands()

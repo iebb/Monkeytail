@@ -72,6 +72,8 @@ targets:
       - package: MonkeytailCore
     settings:
       base:
+        PRODUCT_NAME: Monkeytail
+        PRODUCT_MODULE_NAME: MonkeytailMac
         PRODUCT_BUNDLE_IDENTIFIER: co.kitta.monkeytail
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Monkeytail
