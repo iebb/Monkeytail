@@ -1,0 +1,79 @@
+{
+  "checkedAt": "2026-10-11T14:37:52.442238+00:00",
+  "sourceCommit": "40dbcf2630f77f86f324291c38585709826270cf",
+  "appID": "6814706725",
+  "version": {
+    "id": "968f80de-188c-4aa1-bedc-71f722e426b9",
+    "version": "1.4",
+    "state": "WAITING_FOR_REVIEW",
+    "releaseType": "AFTER_APPROVAL",
+    "buildID": "d6e131b2-2b08-4725-8114-82c173423ab1"
+  },
+  "builds": [
+    {
+      "id": "d6e131b2-2b08-4725-8114-82c173423ab1",
+      "version": "66",
+      "uploadedDate": "2026-10-11T07:33:03-07:00",
+      "expirationDate": "2027-01-09T06:33:03-08:00",
+      "expired": false,
+      "minOsVersion": "14.0",
+      "lsMinimumSystemVersion": "14.0",
+      "computedMinMacOsVersion": null,
+      "computedMinVisionOsVersion": null,
+      "iconAssetToken": {
+        "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/ea/02/71/ea027119-0b14-e5c3-b9d0-25ea12a3a42b/AppIcon.icns/{w}x{h}bb.{f}",
+        "width": 256,
+        "height": 256
+      },
+      "processingState": "VALID",
+      "buildAudienceType": "APP_STORE_ELIGIBLE",
+      "usesNonExemptEncryption": false
+    }
+  ],
+  "reviewSubmission": {
+    "id": "7e23a869-4311-4523-9a92-a2f04dae5963",
+    "platform": "MAC_OS",
+    "submittedDate": "2026-10-11T14:36:17.965Z",
+    "state": "WAITING_FOR_REVIEW"
+  },
+  "cloudRun": {
+    "id": "83b0b952-6a21-4797-b448-c84e84c6227b",
+    "number": 66,
+    "createdDate": "2026-10-11T14:29:40.62Z",
+    "startedDate": "2026-10-11T14:29:49.927Z",
+    "finishedDate": "2026-10-11T14:33:44.823Z",
+    "sourceCommit": {
+      "commitSha": "40dbcf2630f77f86f324291c38585709826270cf",
+      "message": "Align Mac product and test host names [ci skip]",
+      "author": {
+        "displayName": "ieb^",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/2127498?v=4"
+      },
+      "committer": {
+        "displayName": "ieb^",
+        "avatarUrl": "https://avatars.githubusercontent.com/u/2127498?v=4"
+      },
+      "webUrl": "https://github.com/iebb/Monkeytail/commit/40dbcf2630f77f86f324291c38585709826270cf"
+    },
+    "destinationCommit": null,
+    "isPullRequestBuild": false,
+    "issueCounts": null,
+    "executionProgress": "COMPLETE",
+    "completionStatus": "SUCCEEDED",
+    "startReason": "MANUAL",
+    "cancelReason": null
+  },
+  "manualVerification": [
+    "Native sidebar search, clear, and Command-F",
+    "Editable left title and visible httpbin JSON response",
+    "Command-W followed by Command-0 reopens the main window",
+    "Installed bundle and executable named Monkeytail",
+    "Title inset 12 points"
+  ],
+  "reviewFixes": {
+    "installedName": "Monkeytail.app",
+    "windowReopening": "Window > Show Monkeytail (Command-0)",
+    "serverEntitlement": "Review notes document optional NWListener loopback mocks under Cookies & certificates > Local mock server"
+  },
+  "screenshotID": "97000019-6302-8c25-8025-af3ce9ac315d"
+}
