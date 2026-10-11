@@ -230,6 +230,7 @@ struct WorkspaceView: View {
                 TextField("Request name", text: store.binding(for: id).name)
                     .textFieldStyle(.plain).font(.headline).submitLabel(.done)
                     .frame(minWidth: 140, idealWidth: 240, maxWidth: 360, alignment: .leading)
+                    .padding(.horizontal, 12)
                     .accessibilityIdentifier("Request name")
             }
         }.flatTitleBackground()
