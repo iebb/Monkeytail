@@ -76,7 +76,9 @@ Watch supports System HTTP/GraphQL, verified HTTPS, and manual basic/bearer/API-
 
 The visionOS window shares the full workspace editor, response viewers, API tools, and optional iCloud container with iPhone and Mac. Select System TLS on visionOS; browser TLS presets are unavailable there. The system-only and Watch Swift packages link canonical sources through checked-in symlinks, avoiding the iOS/Mac curl binary on unsupported platforms.
 
-Version 1.3 is submitted for iOS with the Watch companion, native macOS, and visionOS. All three are Waiting for Review; see the [release record](docs/app-store/README.md) for builds and validation. Physical paired Watch transfer and live iCloud transfer remain unverified.
+Version 1.4 is available for iPhone/iPad with the Watch companion and for visionOS. The Mac version is preparing a resubmission; macOS 1.3 remains available. See the [release record](docs/app-store/README.md) for builds and validation. Physical paired Watch transfer and live iCloud transfer remain unverified.
+
+On Mac, the sidebar stays open during resizing until you hide it. Settings opens in the native Settings window. Use ⌘F to find a request, ⇧⌘I for import/export, ⇧⌘E to export cURL, ⌘N for a new request, and ⌘Return to send or cancel.
 
 ## Interchange scope
 

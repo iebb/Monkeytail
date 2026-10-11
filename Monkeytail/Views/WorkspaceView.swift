@@ -11,6 +11,7 @@ struct WorkspaceView: View {
     @State private var compactColumn: NavigationSplitViewColumn = .detail
     @State private var sheet: WorkspaceSheet?
     @State private var search = ""
+    @FocusState private var searchFocused: Bool
     @State private var newCollection = false
     @State private var collectionName = ""
     @State private var renameID: UUID?
@@ -40,8 +41,16 @@ struct WorkspaceView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        #if os(macOS)
+        .focusedSceneValue(\.workspaceActions, WorkspaceActions(
+            findRequest: { visibility = .all; searchFocused = true },
+            importExport: { sheet = .transfer },
+            exportCurl: { if store.selectedRequest != nil { sheet = .curl } }
+        ))
+        #else
         .onAppear { visibility = geometry.size.width >= 1100 ? .all : .detailOnly }
         .onChange(of: geometry.size.width) { _, width in visibility = width >= 1100 ? .all : .detailOnly }
+        #endif
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case .transfer: TransferView(store: store)
@@ -101,18 +110,17 @@ struct WorkspaceView: View {
                 Menu {
                     Button("New request", systemImage: "plus") { store.addRequest(); compactColumn = .detail }
                     Button("New collection", systemImage: "folder.badge.plus") { collectionName = ""; renameID = nil; newCollection = true }
-                } label: { Image(systemName: "plus").frame(width: 44, height: 44) }
-                #if os(macOS)
-                .menuStyle(.borderlessButton).menuIndicator(.hidden)
-                #endif
+                } label: { Image(systemName: "plus").frame(width: SidebarMetrics.rowHeight, height: SidebarMetrics.rowHeight) }
+                .borderlessMenu()
                 .accessibilityLabel("Add request or collection")
-            }.padding(.horizontal, 16)
+            }.padding(.horizontal, SidebarMetrics.horizontalInset)
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField("Find a request", text: $search).textFieldStyle(.plain).font(.subheadline).noCapitalization().autocorrectionDisabled()
-            }.padding(.horizontal, 12).frame(minHeight: 44)
+                    .focused($searchFocused).accessibilityIdentifier("Find a request")
+            }.padding(.horizontal, 12).frame(minHeight: SidebarMetrics.rowHeight)
                 .background(Palette.surface).overlay(Rectangle().stroke(Palette.border))
-                .padding(.horizontal, 16).padding(.bottom, 8)
+                .padding(.horizontal, SidebarMetrics.horizontalInset).padding(.bottom, 8)
             List(selection: $store.selectedRequestID) {
                 ForEach(store.workspace.collections) { collection in
                     Section {
@@ -134,16 +142,16 @@ struct WorkspaceView: View {
                                 if collection.requests.isEmpty {
                                     Button("Delete empty collection", systemImage: "trash", role: .destructive) { store.workspace.collections.removeAll { $0.id == collection.id } }
                                 }
-                            } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }.buttonStyle(.plain).accessibilityLabel("Collection options")
+                            } label: { Image(systemName: "ellipsis").frame(width: SidebarMetrics.rowHeight, height: SidebarMetrics.rowHeight) }.borderlessMenu().buttonStyle(.plain).accessibilityLabel("Collection options")
                         }
-                        .frame(minHeight: 44)
+                        .frame(minHeight: SidebarMetrics.rowHeight)
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 0, leading: SidebarMetrics.horizontalInset, bottom: 0, trailing: SidebarMetrics.horizontalInset))
                 }
             }.listStyle(.plain).scrollContentBackground(.hidden)
                 .contentMargins(.horizontal, 0, for: .scrollContent)
-                .environment(\.defaultMinListRowHeight, 44)
-                .environment(\.defaultMinListHeaderHeight, 44)
+                .environment(\.defaultMinListRowHeight, SidebarMetrics.rowHeight)
+                .environment(\.defaultMinListHeaderHeight, SidebarMetrics.rowHeight)
             Divider()
             VStack(spacing: 0) {
                 sidebarButton("Import & export", symbol: "arrow.down.doc", sheet: .transfer)
@@ -160,20 +168,34 @@ struct WorkspaceView: View {
             }
     }
 
-    private func sidebarButton(_ title: String, symbol: String, sheet value: WorkspaceSheet) -> some View {
-        Button { sheet = value } label: {
-            HStack(spacing: 10) {
-                Image(systemName: symbol).frame(width: 22, alignment: .center).accessibilityHidden(true)
-                Text(title).frame(maxWidth: .infinity, alignment: .leading)
-            }.font(.subheadline).padding(.horizontal, 16).frame(minHeight: 44).contentShape(Rectangle())
-        }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(title)
+    @ViewBuilder private func sidebarButton(_ title: String, symbol: String, sheet value: WorkspaceSheet) -> some View {
+        #if os(macOS)
+        if value == .settings {
+            SettingsLink { sidebarActionLabel(title, symbol: symbol) }
+                .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(title)
+        } else {
+            Button { sheet = value } label: { sidebarActionLabel(title, symbol: symbol) }
+                .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(title)
+        }
+        #else
+        Button { sheet = value } label: { sidebarActionLabel(title, symbol: symbol) }
+            .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(title)
+        #endif
+    }
+
+    private func sidebarActionLabel(_ title: String, symbol: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol).frame(width: 22, alignment: .center).accessibilityHidden(true)
+            Text(title).frame(maxWidth: .infinity, alignment: .leading)
+        }.font(.subheadline).padding(.horizontal, SidebarMetrics.horizontalInset)
+            .frame(minHeight: SidebarMetrics.rowHeight).contentShape(Rectangle())
     }
 
     @ToolbarContentBuilder private var workspaceToolbar: some ToolbarContent {
         ToolbarItem(placement: .principal) {
             if let id = store.selectedRequestID {
                 TextField("Request name", text: store.binding(for: id).name)
-                    .font(.headline).multilineTextAlignment(.center).submitLabel(.done)
+                    .textFieldStyle(.plain).font(.headline).multilineTextAlignment(.center).submitLabel(.done)
                     .accessibilityIdentifier("Request name")
             }
         }
@@ -185,7 +207,7 @@ struct WorkspaceView: View {
                 Button("Manage environments…", systemImage: "slider.horizontal.3") { sheet = .environment }
             } label: {
                 Text(store.environment?.name ?? "Env").font(.caption.weight(.medium)).lineLimit(1).frame(maxWidth: 80)
-            }.accessibilityLabel("Select environment")
+            }.borderlessMenu().accessibilityLabel("Select environment")
         }
         ToolbarItem(placement: .workspaceTrailing) {
             Menu {
@@ -202,8 +224,12 @@ struct WorkspaceView: View {
                 Button("Import & export", systemImage: "arrow.down.doc") { sheet = .transfer }.accessibilityIdentifier("Import workspace")
                 Button("History", systemImage: "clock.arrow.circlepath") { sheet = .history }
                 Button("Snapshots", systemImage: "camera") { sheet = .snapshots }
+                #if os(macOS)
+                SettingsLink { Label("Settings", systemImage: "slider.horizontal.3") }
+                #else
                 Button("Settings", systemImage: "slider.horizontal.3") { sheet = .settings }.accessibilityIdentifier("Connection settings")
-            } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("Workspace actions")
+                #endif
+            } label: { Image(systemName: "ellipsis.circle") }.borderlessMenu().accessibilityLabel("Workspace actions")
         }
     }
 }
@@ -287,7 +313,7 @@ struct RequestWorkspace: View {
                     if transport == .websocket { request.url.wrappedValue = request.url.wrappedValue.replacingOccurrences(of: "https://", with: "wss://").replacingOccurrences(of: "http://", with: "ws://") }
                     else { request.url.wrappedValue = request.url.wrappedValue.replacingOccurrences(of: "wss://", with: "https://").replacingOccurrences(of: "ws://", with: "http://") }
                 } }
-            } label: { Image(systemName: request.wrappedValue.transport == .websocket ? "arrow.left.arrow.right" : request.wrappedValue.transport == .graphql ? "point.3.connected.trianglepath.dotted" : "network").frame(width: 36, height: 44) }.buttonStyle(.plain).accessibilityLabel("Request protocol")
+            } label: { Image(systemName: request.wrappedValue.transport == .websocket ? "arrow.left.arrow.right" : request.wrappedValue.transport == .graphql ? "point.3.connected.trianglepath.dotted" : "network").frame(width: 36, height: 44) }.borderlessMenu().buttonStyle(.plain).accessibilityLabel("Request protocol")
             Menu {
                 ForEach(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], id: \.self) { method in Button(method) { request.method.wrappedValue = method } }
             } label: {
@@ -295,10 +321,10 @@ struct RequestWorkspace: View {
                     Text(request.method.wrappedValue).font(.system(.footnote, design: .monospaced, weight: .semibold))
                     Image(systemName: "chevron.down").font(.system(size: 8))
                 }.foregroundStyle(Palette.method(request.method.wrappedValue)).padding(.horizontal, 12).frame(minHeight: 44)
-            }.buttonStyle(.plain).accessibilityLabel("HTTP method")
+            }.borderlessMenu().buttonStyle(.plain).accessibilityLabel("HTTP method")
             Divider().frame(height: 20)
             TextField("https://api.example.com", text: request.url)
-                .font(.system(.footnote, design: .monospaced)).urlInput()
+                .textFieldStyle(.plain).font(.system(.footnote, design: .monospaced)).urlInput()
                 .noCapitalization().autocorrectionDisabled().focused($urlFocused)
                 .submitLabel(.go).onSubmit(send).padding(.horizontal, 10).frame(minHeight: 44)
                 .accessibilityIdentifier("Request URL")

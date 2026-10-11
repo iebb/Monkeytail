@@ -4,7 +4,9 @@ Monkeytail is free with no in-app purchases. The publisher is Kitta Co (Apple or
 
 ## Version 1.4 — submitted October 5, 2026
 
-All three submissions are **Waiting for Review**, with automatic release after approval. [Verified App Store Connect states](proofs/release-1.4.json).
+iPhone/iPad and visionOS 1.4 are **Ready for Sale** as of October 11. macOS 1.4 (52) was rejected and is preparing a resubmission; macOS 1.3 remains available. The [October 5 submission record](proofs/release-1.4.json) is historical.
+
+The Mac resubmission changes keep the sidebar visible when resizing, use compact aligned sidebar rows, open native Settings, remove redundant menu arrows and nested search/URL field borders, and add Find, import/export, and cURL export shortcuts. Mac Debug/Release and the shared iOS app compile; 51 core/payload tests pass locally. Native Mac integration tests must be rerun after unlocking the Mac because protected-file reads failed during the locked session. Apple’s rejection message and visual checks are pending restored App Store Connect sign-in and an unlocked desktop. This preparation is not a review submission.
 
 | Platform | Version/build | Submission |
 | --- | --- | --- |

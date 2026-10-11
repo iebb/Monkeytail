@@ -34,6 +34,7 @@ struct MonkeytailApp: App {
                     Button("Reset window size") { if let window = NSApp.keyWindow { var frame = window.frame; frame.origin.y += frame.height - 800; frame.size = NSSize(width: 1280, height: 800); window.setFrame(frame, display: true) } }
                 }
                 SidebarCommands()
+                WorkspaceCommands()
             }
         Settings { SettingsView(store: store) }
         #elseif os(visionOS)

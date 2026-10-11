@@ -70,7 +70,7 @@ struct ResponseView: View {
                     if savedResponse == nil { Button("Save snapshot", systemImage: "camera") { store.saveSnapshot(requestID: requestID, response: response) } }
                     Button("Compare snapshot", systemImage: "arrow.left.arrow.right") { comparing = true }
                     if preview.kind == .json { Button("Extract JSONPath", systemImage: "line.3.horizontal.decrease") { pathTool = true } }
-                } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }.accessibilityLabel("Response actions")
+                } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }.borderlessMenu().accessibilityLabel("Response actions")
             }.padding(.leading, 12).padding(.trailing, 4).padding(.vertical, 2)
             Divider()
             if !compactSearch { PillTabs(tabs: ["Body", "Headers", "Console", "Tests", "Diagnostics"], selection: $tab) }
@@ -112,7 +112,7 @@ struct ResponseView: View {
                                 }
                             } label: {
                                 HStack { Text(format).font(.subheadline.weight(.medium)); Image(systemName: "chevron.down").font(.caption) }.frame(minHeight: 44)
-                            }.accessibilityIdentifier("Response format")
+                            }.borderlessMenu().accessibilityIdentifier("Response format")
                             Spacer()
                             if !["Image", "Audio", "Video"].contains(format) {
                                 Button { copy(response, preview: preview) } label: { Image(systemName: copied ? "checkmark" : "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Copy response")
@@ -122,7 +122,7 @@ struct ResponseView: View {
                     if ["Pretty", "Raw", "Tree"].contains(format) {
                         HStack {
                             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                            TextField("Find in response", text: $search).font(.caption).noCapitalization().autocorrectionDisabled().focused($searchFocused).submitLabel(.done).onSubmit { searchFocused = false }
+                            TextField("Find in response", text: $search).textFieldStyle(.plain).font(.caption).noCapitalization().autocorrectionDisabled().focused($searchFocused).submitLabel(.done).onSubmit { searchFocused = false }
                             if !search.isEmpty { Button { search = ""; searchFocused = false } label: { Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44) }.accessibilityLabel("Clear search") }
                         }.padding(.leading, 10).frame(minHeight: 44).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                     }

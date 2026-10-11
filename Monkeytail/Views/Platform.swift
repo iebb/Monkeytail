@@ -14,7 +14,25 @@ enum Clipboard {
         #endif
     }
 }
+
+enum SidebarMetrics {
+    #if os(macOS)
+    static let rowHeight: CGFloat = 32
+    static let horizontalInset: CGFloat = 12
+    #else
+    static let rowHeight: CGFloat = 44
+    static let horizontalInset: CGFloat = 16
+    #endif
+}
+
 extension View {
+    @ViewBuilder func borderlessMenu() -> some View {
+        #if os(macOS)
+        menuStyle(.borderlessButton).menuIndicator(.hidden)
+        #else
+        self
+        #endif
+    }
     @ViewBuilder func dismissKeyboardOnScroll() -> some View {
         #if os(visionOS)
         self
@@ -68,6 +86,36 @@ extension ToolbarItemPlacement {
     }
 }
 #if os(macOS)
+struct WorkspaceActions {
+    var findRequest: () -> Void
+    var importExport: () -> Void
+    var exportCurl: () -> Void
+}
+private struct WorkspaceActionsKey: FocusedValueKey {
+    typealias Value = WorkspaceActions
+}
+extension FocusedValues {
+    var workspaceActions: WorkspaceActions? {
+        get { self[WorkspaceActionsKey.self] }
+        set { self[WorkspaceActionsKey.self] = newValue }
+    }
+}
+struct WorkspaceCommands: Commands {
+    @FocusedValue(\.workspaceActions) private var actions
+    var body: some Commands {
+        CommandGroup(after: .importExport) {
+            Button("Import & export…") { actions?.importExport() }
+                .keyboardShortcut("i", modifiers: [.command, .shift]).disabled(actions == nil)
+            Button("Export cURL…") { actions?.exportCurl() }
+                .keyboardShortcut("e", modifiers: [.command, .shift]).disabled(actions == nil)
+        }
+        CommandGroup(after: .textEditing) {
+            Button("Find request") { actions?.findRequest() }
+                .keyboardShortcut("f", modifiers: .command).disabled(actions == nil)
+        }
+    }
+}
+
 struct ShareSheet: View {
     let items: [Any]
     @Environment(\.dismiss) private var dismiss

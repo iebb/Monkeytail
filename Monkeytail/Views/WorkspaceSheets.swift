@@ -183,7 +183,9 @@ struct SettingsView: View {
                 } header: { Text("About") } footer: { Text("Kitta Co · No data collected") }
             }.formStyle(.grouped).toggleStyle(.switch).noCapitalization().autocorrectionDisabled()
                 .navigationTitle("Settings").inlineTitle()
+                #if !os(macOS)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.keyboardShortcut(.defaultAction) } }
+                #endif
         }
         #if os(macOS)
         .frame(width: 520, height: 560)
