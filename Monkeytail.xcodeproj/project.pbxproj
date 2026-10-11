@@ -197,6 +197,7 @@
 		5071325300ABE069E1D857EB /* SecretVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVault.swift; sourceTree = "<group>"; };
 		57001A2DE3558A7FD9FE0D86 /* VisionUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionUITests.swift; sourceTree = "<group>"; };
 		57B3FD145E5FE0731A51D36C /* WatchHTTPTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHTTPTests.swift; sourceTree = "<group>"; };
+		60323B3C61C9EF21CBD2C9C4 /* Monkeytail.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Monkeytail.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6645A70EECA48443C6147147 /* AuthEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthEditor.swift; sourceTree = "<group>"; };
 		6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceStore.swift; sourceTree = "<group>"; };
 		6D6AA96A24C03FFE99338769 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -223,7 +224,6 @@
 		DD1C8051E82EDB7BBEC2C8A9 /* MonkeytailVision.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MonkeytailVision.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E015068A24823CDD3FE171F2 /* IntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationTests.swift; sourceTree = "<group>"; };
 		E0742AB66F82B8FC3E1F6328 /* WorkspacePersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspacePersistence.swift; sourceTree = "<group>"; };
-		E23D70DDDAA090238FE9BDE8 /* MonkeytailMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MonkeytailMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E33FB421789C053BD9B6160C /* ResponseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseView.swift; sourceTree = "<group>"; };
 		E7B1464F28D368C0371879F9 /* WatchStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStore.swift; sourceTree = "<group>"; };
 		EC1589A5DDA4486EEF998717 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -282,7 +282,7 @@
 			isa = PBXGroup;
 			children = (
 				BB1222770C4F737984F012BC /* Monkeytail.app */,
-				E23D70DDDAA090238FE9BDE8 /* MonkeytailMac.app */,
+				60323B3C61C9EF21CBD2C9C4 /* Monkeytail.app */,
 				43F4946C7001470F7B790EA4 /* MonkeytailMacTests.xctest */,
 				48EA97FA58A38FBDAF4E6BAA /* MonkeytailTests.xctest */,
 				ECC3D38271ACED2A728BBCC0 /* MonkeytailUITests.xctest */,
@@ -512,7 +512,7 @@
 				ABFD90EA8C66EA786D695B2B /* MonkeytailCore */,
 			);
 			productName = MonkeytailMac;
-			productReference = E23D70DDDAA090238FE9BDE8 /* MonkeytailMac.app */;
+			productReference = 60323B3C61C9EF21CBD2C9C4 /* Monkeytail.app */;
 			productType = "com.apple.product-type.application";
 		};
 		73F18CD670F8F0333AA67F99 /* Monkeytail */ = {
@@ -1064,7 +1064,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.MonkeytailMacTests;
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MonkeytailMac.app/Contents/MacOS/MonkeytailMac";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Monkeytail.app/Contents/MacOS/Monkeytail";
 			};
 			name = Debug;
 		};
@@ -1375,7 +1375,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.MonkeytailMacTests;
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MonkeytailMac.app/Contents/MacOS/MonkeytailMac";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Monkeytail.app/Contents/MacOS/Monkeytail";
 			};
 			name = Release;
 		};
