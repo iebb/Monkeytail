@@ -10,6 +10,8 @@ The Mac resubmission changes in `b783f3a` keep the sidebar visible when resizing
 
 Mac **1.4 (63)** is valid and App Store eligible, with `usesNonExemptEncryption=false`, and is selected in the version record with updated release notes. The existing Mac Cloud workflow now requires its native integration tests to pass alongside the signed archive. [Verified preflight record](proofs/macos-1.4-resubmission-preflight.json). Apple’s rejection message and visual checks are pending restored App Store Connect sign-in and an unlocked desktop. **This preparation is not a review submission**; the rejected submission remains unresolved.
 
+The follow-up Mac polish replaces the outlined search box with an AppKit search field and a native sidebar. The single left toolbar title edits the request name; the centre duplicate is removed. The response starts with 58% of the pane area and its divider can be adjusted. The environment control permits longer names with slightly larger text. The Mac app builds, and a brief native check verified title editing, live filtering, clearing search, restoring search with ⌘F, and a visible httpbin JSON response. [Native preview](screenshots/mac/toolbar-polish-1.4.jpg). Broader test runs are omitted at the user's request; only the Mac release workflow is started for these changes.
+
 | Platform | Version/build | Submission |
 | --- | --- | --- |
 | iPhone/iPad and Apple Watch | 1.4 (54) | [2b64c9ba-79ff-4bf4-877a-79e4b91ce369](https://appstoreconnect.apple.com/apps/6814706725/distribution/reviewsubmissions/details/2b64c9ba-79ff-4bf4-877a-79e4b91ce369) |

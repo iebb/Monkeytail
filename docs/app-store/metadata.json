@@ -18,5 +18,5 @@
   "visionOSDescription": "A native request debugger for Apple Vision Pro. Import cURL, edit headers and bodies, send requests, and inspect JSON, images, audio, video, or raw bytes.\n\nOrganize collections and environments. Import and export Monkeytail, Postman, Insomnia, and OpenAPI files. Use local JavaScript checks, GraphQL, WebSocket, SSE, response mocks, and saved snapshots.\n\nOptional iCloud sync connects your existing Apple devices. No Monkeytail account. Free, with no in-app purchases and no data collected by Kitta Co.",
   "whatsNew1_3": "Favourites sync across your Apple devices. Copy favourite requests from iPhone to Apple Watch, then send, cancel, and inspect responses on your wrist. Native visionOS support is also available.",
   "whatsNew1_4": "Cleaner collections with square rows, consistent spacing, and aligned actions. Compact Settings and optional Keychain storage.",
-  "whatsNewMac1_4": "Improved Mac sidebar resizing and compact controls. Native Settings and keyboard shortcuts for finding requests, import/export, and cURL export."
+  "whatsNewMac1_4": "Native Mac sidebar and search, one editable request title, a wider adjustable response pane, and improved environment controls. Optional Keychain storage."
 }

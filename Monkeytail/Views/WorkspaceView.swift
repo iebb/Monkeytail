@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 #if os(visionOS)
 import MonkeytailSystemCore
 #else
@@ -11,7 +14,11 @@ struct WorkspaceView: View {
     @State private var compactColumn: NavigationSplitViewColumn = .detail
     @State private var sheet: WorkspaceSheet?
     @State private var search = ""
+    #if os(macOS)
+    @State private var searchFocused = false
+    #else
     @FocusState private var searchFocused: Bool
+    #endif
     @State private var newCollection = false
     @State private var collectionName = ""
     @State private var renameID: UUID?
@@ -32,8 +39,7 @@ struct WorkspaceView: View {
             if let request = store.selectedRequest {
                 RequestWorkspace(store: store, requestID: request.id)
                     .id(request.id)
-                    .navigationTitle(request.name)
-                    .inlineTitle()
+                    .requestWindowTitle(request.name)
                     .toolbar { workspaceToolbar }
             } else {
                 EmptyPanel(title: "No request selected", message: "Create or import a request.")
@@ -104,8 +110,13 @@ struct WorkspaceView: View {
 
     private var sidebar: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Collections").font(.headline)
+            HStack(alignment: .center, spacing: 8) {
+                Text("Collections")
+                    #if os(macOS)
+                    .font(.system(size: 13, weight: .semibold))
+                    #else
+                    .font(.headline)
+                    #endif
                 Spacer()
                 Menu {
                     Button("New request", systemImage: "plus") { store.addRequest(); compactColumn = .detail }
@@ -114,6 +125,15 @@ struct WorkspaceView: View {
                 .borderlessMenu()
                 .accessibilityLabel("Add request or collection")
             }.padding(.horizontal, SidebarMetrics.horizontalInset)
+                #if os(macOS)
+                .padding(.top, 8).padding(.bottom, 6)
+                #endif
+            #if os(macOS)
+            MacRequestSearchField(text: $search, focused: $searchFocused)
+                .frame(height: 28)
+                .padding(.horizontal, SidebarMetrics.horizontalInset)
+                .padding(.bottom, 12)
+            #else
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField("Find a request", text: $search).textFieldStyle(.plain).font(.subheadline).noCapitalization().autocorrectionDisabled()
@@ -121,6 +141,7 @@ struct WorkspaceView: View {
             }.padding(.horizontal, 12).frame(minHeight: SidebarMetrics.rowHeight)
                 .background(Palette.surface).overlay(Rectangle().stroke(Palette.border))
                 .padding(.horizontal, SidebarMetrics.horizontalInset).padding(.bottom, 8)
+            #endif
             List(selection: $store.selectedRequestID) {
                 ForEach(store.workspace.collections) { collection in
                     Section {
@@ -148,7 +169,13 @@ struct WorkspaceView: View {
                     }
                     .listRowInsets(EdgeInsets(top: 0, leading: SidebarMetrics.horizontalInset, bottom: 0, trailing: SidebarMetrics.horizontalInset))
                 }
-            }.listStyle(.plain).scrollContentBackground(.hidden)
+            }
+                #if os(macOS)
+                .listStyle(.sidebar)
+                #else
+                .listStyle(.plain)
+                #endif
+                .scrollContentBackground(.hidden)
                 .contentMargins(.horizontal, 0, for: .scrollContent)
                 .environment(\.defaultMinListRowHeight, SidebarMetrics.rowHeight)
                 .environment(\.defaultMinListHeaderHeight, SidebarMetrics.rowHeight)
@@ -161,7 +188,12 @@ struct WorkspaceView: View {
                 sidebarButton("Cookies & certificates", symbol: "lock.shield", sheet: .network)
                 sidebarButton("Settings", symbol: "slider.horizontal.3", sheet: .settings)
             }.padding(.vertical, 8)
-        }.background(Palette.canvas)
+        }
+            #if os(macOS)
+            .background(MacSidebarBackground())
+            #else
+            .background(Palette.canvas)
+            #endif
             .hideNavigationBar()
             .onChange(of: store.selectedRequestID) { _, id in
                 if id != nil { compactColumn = .detail }
@@ -192,6 +224,21 @@ struct WorkspaceView: View {
     }
 
     @ToolbarContentBuilder private var workspaceToolbar: some ToolbarContent {
+        #if os(macOS)
+        ToolbarItem(placement: .navigation) {
+            if let id = store.selectedRequestID {
+                TextField("Request name", text: store.binding(for: id).name)
+                    .textFieldStyle(.plain).font(.headline).submitLabel(.done)
+                    .frame(minWidth: 140, idealWidth: 240, maxWidth: 360, alignment: .leading)
+                    .accessibilityIdentifier("Request name")
+            }
+        }.flatTitleBackground()
+        if #available(macOS 26, *) {
+            ToolbarSpacer(.flexible, placement: .primaryAction)
+        } else {
+            ToolbarItem(placement: .principal) { Spacer() }
+        }
+        #else
         ToolbarItem(placement: .principal) {
             if let id = store.selectedRequestID {
                 TextField("Request name", text: store.binding(for: id).name)
@@ -199,6 +246,7 @@ struct WorkspaceView: View {
                     .accessibilityIdentifier("Request name")
             }
         }
+        #endif
         ToolbarItem(placement: .workspaceTrailing) {
             Menu {
                 Button("No environment") { store.workspace.selectedEnvironmentID = nil }
@@ -206,7 +254,13 @@ struct WorkspaceView: View {
                 Divider()
                 Button("Manage environments…", systemImage: "slider.horizontal.3") { sheet = .environment }
             } label: {
-                Text(store.environment?.name ?? "Env").font(.caption.weight(.medium)).lineLimit(1).frame(maxWidth: 80)
+                Text(store.environment?.name ?? "Env")
+                    #if os(macOS)
+                    .font(.system(size: NSFont.preferredFont(forTextStyle: .caption1).pointSize + 1, weight: .medium))
+                    .lineLimit(1).padding(.horizontal, 6).frame(maxWidth: 180)
+                    #else
+                    .font(.caption.weight(.medium)).lineLimit(1).frame(maxWidth: 80)
+                    #endif
             }.borderlessMenu().accessibilityLabel("Select environment")
         }
         ToolbarItem(placement: .workspaceTrailing) {
@@ -239,6 +293,11 @@ struct RequestWorkspace: View {
     let requestID: UUID
     @State private var pane = "Request"
     @State private var inputDismissal = 0
+    #if os(macOS)
+    @AppStorage("macRequestPaneFraction") private var requestPaneFraction = 0.42
+    @State private var dividerStart: Double?
+    @State private var dividerHovered = false
+    #endif
     @FocusState private var urlFocused: Bool
     @Environment(\.dynamicTypeSize) private var dynamicType
     private var request: Binding<APIRequest> { store.binding(for: requestID) }
@@ -252,23 +311,41 @@ struct RequestWorkspace: View {
                 Divider()
                 // Keep both panes alive and fully sized on iPhone. A zero-width
                 // hidden pane gives its scroll views an invalid initial viewport.
-                paneLayout {
-                    RequestEditor(request: request, store: store)
-                        .disabled(!sideBySide && pane != "Request")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped().opacity(sideBySide || pane == "Request" ? 1 : 0)
-                        .allowsHitTesting(sideBySide || pane == "Request")
-                        .accessibilityHidden(!sideBySide && pane != "Request")
-                    if sideBySide { Divider() }
-                    Group {
-                        if stream { LiveView(store: store, requestID: requestID) }
-                        else { ResponseView(store: store, requestID: requestID) }
+                #if os(macOS)
+                if sideBySide {
+                    let requestWidth = max(280, min(geometry.size.width - 327, geometry.size.width * requestPaneFraction))
+                    HStack(spacing: 0) {
+                        RequestEditor(request: request, store: store)
+                            .frame(width: requestWidth).frame(maxHeight: .infinity)
+                            .clipped()
+                        Rectangle().fill(Palette.border).frame(width: 1)
+                            .padding(.horizontal, 3).contentShape(Rectangle())
+                            .onHover { hovered in
+                                guard hovered != dividerHovered else { return }
+                                dividerHovered = hovered
+                                if hovered { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                            }
+                            .onDisappear { if dividerHovered { NSCursor.pop(); dividerHovered = false } }
+                            .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                                .onChanged { value in
+                                    if dividerStart == nil { dividerStart = requestWidth / geometry.size.width }
+                                    requestPaneFraction = max(280 / geometry.size.width, min(1 - 327 / geometry.size.width, (dividerStart ?? 0.42) + value.translation.width / geometry.size.width))
+                                }.onEnded { _ in dividerStart = nil })
+                            .accessibilityLabel("Request and response divider")
+                            .accessibilityAdjustableAction { direction in
+                                let change = direction == .increment ? 0.05 : -0.05
+                                requestPaneFraction = max(280 / geometry.size.width, min(1 - 327 / geometry.size.width, requestPaneFraction + change))
+                            }
+                        responsePane(stream: stream)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .clipped()
                     }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped().opacity(sideBySide || pane == "Response" ? 1 : 0)
-                        .allowsHitTesting(sideBySide || pane == "Response")
-                        .accessibilityHidden(!sideBySide && pane != "Response")
+                } else {
+                    compactPanes(sideBySide: false, stream: stream, layout: paneLayout)
                 }
+                #else
+                compactPanes(sideBySide: sideBySide, stream: stream, layout: paneLayout)
+                #endif
                 Divider()
                 HStack(spacing: 12) {
                     if !sideBySide {
@@ -300,6 +377,28 @@ struct RequestWorkspace: View {
                 .onChange(of: pane) { _, _ in dismissKeyboard() }
                 .onChange(of: store.responses[requestID]?.response.id) { _, _ in if !sideBySide { pane = "Response" } }
                 .onChange(of: store.errors[requestID]) { _, error in if error != nil && !sideBySide { pane = "Response" } }
+        }
+    }
+
+    @ViewBuilder private func responsePane(stream: Bool) -> some View {
+        if stream { LiveView(store: store, requestID: requestID) }
+        else { ResponseView(store: store, requestID: requestID) }
+    }
+
+    private func compactPanes(sideBySide: Bool, stream: Bool, layout: AnyLayout) -> some View {
+        layout {
+            RequestEditor(request: request, store: store)
+                .disabled(!sideBySide && pane != "Request")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped().opacity(sideBySide || pane == "Request" ? 1 : 0)
+                .allowsHitTesting(sideBySide || pane == "Request")
+                .accessibilityHidden(!sideBySide && pane != "Request")
+            if sideBySide { Divider() }
+            responsePane(stream: stream)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped().opacity(sideBySide || pane == "Response" ? 1 : 0)
+                .allowsHitTesting(sideBySide || pane == "Response")
+                .accessibilityHidden(!sideBySide && pane != "Response")
         }
     }
 

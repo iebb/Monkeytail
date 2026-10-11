@@ -51,8 +51,11 @@ struct RequestSidebarRow: View {
                 Text(request.transport == .websocket ? "WS" : request.transport == .sse ? "SSE" : request.method).font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(Palette.method(request.method)).frame(width: 39, alignment: .leading)
                 Text(request.name).font(.subheadline).lineLimit(2); Spacer(minLength: 0)
                 if request.favorite == true { Image(systemName: "star.fill").font(.caption).foregroundStyle(Palette.mint) }
-            }.frame(minHeight: SidebarMetrics.rowHeight).contentShape(Rectangle())
-        }.buttonStyle(.plain).tag(request.id).listRowBackground(store.selectedRequestID == request.id ? Palette.mint.opacity(0.1) : Color.clear)
+            }.frame(minHeight: SidebarMetrics.requestRowHeight).contentShape(Rectangle())
+        }.buttonStyle(.plain).tag(request.id)
+            #if !os(macOS)
+            .listRowBackground(store.selectedRequestID == request.id ? Palette.mint.opacity(0.1) : Color.clear)
+            #endif
             .contextMenu {
                 Button(request.favorite == true ? "Unfavourite" : "Favourite", systemImage: request.favorite == true ? "star.slash" : "star") { var value = request; value.favorite = request.favorite != true; store.update(value) }
                 Button("Duplicate", systemImage: "plus.square.on.square") { store.duplicate(request) }
