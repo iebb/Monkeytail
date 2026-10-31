@@ -2,9 +2,21 @@
 
 Monkeytail is free with no in-app purchases. The publisher is Kitta Co (Apple organization: Kitta Ltd). The app record is [6814706725](https://appstoreconnect.apple.com/apps/6814706725/distribution).
 
+## Version 1.5 — submitted November 1, 2026
+
+Version 1.5 is **Waiting for Review** on all three platforms, with automatic release after approval and immediate availability to all users. Version 1.4 remains available while Apple reviews the update. [App Store Connect confirmation](proofs/release-1.5-waiting-review.png).
+
+| Platform | Version/build | Signed Xcode Cloud archive |
+| --- | --- | --- |
+| iPhone/iPad and Apple Watch | 1.5 (70) | [iOS archive](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/apps/6814706725/ci/builds/826b2236-46fb-4b18-bc6b-6913e23a8b98) |
+| macOS | 1.5 (67) | [Mac archive and tests](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/apps/6814706725/ci/builds/b892ef9f-e47d-44ae-9264-cb89ccd78aee) |
+| visionOS | 1.5 (68) | [visionOS archive](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/apps/6814706725/ci/builds/7c041612-cc9d-4eff-b324-dd8baf479653) |
+
+The release source is `f06039b`. It improves workspace layouts and sheet headings, especially on Mac, where stacked and side-by-side panes are selectable. The three signed Cloud archives and the Mac and visionOS Cloud tests succeeded. Local release metadata validation, 51 core and Watch payload tests, the Mac Release and visionOS builds, and the iOS snapshot/JSONPath and send/import/layout flows passed. Two iOS UI flows failed in Cloud (collection search and mock navigation), then both passed when rerun locally on the same release source. The Watch Cloud test again terminated when opening the response body, as in 1.4; this remains unresolved and is not counted as a pass. The GitHub Actions job did not start because of an account billing or spending limit.
+
 ## Version 1.4 — submitted October 5, 2026
 
-iPhone/iPad and visionOS 1.4 are **Ready for Sale** as of October 11. macOS **1.4 (66)** was resubmitted on October 11 and is **Waiting for Review**, with automatic release after approval. macOS 1.3 remains available during review. [Verified Mac resubmission](proofs/macos-1.4-resubmitted.json). The [October 5 submission record](proofs/release-1.4.json) is historical.
+Version 1.4 is **Ready for Distribution** on iPhone/iPad, macOS, and visionOS as verified November 1. macOS **1.4 (66)** was resubmitted on October 11 with automatic release after approval. [Verified Mac resubmission](proofs/macos-1.4-resubmitted.json). The [October 5 submission record](proofs/release-1.4.json) is historical.
 
 The Mac resubmission changes in `b783f3a` keep the sidebar visible when resizing, use compact aligned sidebar rows, open native Settings, remove redundant menu arrows and nested search/URL field borders, and add Find, import/export, and cURL export shortcuts. Mac Debug/Release and the shared iOS app compile; 51 core/payload tests pass locally. All 13 native Mac integration tests pass on macOS 27 in Xcode Cloud run 63. The local locked-session run hit protected-file read errors; Cloud verifies those same storage tests successfully. GitHub Actions run 38111050065 could not start because of an account billing limit.
 
