@@ -16,6 +16,7 @@ struct WorkspaceView: View {
     @State private var search = ""
     #if os(macOS)
     @State private var searchFocused = false
+    @AppStorage("macWorkspaceLayout") private var macWorkspaceLayout = "stacked"
     #else
     @FocusState private var searchFocused: Bool
     #endif
@@ -34,7 +35,7 @@ struct WorkspaceView: View {
     var body: some View {
         GeometryReader { geometry in
         NavigationSplitView(columnVisibility: $visibility, preferredCompactColumn: $compactColumn) {
-            sidebar.navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 320)
+            sidebar.navigationSplitViewColumnWidth(min: 240, ideal: 272, max: 340)
         } detail: {
             if let request = store.selectedRequest {
                 RequestWorkspace(store: store, requestID: request.id)
@@ -42,8 +43,7 @@ struct WorkspaceView: View {
                     .requestWindowTitle(request.name)
                     .toolbar { workspaceToolbar }
             } else {
-                EmptyPanel(title: "No request selected", message: "Create or import a request.")
-                    .background(Palette.canvas).toolbar { workspaceToolbar }
+                emptyWorkspace.toolbar { workspaceToolbar }
             }
         }
         .navigationSplitViewStyle(.balanced)
@@ -108,8 +108,37 @@ struct WorkspaceView: View {
         }
     }
 
+    private var emptyWorkspace: some View {
+        VStack(spacing: 16) {
+            #if os(macOS)
+            EmptyPanel(title: "No request selected", message: "Select a request or create one.", symbol: "terminal")
+                .frame(maxHeight: 180)
+            #else
+            EmptyPanel(title: "Your next request starts here", message: "Select a request from Collections, or create something new.", symbol: "terminal")
+                .frame(maxHeight: 240)
+            #endif
+            HStack(spacing: 12) {
+                Button("New request", systemImage: "plus") { store.addRequest() }.buttonStyle(.borderedProminent)
+                Button("Import", systemImage: "arrow.down.doc") { sheet = .transfer }.buttonStyle(.bordered)
+            }
+        }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.canvas)
+    }
+
     private var sidebar: some View {
         VStack(spacing: 0) {
+            #if !os(macOS)
+            HStack(spacing: 10) {
+                Image(systemName: "terminal.fill").font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(Palette.mint).frame(width: 38, height: 38)
+                    .background(Palette.mint.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Monkeytail").font(.headline)
+                    Text("API workspace").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }.padding(SidebarMetrics.horizontalInset).padding(.top, 4)
+            #endif
             HStack(alignment: .center, spacing: 8) {
                 Text("Collections")
                     #if os(macOS)
@@ -139,7 +168,7 @@ struct WorkspaceView: View {
                 TextField("Find a request", text: $search).textFieldStyle(.plain).font(.subheadline).noCapitalization().autocorrectionDisabled()
                     .focused($searchFocused).accessibilityIdentifier("Find a request")
             }.padding(.horizontal, 12).frame(minHeight: SidebarMetrics.rowHeight)
-                .background(Palette.surface).overlay(Rectangle().stroke(Palette.border))
+                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 10)).overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.border))
                 .padding(.horizontal, SidebarMetrics.horizontalInset).padding(.bottom, 8)
             #endif
             List(selection: $store.selectedRequestID) {
@@ -181,6 +210,9 @@ struct WorkspaceView: View {
                 .environment(\.defaultMinListHeaderHeight, SidebarMetrics.rowHeight)
             Divider()
             VStack(spacing: 0) {
+                Text("WORKSPACE").font(.system(size: 10, weight: .semibold)).tracking(1.2)
+                    .foregroundStyle(.tertiary).frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, SidebarMetrics.horizontalInset).padding(.top, 8).padding(.bottom, 6)
                 sidebarButton("Import & export", symbol: "arrow.down.doc", sheet: .transfer)
                 sidebarButton("Environments", symbol: "square.stack.3d.up", sheet: .environment)
                 sidebarButton("Request history", symbol: "clock.arrow.circlepath", sheet: .history)
@@ -233,7 +265,7 @@ struct WorkspaceView: View {
                     .padding(.horizontal, 12)
                     .accessibilityIdentifier("Request name")
             }
-        }.flatTitleBackground()
+        }.flatToolbarBackground()
         if #available(macOS 26, *) {
             ToolbarSpacer(.flexible, placement: .primaryAction)
         } else {
@@ -255,15 +287,21 @@ struct WorkspaceView: View {
                 Divider()
                 Button("Manage environments…", systemImage: "slider.horizontal.3") { sheet = .environment }
             } label: {
-                Text(store.environment?.name ?? "Env")
+                HStack(spacing: 6) {
+                    Text(store.environment?.name ?? "No environment")
+                    #if os(macOS)
+                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.secondary).accessibilityHidden(true)
+                    #endif
+                }
                     #if os(macOS)
                     .font(.system(size: NSFont.preferredFont(forTextStyle: .caption1).pointSize + 1, weight: .medium))
-                    .lineLimit(1).padding(.horizontal, 6).frame(maxWidth: 180)
+                    .foregroundStyle(.primary).lineLimit(1).padding(.horizontal, 6).frame(maxWidth: 180, minHeight: 28)
                     #else
                     .font(.caption.weight(.medium)).lineLimit(1).frame(maxWidth: 80)
                     #endif
             }.borderlessMenu().accessibilityLabel("Select environment")
-        }
+        }.flatToolbarBackground()
         ToolbarItem(placement: .workspaceTrailing) {
             Menu {
                 Button("New request", systemImage: "plus") { store.addRequest() }
@@ -280,12 +318,28 @@ struct WorkspaceView: View {
                 Button("History", systemImage: "clock.arrow.circlepath") { sheet = .history }
                 Button("Snapshots", systemImage: "camera") { sheet = .snapshots }
                 #if os(macOS)
+                Divider()
+                Menu("Workspace layout") {
+                    Button { macWorkspaceLayout = "stacked" } label: {
+                        if macWorkspaceLayout == "stacked" { Label("Request above response", systemImage: "checkmark") } else { Text("Request above response") }
+                    }
+                    Button { macWorkspaceLayout = "sideBySide" } label: {
+                        if macWorkspaceLayout == "sideBySide" { Label("Side by side", systemImage: "checkmark") } else { Text("Side by side") }
+                    }
+                }
+                Divider()
                 SettingsLink { Label("Settings", systemImage: "slider.horizontal.3") }
                 #else
                 Button("Settings", systemImage: "slider.horizontal.3") { sheet = .settings }.accessibilityIdentifier("Connection settings")
                 #endif
-            } label: { Image(systemName: "ellipsis.circle") }.borderlessMenu().accessibilityLabel("Workspace actions")
-        }
+            } label: {
+                #if os(macOS)
+                Image(systemName: "ellipsis").frame(width: 28, height: 28).foregroundStyle(.primary)
+                #else
+                Image(systemName: "ellipsis.circle")
+                #endif
+            }.borderlessMenu().accessibilityLabel("Workspace actions")
+        }.flatToolbarBackground()
     }
 }
 
@@ -296,6 +350,8 @@ struct RequestWorkspace: View {
     @State private var inputDismissal = 0
     #if os(macOS)
     @AppStorage("macRequestPaneFraction") private var requestPaneFraction = 0.42
+    @AppStorage("macStackedRequestFraction") private var stackedRequestFraction = 0.45
+    @AppStorage("macWorkspaceLayout") private var macWorkspaceLayout = "stacked"
     @State private var dividerStart: Double?
     @State private var dividerHovered = false
     #endif
@@ -304,43 +360,21 @@ struct RequestWorkspace: View {
     private var request: Binding<APIRequest> { store.binding(for: requestID) }
     var body: some View {
         GeometryReader { geometry in
+            #if os(macOS)
+            let sideBySide = geometry.size.height >= 440 && !dynamicType.isAccessibilitySize && (macWorkspaceLayout == "stacked" || geometry.size.width >= 640)
+            #else
             let sideBySide = geometry.size.width >= 640 && geometry.size.height >= 440 && !dynamicType.isAccessibilitySize
+            #endif
             let stream = request.wrappedValue.transport == .websocket || request.wrappedValue.transport == .sse
             let paneLayout = sideBySide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(ZStackLayout(alignment: .topLeading))
             VStack(spacing: 0) {
-                addressBar
+                addressBar(showSend: sideBySide && !stream)
                 Divider()
                 // Keep both panes alive and fully sized on iPhone. A zero-width
                 // hidden pane gives its scroll views an invalid initial viewport.
                 #if os(macOS)
                 if sideBySide {
-                    let requestWidth = max(280, min(geometry.size.width - 327, geometry.size.width * requestPaneFraction))
-                    HStack(spacing: 0) {
-                        RequestEditor(request: request, store: store)
-                            .frame(width: requestWidth).frame(maxHeight: .infinity)
-                            .clipped()
-                        Rectangle().fill(Palette.border).frame(width: 1)
-                            .padding(.horizontal, 3).contentShape(Rectangle())
-                            .onHover { hovered in
-                                guard hovered != dividerHovered else { return }
-                                dividerHovered = hovered
-                                if hovered { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-                            }
-                            .onDisappear { if dividerHovered { NSCursor.pop(); dividerHovered = false } }
-                            .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                                .onChanged { value in
-                                    if dividerStart == nil { dividerStart = requestWidth / geometry.size.width }
-                                    requestPaneFraction = max(280 / geometry.size.width, min(1 - 327 / geometry.size.width, (dividerStart ?? 0.42) + value.translation.width / geometry.size.width))
-                                }.onEnded { _ in dividerStart = nil })
-                            .accessibilityLabel("Request and response divider")
-                            .accessibilityAdjustableAction { direction in
-                                let change = direction == .increment ? 0.05 : -0.05
-                                requestPaneFraction = max(280 / geometry.size.width, min(1 - 327 / geometry.size.width, requestPaneFraction + change))
-                            }
-                        responsePane(stream: stream)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .clipped()
-                    }
+                    macPanes(stream: stream)
                 } else {
                     compactPanes(sideBySide: false, stream: stream, layout: paneLayout)
                 }
@@ -348,38 +382,93 @@ struct RequestWorkspace: View {
                 compactPanes(sideBySide: sideBySide, stream: stream, layout: paneLayout)
                 #endif
                 Divider()
-                HStack(spacing: 12) {
-                    if !sideBySide {
+                if !sideBySide {
+                    HStack(spacing: 12) {
                         HStack(spacing: 0) {
                             ForEach(["Request", "Response"], id: \.self) { value in
                                 Button {
                                     dismissKeyboard()
                                     pane = value
                                 } label: {
-                                    Text(stream && value == "Response" ? "Messages" : value).font(.subheadline.weight(pane == value ? .semibold : .regular))
+                                    Text(stream && value == "Response" ? "Messages" : value)
+                                        .font(.subheadline.weight(pane == value ? .semibold : .regular))
                                         .frame(maxWidth: .infinity, minHeight: 44)
-                                        .background(pane == value ? Palette.surface : .clear, in: RoundedRectangle(cornerRadius: 6))
+                                        .foregroundStyle(pane == value ? Palette.mint : Color.secondary)
+                                        .background(pane == value ? Palette.surface : .clear, in: RoundedRectangle(cornerRadius: 8))
                                 }.buttonStyle(.plain).accessibilityAddTraits(pane == value ? .isSelected : [])
                             }
-                        }.padding(3).background(Color.secondary.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+                        }.padding(3).background(Palette.canvas, in: RoundedRectangle(cornerRadius: 11))
                             .frame(maxWidth: 300).accessibilityIdentifier("Workspace pane")
-                    }
-                    Spacer(minLength: 0)
-                    if !stream {
-                    Button(action: send) {
-                        Label(store.runningID == requestID ? "Cancel" : "Send", systemImage: store.runningID == requestID ? "stop.fill" : "arrow.up")
-                            .font(.subheadline.weight(.semibold)).padding(.horizontal, 16).frame(minHeight: 44)
-                            .foregroundStyle(Palette.canvas).background(Palette.mint, in: RoundedRectangle(cornerRadius: 8))
-                    }.buttonStyle(.plain).disabled(store.runningID != nil && store.runningID != requestID)
-                        .keyboardShortcut(.return, modifiers: .command).accessibilityIdentifier("Send request")
-                    }
-                }.padding(.horizontal, 12).padding(.vertical, 4).background(Palette.surface)
+                        Spacer(minLength: 0)
+                        if !stream { sendButton }
+                    }.padding(.horizontal, 16).padding(.vertical, 8).background(Palette.surface)
+                }
+                #if !os(macOS)
+                if sideBySide {
+                    HStack {
+                        Label(store.runningID == requestID ? "Sending request…" : "Changes save automatically", systemImage: store.runningID == requestID ? "arrow.triangle.2.circlepath" : "checkmark.circle")
+                        Spacer()
+                        if !stream { Text("⌘ ↵  Send request") }
+                    }.font(.caption).foregroundStyle(.secondary)
+                        .padding(.horizontal, 16).frame(height: 30).background(Palette.surface)
+                }
+                #endif
             }.background(Palette.canvas).environment(\.inputDismissal, inputDismissal)
                 .onChange(of: pane) { _, _ in dismissKeyboard() }
                 .onChange(of: store.responses[requestID]?.response.id) { _, _ in if !sideBySide { pane = "Response" } }
                 .onChange(of: store.errors[requestID]) { _, error in if error != nil && !sideBySide { pane = "Response" } }
         }
     }
+
+    #if os(macOS)
+    private func macPanes(stream: Bool) -> some View {
+        GeometryReader { geometry in
+            let stacked = macWorkspaceLayout == "stacked"
+            let extent = stacked ? geometry.size.height : geometry.size.width
+            let requestMinimum: CGFloat = stacked ? 150 : 280
+            let responseMinimum: CGFloat = stacked ? 150 : 327
+            let fraction = stacked ? stackedRequestFraction : requestPaneFraction
+            let requestExtent = max(requestMinimum, min(extent - responseMinimum, extent * fraction))
+            let layout = stacked ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
+            layout {
+                RequestEditor(request: request, store: store)
+                    .frame(width: stacked ? nil : requestExtent, height: stacked ? requestExtent : nil)
+                    .frame(maxWidth: stacked ? .infinity : nil, maxHeight: stacked ? nil : .infinity)
+                    .clipped()
+                Rectangle().fill(Palette.border)
+                    .frame(width: stacked ? nil : 1, height: stacked ? 1 : nil)
+                    .padding(stacked ? .vertical : .horizontal, 3).contentShape(Rectangle())
+                    .onHover { hovered in
+                        guard hovered != dividerHovered else { return }
+                        dividerHovered = hovered
+                        if hovered { (stacked ? NSCursor.resizeUpDown : NSCursor.resizeLeftRight).push() } else { NSCursor.pop() }
+                    }
+                    .onChange(of: stacked) { _, newValue in
+                        if dividerHovered { NSCursor.pop(); (newValue ? NSCursor.resizeUpDown : NSCursor.resizeLeftRight).push() }
+                    }
+                    .onDisappear { if dividerHovered { NSCursor.pop(); dividerHovered = false } }
+                    .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                        .onChanged { value in
+                            guard extent > requestMinimum + responseMinimum else { return }
+                            if dividerStart == nil { dividerStart = requestExtent / extent }
+                            let translation = stacked ? value.translation.height : value.translation.width
+                            let next = max(requestMinimum / extent, min(1 - responseMinimum / extent, (dividerStart ?? fraction) + translation / extent))
+                            if stacked { stackedRequestFraction = next } else { requestPaneFraction = next }
+                        }.onEnded { _ in dividerStart = nil })
+                    .accessibilityLabel("Request and response divider")
+                    .accessibilityAdjustableAction { direction in
+                        guard extent > requestMinimum + responseMinimum else { return }
+                        let change = direction == .increment ? 0.05 : -0.05
+                        let next = max(requestMinimum / extent, min(1 - responseMinimum / extent, fraction + change))
+                        if stacked { stackedRequestFraction = next } else { requestPaneFraction = next }
+                    }
+                responsePane(stream: stream)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+            }
+        }
+    }
+    #endif
 
     @ViewBuilder private func responsePane(stream: Bool) -> some View {
         if stream { LiveView(store: store, requestID: requestID) }
@@ -403,34 +492,45 @@ struct RequestWorkspace: View {
         }
     }
 
-    private var addressBar: some View {
-        HStack(spacing: 0) {
-            Menu {
-                ForEach(RequestTransport.allCases, id: \.self) { transport in Button(transport.rawValue) {
-                    request.transport.wrappedValue = transport
-                    if transport == .graphql { request.method.wrappedValue = "POST" }
-                    if transport == .sse { request.method.wrappedValue = "GET" }
-                    if transport == .websocket { request.url.wrappedValue = request.url.wrappedValue.replacingOccurrences(of: "https://", with: "wss://").replacingOccurrences(of: "http://", with: "ws://") }
-                    else { request.url.wrappedValue = request.url.wrappedValue.replacingOccurrences(of: "wss://", with: "https://").replacingOccurrences(of: "ws://", with: "http://") }
-                } }
-            } label: { Image(systemName: request.wrappedValue.transport == .websocket ? "arrow.left.arrow.right" : request.wrappedValue.transport == .graphql ? "point.3.connected.trianglepath.dotted" : "network").frame(width: 36, height: 44) }.borderlessMenu().buttonStyle(.plain).accessibilityLabel("Request protocol")
-            Menu {
-                ForEach(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], id: \.self) { method in Button(method) { request.method.wrappedValue = method } }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(request.method.wrappedValue).font(.system(.footnote, design: .monospaced, weight: .semibold))
-                    Image(systemName: "chevron.down").font(.system(size: 8))
-                }.foregroundStyle(Palette.method(request.method.wrappedValue)).padding(.horizontal, 12).frame(minHeight: 44)
-            }.borderlessMenu().buttonStyle(.plain).accessibilityLabel("HTTP method")
-            Divider().frame(height: 20)
-            TextField("https://api.example.com", text: request.url)
-                .textFieldStyle(.plain).font(.system(.footnote, design: .monospaced)).urlInput()
-                .noCapitalization().autocorrectionDisabled().focused($urlFocused)
-                .submitLabel(.go).onSubmit(send).padding(.horizontal, 10).frame(minHeight: 44)
-                .accessibilityIdentifier("Request URL")
-        }.background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Palette.border))
-            .padding(.horizontal, 12).padding(.vertical, 6)
+    private func addressBar(showSend: Bool) -> some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 0) {
+                Menu {
+                    ForEach(RequestTransport.allCases, id: \.self) { transport in Button(transport.rawValue) {
+                        request.transport.wrappedValue = transport
+                        if transport == .graphql { request.method.wrappedValue = "POST" }
+                        if transport == .sse { request.method.wrappedValue = "GET" }
+                        if transport == .websocket { request.url.wrappedValue = request.url.wrappedValue.replacingOccurrences(of: "https://", with: "wss://").replacingOccurrences(of: "http://", with: "ws://") }
+                        else { request.url.wrappedValue = request.url.wrappedValue.replacingOccurrences(of: "wss://", with: "https://").replacingOccurrences(of: "ws://", with: "http://") }
+                    } }
+                } label: { Image(systemName: request.wrappedValue.transport == .websocket ? "arrow.left.arrow.right" : request.wrappedValue.transport == .graphql ? "point.3.connected.trianglepath.dotted" : "network").frame(width: 36, height: max(36, WorkspaceMetrics.controlHeight)) }.borderlessMenu().buttonStyle(.plain).accessibilityLabel("Request protocol")
+                Menu {
+                    ForEach(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], id: \.self) { method in Button(method) { request.method.wrappedValue = method } }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(request.method.wrappedValue).font(.system(.footnote, design: .monospaced, weight: .semibold))
+                        Image(systemName: "chevron.down").font(.system(size: 8))
+                    }.foregroundStyle(Palette.method(request.method.wrappedValue)).padding(.horizontal, 12).frame(minHeight: max(36, WorkspaceMetrics.controlHeight))
+                }.borderlessMenu().buttonStyle(.plain).accessibilityLabel("HTTP method")
+                Divider().frame(height: 20)
+                TextField("https://api.example.com", text: request.url)
+                    .textFieldStyle(.plain).font(.system(.footnote, design: .monospaced)).urlInput()
+                    .noCapitalization().autocorrectionDisabled().focused($urlFocused)
+                    .submitLabel(.go).onSubmit(send).padding(.horizontal, 10).frame(minHeight: max(36, WorkspaceMetrics.controlHeight))
+                    .accessibilityIdentifier("Request URL")
+            }.background(Palette.surface, in: RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
+                .overlay(RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius).strokeBorder(urlFocused ? Palette.mint : Palette.border, lineWidth: urlFocused ? 1.5 : 1))
+            if showSend { sendButton }
+        }.padding(WorkspaceMetrics.inset)
+    }
+
+    private var sendButton: some View {
+        Button(action: send) {
+            Label(store.runningID == requestID ? "Cancel" : "Send", systemImage: store.runningID == requestID ? "stop.fill" : "arrow.up")
+                .font(.subheadline.weight(.semibold)).padding(.horizontal, 20).frame(minHeight: max(36, WorkspaceMetrics.controlHeight))
+                .foregroundStyle(Palette.surface).background(Palette.mint, in: RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
+        }.buttonStyle(.plain).disabled(store.runningID != nil && store.runningID != requestID)
+            .keyboardShortcut(.return, modifiers: .command).accessibilityIdentifier("Send request")
     }
 
     private func dismissKeyboard() {

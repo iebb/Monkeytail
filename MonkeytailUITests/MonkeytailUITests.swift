@@ -350,7 +350,7 @@ final class MonkeytailUITests: XCTestCase {
         headerValue.typeText("-edited")
         if app.buttons["Response"].exists {
             app.buttons["Response"].tap()
-            XCTAssertTrue(app.staticTexts["No response"].waitForExistence(timeout: 3))
+            XCTAssertTrue(app.staticTexts["Ready when you are"].waitForExistence(timeout: 3))
             let keyboardDismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.keyboards.firstMatch)
             XCTAssertEqual(XCTWaiter.wait(for: [keyboardDismissed], timeout: 3), .completed)
             app.buttons["Request"].tap()

@@ -71,7 +71,7 @@ struct NetworkToolsView: View {
                 }
                 if let error { Section { Text(error).font(.caption).foregroundStyle(.red) } }
                 if let issue = store.network.issue { Section { Text(issue).font(.caption).foregroundStyle(.red) } }
-            }.noCapitalization().autocorrectionDisabled().navigationTitle("Cookies & certificates").inlineTitle()
+            }.macGroupedForm().noCapitalization().autocorrectionDisabled().sheetTitle("Cookies & certificates")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
                 .fileImporter(isPresented: $choosing, allowedContentTypes: [.data]) { result in
                     Task {
@@ -85,7 +85,7 @@ struct NetworkToolsView: View {
                         } catch { self.error = error.localizedDescription }
                     }
                 }
-        }.frame(idealWidth: 650, idealHeight: 650)
+        }.frame(idealWidth: 650, idealHeight: 650).macSheetFrame(minWidth: 560, minHeight: 480)
     }
     private func mutateJar(_ body: (inout CookieJar) -> Void) {
         var jar = store.network.jar(store.workspace.selectedEnvironmentID); body(&jar)

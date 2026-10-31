@@ -17,9 +17,9 @@ enum Clipboard {
 
 enum SidebarMetrics {
     #if os(macOS)
-    static let rowHeight: CGFloat = 32
+    static let rowHeight: CGFloat = 28
     static let horizontalInset: CGFloat = 16
-    static let requestRowHeight: CGFloat = 24
+    static let requestRowHeight: CGFloat = 28
     #else
     static let rowHeight: CGFloat = 44
     static let horizontalInset: CGFloat = 16
@@ -60,6 +60,42 @@ extension View {
         navigationBarTitleDisplayMode(.inline)
         #endif
     }
+    @ViewBuilder func sheetTitle(_ title: String) -> some View {
+        #if os(macOS)
+        if #available(macOS 15, *) {
+            navigationTitle(title).toolbar(removing: .title)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    SheetHeading(title: title)
+                }
+        } else {
+            navigationTitle("")
+                .safeAreaInset(edge: .top, spacing: 0) { SheetHeading(title: title) }
+        }
+        #else
+        navigationTitle(title).inlineTitle()
+        #endif
+    }
+    @ViewBuilder func macSheetFrame(minWidth: CGFloat = 500, minHeight: CGFloat = 360) -> some View {
+        #if os(macOS)
+        frame(minWidth: minWidth, idealWidth: 620, minHeight: minHeight, idealHeight: 500)
+        #else
+        self
+        #endif
+    }
+    @ViewBuilder func macReadableWidth(_ width: CGFloat = 680) -> some View {
+        #if os(macOS)
+        frame(maxWidth: width, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
+        #else
+        self
+        #endif
+    }
+    @ViewBuilder func macGroupedForm() -> some View {
+        #if os(macOS)
+        formStyle(.grouped).textFieldStyle(.roundedBorder)
+        #else
+        self
+        #endif
+    }
     @ViewBuilder func noCapitalization() -> some View {
         #if os(macOS)
         self
@@ -98,11 +134,25 @@ extension ToolbarItemPlacement {
         #endif
     }
 }
-#if os(macOS)
 extension ToolbarContent {
-    @ToolbarContentBuilder func flatTitleBackground() -> some ToolbarContent {
+    @ToolbarContentBuilder func flatToolbarBackground() -> some ToolbarContent {
+        #if os(macOS)
         if #available(macOS 26, *) { sharedBackgroundVisibility(.hidden) }
         else { self }
+        #else
+        self
+        #endif
+    }
+}
+
+#if os(macOS)
+private struct SheetHeading: View {
+    let title: String
+    var body: some View {
+        HStack { Text(title).font(.headline).accessibilityAddTraits(.isHeader); Spacer() }
+            .padding(.horizontal, 16).frame(height: 44)
+            .background(Palette.canvas)
+            .overlay(alignment: .bottom) { Divider() }
     }
 }
 

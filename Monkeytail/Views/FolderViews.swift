@@ -48,8 +48,15 @@ struct RequestSidebarRow: View {
     var body: some View {
         Button { store.selectedRequestID = request.id } label: {
             HStack(spacing: 10) {
-                Text(request.transport == .websocket ? "WS" : request.transport == .sse ? "SSE" : request.method).font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(Palette.method(request.method)).frame(width: 39, alignment: .leading)
-                Text(request.name).font(.subheadline).lineLimit(2); Spacer(minLength: 0)
+                Text(request.transport == .websocket ? "WS" : request.transport == .sse ? "SSE" : request.method)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(Palette.method(request.method))
+                    #if os(macOS)
+                    .frame(width: 42, alignment: .leading)
+                    #else
+                    .frame(width: 46, height: 24).background(Palette.method(request.method).opacity(0.09), in: RoundedRectangle(cornerRadius: 5))
+                    #endif
+                Text(request.name).font(.subheadline.weight(store.selectedRequestID == request.id ? .semibold : .regular)).lineLimit(2)
+                Spacer(minLength: 0)
                 if request.favorite == true { Image(systemName: "star.fill").font(.caption).foregroundStyle(Palette.mint) }
             }.frame(minHeight: SidebarMetrics.requestRowHeight).contentShape(Rectangle())
         }.buttonStyle(.plain).tag(request.id)
@@ -103,9 +110,9 @@ struct FolderSettingsView: View {
                     CodeEditor(text: defaults.preScript, label: "Before child requests", minimumHeight: 150)
                     CodeEditor(text: defaults.postScript, label: "After child responses", minimumHeight: 150)
                 }.padding(12)
-            }.background(Palette.canvas).navigationTitle(folderID == nil ? "Collection settings" : "Folder settings").inlineTitle()
+            }.background(Palette.canvas).sheetTitle(folderID == nil ? "Collection settings" : "Folder settings")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-        }.frame(idealWidth: 650, idealHeight: 650)
+        }.frame(idealWidth: 650, idealHeight: 650).macSheetFrame(minWidth: 560, minHeight: 450)
     }
     private var parents: [RequestFolder] {
         guard let c else { return [] }

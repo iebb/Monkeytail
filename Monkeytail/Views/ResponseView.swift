@@ -19,15 +19,34 @@ struct ResponseView: View {
     @State private var shareItem: ResponseShare?
     @FocusState private var searchFocused: Bool
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.inputDismissal) private var inputDismissal
     @ScaledMetric(relativeTo: .footnote) private var characterWidth: CGFloat = 8
     private var result: PreparedResponse? { savedResponse ?? store.responses[requestID] }
     var response: APIResponse? { result?.response }
-    private var compactSearch: Bool { searchFocused && sizeClass != .regular }
+    private var compactSearch: Bool {
+        #if os(macOS)
+        false
+        #else
+        searchFocused && sizeClass != .regular
+        #endif
+    }
     private static let tokenPattern = try? NSRegularExpression(pattern: #"\"(?:[^\"\\]|\\.)*\"|\b(?:true|false|null|\d+(?:\.\d+)?)\b"#)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            #if os(macOS)
+            if result == nil {
+                Text("Response").font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                    .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading).padding(.horizontal, 12)
+                    .background(Palette.canvas)
+                Divider()
+            }
+            #else
+            if verticalSizeClass != .compact && !compactSearch {
+                PanelHeading(title: "Response", symbol: "arrow.down.right", detail: response == nil ? "Awaiting request" : "")
+            }
+            #endif
             if let error = store.errors[requestID] {
                 Label(error, systemImage: "exclamationmark.circle").font(.subheadline).foregroundStyle(.red).padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading).background(Color.red.opacity(0.06))
@@ -38,10 +57,17 @@ struct ResponseView: View {
             } else if store.runningID == requestID {
                 VStack(spacing: 12) { ProgressView(); Text("Sending…").font(.subheadline).foregroundStyle(.secondary) }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if store.errors[requestID] != nil {
+                EmptyPanel(title: "Request failed", message: "Review the error above, adjust your request, and try again.", symbol: "exclamationmark.circle")
             } else {
-                EmptyPanel(title: "No response")
+                #if os(macOS)
+                EmptyPanel(title: "No response yet", message: "Send a request to see the result.", symbol: "arrow.down.left")
+                #else
+                EmptyPanel(title: "Ready when you are", message: "Send your request to inspect the response, headers, and timing here.", symbol: "arrow.up.arrow.down")
+                #endif
             }
         }
+        .background(Palette.surface)
         .onChange(of: response?.id, initial: true) { _, _ in
             copied = false
             if let preview = result?.preview {
@@ -59,6 +85,9 @@ struct ResponseView: View {
     private func responseContent(_ response: APIResponse, preview: ResponsePreview) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
+                #if os(macOS)
+                Text("Response").font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader).padding(.trailing, 8)
+                #endif
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 12) { status(response); timing(response); size(response) }
                     VStack(alignment: .leading, spacing: 4) { status(response); HStack { timing(response); size(response) } }
@@ -70,18 +99,30 @@ struct ResponseView: View {
                     if savedResponse == nil { Button("Save snapshot", systemImage: "camera") { store.saveSnapshot(requestID: requestID, response: response) } }
                     Button("Compare snapshot", systemImage: "arrow.left.arrow.right") { comparing = true }
                     if preview.kind == .json { Button("Extract JSONPath", systemImage: "line.3.horizontal.decrease") { pathTool = true } }
-                } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }.borderlessMenu().accessibilityLabel("Response actions")
+                } label: { Image(systemName: "ellipsis").frame(width: max(32, WorkspaceMetrics.controlHeight), height: max(32, WorkspaceMetrics.controlHeight)) }.borderlessMenu().accessibilityLabel("Response actions")
             }.padding(.leading, 12).padding(.trailing, 4).padding(.vertical, 2)
+                #if os(macOS)
+                .background(Palette.canvas)
+                #endif
             Divider()
             if !compactSearch { PillTabs(tabs: ["Body", "Headers", "Console", "Tests", "Diagnostics"], selection: $tab) }
             if tab == "Tests" { TestResultsView(results: store.testResults[requestID] ?? []) } else if tab == "Diagnostics" { DiagnosticsView(response: response) } else if tab == "Headers" {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(response.headers) { header in
+                            #if os(macOS)
+                            HStack(alignment: .top, spacing: 16) {
+                                Text(header.name).font(.system(.caption, design: .monospaced, weight: .semibold))
+                                    .foregroundStyle(Palette.mint).frame(width: 180, alignment: .leading).textSelection(.enabled)
+                                Text(header.value).font(.system(.footnote, design: .monospaced)).textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }.padding(.horizontal, 12).padding(.vertical, 8).macReadableWidth()
+                            #else
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(header.name).font(.system(.caption, design: .monospaced, weight: .semibold)).foregroundStyle(Palette.mint)
                                 Text(header.value).font(.system(.footnote, design: .monospaced)).textSelection(.enabled)
                             }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                            #endif
                             Divider()
                         }
                     }
@@ -102,6 +143,38 @@ struct ResponseView: View {
                     }
                 }
             } else {
+                #if os(macOS)
+                HStack(spacing: 10) {
+                    Menu {
+                        ForEach(preview.formats, id: \.self) { name in
+                            Button { format = name } label: { if name == format { Label(name, systemImage: "checkmark") } else { Text(name) } }
+                                .accessibilityIdentifier("Response format " + name)
+                        }
+                    } label: {
+                        HStack(spacing: 5) { Text(format); Image(systemName: "chevron.down").font(.caption2) }
+                            .font(.caption.weight(.medium)).frame(minHeight: 30)
+                    }.borderlessMenu().accessibilityIdentifier("Response format")
+                    if ["Pretty", "Raw", "Tree"].contains(format) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                            TextField("Find in response", text: $search).textFieldStyle(.plain).font(.caption)
+                                .focused($searchFocused).submitLabel(.done).onSubmit { searchFocused = false }
+                            if !search.isEmpty {
+                                Button { search = ""; searchFocused = false } label: { Image(systemName: "xmark.circle.fill") }
+                                    .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Clear search")
+                            }
+                        }.padding(.horizontal, 8).frame(minWidth: 80, idealWidth: 220, maxWidth: 220).frame(height: 27)
+                            .background(Palette.canvas, in: RoundedRectangle(cornerRadius: 5))
+                            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Palette.border))
+                    }
+                    Spacer()
+                    if !["Image", "Audio", "Video"].contains(format) {
+                        Button { copy(response, preview: preview) } label: { Image(systemName: copied ? "checkmark" : "doc.on.doc").frame(width: 30, height: 30) }
+                            .buttonStyle(.plain).accessibilityLabel("Copy response")
+                    }
+                }.padding(.horizontal, 12).padding(.vertical, 3).background(Palette.surface)
+                Divider()
+                #else
                 VStack(spacing: 4) {
                     if !compactSearch {
                         HStack {
@@ -127,6 +200,7 @@ struct ResponseView: View {
                         }.padding(.leading, 10).frame(minHeight: 44).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                     }
                 }.padding(.horizontal, 12).padding(.bottom, 8)
+                #endif
                 if format == "Image", let image = preview.image {
                     ResponseImageView(image: image).id(response.id).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if format == "Audio" || format == "Video" {
@@ -173,7 +247,10 @@ struct ResponseView: View {
     }
     private func status(_ response: APIResponse) -> some View {
         Text("\(response.status) \(statusLabel(response.status))").font(.system(.caption, design: .monospaced, weight: .semibold)).lineLimit(1)
-            .foregroundStyle(response.status < 400 ? Palette.mint : .orange).accessibilityIdentifier("Response status")
+            .foregroundStyle(response.status < 400 ? Palette.mint : Palette.warning)
+            .padding(.horizontal, 8).padding(.vertical, 5)
+            .background((response.status < 400 ? Palette.mint : Palette.warning).opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
+            .accessibilityIdentifier("Response status")
     }
     private func timing(_ response: APIResponse) -> some View { Text(String(format: "%.0f ms", response.duration * 1000)).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
     private func statusLabel(_ code: Int) -> String {
@@ -211,7 +288,7 @@ struct ResponseView: View {
         if line.utf8.count <= 16_384, let regex = Self.tokenPattern {
             for match in regex.matches(in: line, range: NSRange(line.startIndex..., in: line)) {
                 if let range = Range(match.range, in: line), let attributedRange = Range(range, in: result) {
-                    result[attributedRange].foregroundColor = line[range].hasPrefix("\"") ? Palette.mint : Color.orange
+                    result[attributedRange].foregroundColor = line[range].hasPrefix("\"") ? Palette.mint : Palette.warning
                 }
             }
         }
@@ -245,7 +322,7 @@ struct JSONTreeRow: View {
                     Button { expanded.toggle() } label: { Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.caption2).frame(width: 24, height: 28) }.accessibilityLabel("Toggle \(node.key)")
                 } else { Color.clear.frame(width: 24, height: 28) }
                 Text(shortened(node.key)).foregroundStyle(.secondary)
-                Text(shortened(node.summary)).foregroundStyle(node.kind == "string" ? Palette.mint : node.children != nil ? Color.primary : .orange).textSelection(.enabled)
+                Text(shortened(node.summary)).foregroundStyle(node.kind == "string" ? Palette.mint : node.children != nil ? Color.primary : Palette.warning).textSelection(.enabled)
             }.font(.system(.footnote, design: .monospaced)).lineLimit(1).fixedSize(horizontal: true, vertical: false)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if expanded, let children = node.children {

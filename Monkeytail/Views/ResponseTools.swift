@@ -46,7 +46,7 @@ struct DiagnosticsView: View {
                         }.padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                     }
                     Text("— means the transport did not report this phase. Headers are reported by the transport. Bodies are limited to 1 MB here.").font(.caption).foregroundStyle(.secondary)
-                }.padding(12)
+                }.padding(12).macReadableWidth()
             } else { EmptyPanel(title: "No diagnostics") }
         }.accessibilityIdentifier("Response diagnostics")
     }
@@ -75,11 +75,24 @@ struct JSONPathView: View {
                     Button("Extract") { extract() }.disabled(extracting).frame(minHeight: 44)
                 }
                 if let error { Text(error).font(.caption).foregroundStyle(.red) }
-                ScrollView([.horizontal, .vertical]) { Text(result).font(.footnote.monospaced()).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.surface)
-                HStack { Text("Keys, indices, and wildcards").font(.caption).foregroundStyle(.secondary); Spacer(); Button { Clipboard.copy(result )} label: { Image(systemName: "doc.on.doc").frame(width: 44, height: 44) }.accessibilityLabel("Copy extracted JSON").disabled(result.isEmpty) }
-            }.padding(12).background(Palette.canvas).navigationTitle("JSONPath").inlineTitle()
+                ScrollView([.horizontal, .vertical]) {
+                    Group {
+                        if result.isEmpty { Text("Run an expression to see the result.").foregroundStyle(.secondary) }
+                        else { Text(result).font(.footnote.monospaced()).textSelection(.enabled) }
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
+                    .overlay(RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius).strokeBorder(Palette.border))
+                HStack {
+                    Text("Keys, indices, and wildcards").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button { Clipboard.copy(result) } label: {
+                        Image(systemName: "doc.on.doc").frame(width: max(32, WorkspaceMetrics.controlHeight), height: max(32, WorkspaceMetrics.controlHeight))
+                    }.buttonStyle(.plain).accessibilityLabel("Copy extracted JSON").disabled(result.isEmpty)
+                }
+            }.padding(12).background(Palette.canvas).sheetTitle("JSONPath")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-        }
+        }.macSheetFrame(minHeight: 400)
     }
     private func extract() {
         extracting = true
@@ -96,54 +109,117 @@ struct SnapshotsView: View {
     @Bindable var store: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
     @State private var search = ""
+    #if os(macOS)
+    @State private var selected: SnapshotSummary?
+    @State private var selectedID: UUID?
+    #endif
     private var filtered: [SnapshotSummary] { store.snapshots.filter { search.isEmpty || "\($0.name) \($0.url) \($0.status)".localizedCaseInsensitiveContains(search) } }
     var body: some View {
         NavigationStack {
             Group {
-                if store.snapshots.isEmpty { EmptyPanel(title: "No snapshots", message: "Save one from a response’s menu.") }
-                else {
-                    List(filtered) { item in
-                        NavigationLink { SnapshotDetailView(store: store, summary: item) } label: {
-                            VStack(alignment: .leading, spacing: 5) {
-                                HStack { MethodBadge(method: item.method); Text(item.name).font(.subheadline); Spacer(); Text(String(item.status)).font(.caption.monospaced()).foregroundStyle(Palette.mint) }
-                                Text(item.url).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(1)
-                                Text(item.date, format: .dateTime.month().day().hour().minute()).font(.caption2).foregroundStyle(.secondary)
-                            }.padding(.vertical, 4)
-                        }.swipeActions { Button("Delete", role: .destructive) { store.removeSnapshot(item.id) } }
-                    }.searchable(text: $search, prompt: "Find snapshot")
+                #if os(macOS)
+                if let selected {
+                    SnapshotDetailView(store: store, summary: selected, back: { self.selected = nil; selectedID = nil })
+                } else {
+                    snapshotList
                 }
-            }.navigationTitle("Snapshots").inlineTitle()
+                #else
+                snapshotList
+                #endif
+            }.sheetTitle("Snapshots")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+        }.macSheetFrame()
+    }
+
+    @ViewBuilder private var snapshotList: some View {
+        if store.snapshots.isEmpty {
+            EmptyPanel(title: "No snapshots", message: "Save one from a response’s menu.")
+        } else {
+            VStack(spacing: 0) {
+                #if os(macOS)
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Find snapshot", text: $search).textFieldStyle(.plain)
+                }.padding(8).background(Palette.surface, in: RoundedRectangle(cornerRadius: 6))
+                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Palette.border)).padding(12)
+                #endif
+                #if os(macOS)
+                List(selection: $selectedID) {
+                    ForEach(filtered) { item in snapshotRow(item).tag(item.id) }
+                }.onChange(of: selectedID) { _, id in
+                    if let id { selected = store.snapshots.first { $0.id == id } }
+                }
+                #else
+                List(filtered) { item in
+                    NavigationLink { SnapshotDetailView(store: store, summary: item) } label: { snapshotRow(item) }
+                        .swipeActions { Button("Delete", role: .destructive) { store.removeSnapshot(item.id) } }
+                }
+                .searchable(text: $search, prompt: "Find snapshot")
+                #endif
+            }
         }
+    }
+
+    private func snapshotRow(_ item: SnapshotSummary) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack { MethodBadge(method: item.method); Text(item.name).font(.subheadline); Spacer(); Text(String(item.status)).font(.caption.monospaced()).foregroundStyle(Palette.mint) }
+            Text(item.url).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(1)
+            Text(item.date, format: .dateTime.month().day().hour().minute()).font(.caption2).foregroundStyle(.secondary)
+        }.padding(.vertical, 4)
+        #if os(macOS)
+        .contextMenu { Button("Delete snapshot", role: .destructive) { store.removeSnapshot(item.id) } }
+        #endif
     }
 }
 
 struct SnapshotDetailView: View {
     @Bindable var store: WorkspaceStore
     let summary: SnapshotSummary
+    #if os(macOS)
+    var back: (() -> Void)? = nil
+    #endif
     @State private var prepared: PreparedResponse?
     @State private var snapshot: ResponseSnapshot?
     @State private var error: String?
     var body: some View {
         Group {
-            if let prepared { ResponseView(store: store, requestID: summary.requestID, savedResponse: prepared) }
-            else if let error { EmptyPanel(title: error) }
-            else { ProgressView() }
-        }.navigationTitle(summary.name).inlineTitle()
-            .alert("Could not create mock", isPresented: Binding(get: { error != nil && prepared != nil }, set: { if !$0 { error = nil } })) {
-                Button("OK") { error = nil }
-            } message: { Text(error ?? "") }
-            .toolbar { ToolbarItem(placement: .workspaceTrailing) {
-                Button("Use as mock") {
-                    guard let snapshot else { return }
-                    do { try store.useSnapshotAsMock(snapshot); error = nil }
-                    catch { self.error = error.localizedDescription }
-                }.disabled(snapshot == nil)
-            } }
-            .task(id: summary.id) {
-                do { let snapshot = try await store.loadSnapshot(summary.id); self.snapshot = snapshot; prepared = await Task.detached { PreparedResponse(response: snapshot.response) }.value }
-                catch { self.error = error.localizedDescription }
+            #if os(macOS)
+            VStack(spacing: 0) {
+                HStack {
+                    Button { back?() } label: { Label("Snapshots", systemImage: "chevron.left") }
+                        .buttonStyle(.plain)
+                    Text(summary.name).font(.subheadline.weight(.semibold)).lineLimit(1).padding(.leading, 8)
+                    Spacer()
+                    Button("Use as mock", action: useAsMock).disabled(snapshot == nil)
+                }.padding(.horizontal, 12).frame(minHeight: 38).background(Palette.canvas)
+                Divider()
+                responseContent
             }
+            #else
+            responseContent.sheetTitle(summary.name)
+                .toolbar { ToolbarItem(placement: .workspaceTrailing) {
+                    Button("Use as mock", action: useAsMock).disabled(snapshot == nil)
+                } }
+            #endif
+        }.alert("Could not create mock", isPresented: Binding(get: { error != nil && prepared != nil }, set: { if !$0 { error = nil } })) {
+            Button("OK") { error = nil }
+        } message: { Text(error ?? "") }
+        .task(id: summary.id) {
+            do { let snapshot = try await store.loadSnapshot(summary.id); self.snapshot = snapshot; prepared = await Task.detached { PreparedResponse(response: snapshot.response) }.value }
+            catch { self.error = error.localizedDescription }
+        }
+    }
+
+    @ViewBuilder private var responseContent: some View {
+        if let prepared { ResponseView(store: store, requestID: summary.requestID, savedResponse: prepared) }
+        else if let error { EmptyPanel(title: error) }
+        else { ProgressView() }
+    }
+
+    private func useAsMock() {
+        guard let snapshot else { return }
+        do { try store.useSnapshotAsMock(snapshot); error = nil }
+        catch { self.error = error.localizedDescription }
     }
 }
 
@@ -175,7 +251,7 @@ struct SnapshotCompareView: View {
                         }
                     }
                 } else { EmptyPanel(title: store.snapshots.isEmpty ? "Save a snapshot first" : "Choose a baseline") }
-            }.navigationTitle("Compare response").inlineTitle()
+            }.sheetTitle("Compare response")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
                 .task(id: selection) {
                     changes = nil; error = nil
@@ -186,6 +262,6 @@ struct SnapshotCompareView: View {
                         guard !Task.isCancelled else { return }; changes = result
                     } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
                 }
-        }
+        }.macSheetFrame()
     }
 }

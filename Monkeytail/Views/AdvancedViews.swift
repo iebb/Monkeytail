@@ -197,8 +197,8 @@ struct CodeExportView: View {
                 if let error { Text(error).font(.caption).foregroundStyle(.red) }
                 ScrollView([.horizontal, .vertical]) { Text(code).font(.footnote.monospaced()).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12) }.background(Palette.surface)
                 HStack { Button("Copy") { Clipboard.copy(code) }; ShareLink(item: code) { Label("Share", systemImage: "square.and.arrow.up") } }.disabled(code.isEmpty).frame(minHeight: 44)
-            }.padding(12).navigationTitle("Client code").inlineTitle().toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-        }.task(id: language.rawValue + String(store.hideCredentials)) {
+            }.padding(12).sheetTitle("Client code").toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+        }.macSheetFrame(minHeight: 400).task(id: language.rawValue + String(store.hideCredentials)) {
             do {
                 let resolved = try store.effective(request), selectedLanguage = language, hideCredentials = store.hideCredentials
                 code = try await Task.detached { try CodeGenerator.generate(resolved.request, variables: resolved.variables, language: selectedLanguage, redact: hideCredentials) }.value; error = nil

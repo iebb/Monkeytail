@@ -59,7 +59,7 @@ Layout follows the **available window size**:
 | Available space | Layout |
 | --- | --- |
 | Narrow phone / folded window | Bottom Request/Response switch; collections via the back/sidebar button |
-| Detail area at least 640 × 440 points | Request and response side by side |
+| iPad detail area at least 640 × 440 points | Request and response side by side |
 | Short landscape phone window | Single pane to keep the editor usable |
 | Window at least 1,100 points | Collections sidebar plus request and response panels |
 | Accessibility text sizes | Single-pane editor to preserve readable text |
@@ -78,7 +78,7 @@ The visionOS window shares the full workspace editor, response viewers, API tool
 
 Version 1.4 is available for iPhone/iPad with the Watch companion and for visionOS. The Mac version is preparing a resubmission; macOS 1.3 remains available. See the [release record](docs/app-store/README.md) for builds and validation. Physical paired Watch transfer and live iCloud transfer remain unverified.
 
-On Mac, the sidebar stays open during resizing until you hide it. Settings opens in the native Settings window. Use ⌘F to find a request, ⇧⌘I for import/export, ⇧⌘E to export cURL, ⌘N for a new request, and ⌘Return to send or cancel.
+On Mac, request and response are stacked in a resizable split by default. Choose **Workspace actions → Workspace layout** to put them side by side; the split position is remembered for each layout. The sidebar stays open during resizing until you hide it. Settings opens in the native Settings window. Use ⌘F to find a request, ⇧⌘I for import/export, ⇧⌘E to export cURL, ⌘N for a new request, and ⌘Return to send or cancel.
 
 ## Interchange scope
 

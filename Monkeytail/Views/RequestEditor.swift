@@ -11,29 +11,49 @@ struct RequestEditor: View {
     @State private var tab = "Headers"
     @State private var scriptTab = "Before"
     @State private var editorError: String?
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
         VStack(spacing: 0) {
+            #if !os(macOS)
+            if verticalSizeClass != .compact { PanelHeading(title: "Request", symbol: "slider.horizontal.3") }
+            #endif
             PillTabs(tabs: ["Params", "Headers", "Body", "Auth", "Tests", "Scripts", "Mock"], selection: $tab)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     switch tab {
                     case "Params":
+                        editorHeading("Query parameters", message: "Add key–value pairs to your request URL.")
                         FieldEditor(fields: $request.query, name: "Parameter")
+                        editorHeading("Request variables", message: "Reference these values with {{variable}}.").padding(.top, 12)
                         FieldEditor(fields: Binding(get: { request.variables ?? [] }, set: { request.variables = $0 }), name: "Variable")
                         if let hints = request.parameterHints, !hints.isEmpty { DisclosureGroup("API parameters") { ForEach(hints) { hint in Text(parameterSummary(hint)).font(.caption) } } }
-                    case "Headers": FieldEditor(fields: $request.headers)
-                    case "Body": bodyEditor
-                    case "Auth": authEditor
+                    case "Headers":
+                        editorHeading("Request headers", message: "Control the metadata sent with this request.")
+                        FieldEditor(fields: $request.headers)
+                    case "Body":
+                        editorHeading("Request body", message: "Choose a format and add your payload.")
+                        bodyEditor
+                    case "Auth":
+                        editorHeading("Authentication", message: "Configure credentials and connection options.")
+                        authEditor
                     case "Tests": TestsEditor(request: $request)
                     case "Mock": MockEditor(request: $request, response: store.responses[request.id]?.response)
                     default: scriptsEditor
                     }
                     if let editorError { Label(editorError, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red) }
-                }.padding(12)
+                }.padding(WorkspaceMetrics.inset)
             }.dismissKeyboardOnScroll()
-        }
+        }.background(Palette.canvas)
+    }
+
+    @ViewBuilder private func editorHeading(_ title: String, message: String) -> some View {
+        #if os(macOS)
+        Text(title).font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
+        #else
+        EditorHeading(title: title, message: message)
+        #endif
     }
 
     private func parameterSummary(_ hint: ParameterHint) -> String {
@@ -49,7 +69,13 @@ struct RequestEditor: View {
             else {
             Picker("Body type", selection: $request.bodyKind) { ForEach(BodyKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
             switch request.bodyKind {
-            case .none: Text("No body").font(.footnote).foregroundStyle(.secondary).padding(.vertical, 12)
+            case .none:
+                #if os(macOS)
+                Text("No request body").font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
+                #else
+                EmptyPanel(title: "No body needed", message: "Choose a body type above to send JSON, text, or files.", symbol: "doc.text")
+                    .frame(minHeight: 180)
+                #endif
             case .form: FieldEditor(fields: $request.form, name: "Field")
             case .multipart: MultipartEditor(parts: Binding(get: { request.multipart ?? [] }, set: { request.multipart = $0 }))
             case .file: UploadFileEditor(file: $request.fileBody)
@@ -95,7 +121,7 @@ struct RequestEditor: View {
             }
             Toggle("Follow redirects", isOn: $request.followRedirects).font(.subheadline)
             Stepper("Timeout: \(Int(request.timeout))s", value: $request.timeout, in: 1...300, step: 5).font(.subheadline)
-        }.noCapitalization().autocorrectionDisabled()
+        }.macReadableWidth().noCapitalization().autocorrectionDisabled()
     }
 
     private var scriptsEditor: some View {
@@ -140,9 +166,9 @@ struct CurlExportView: View {
                     ShareLink(item: curl) { Label("Share", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
                     Button { Clipboard.copy(curl); dismiss() } label: { Label("Copy", systemImage: "doc.on.doc").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
                 }.disabled(curl.isEmpty)
-            }.padding(12).background(Palette.canvas).navigationTitle("cURL").inlineTitle()
+            }.padding(12).background(Palette.canvas).sheetTitle("cURL")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-        }.task {
+        }.macSheetFrame(minHeight: 400).task {
             do { curl = try CurlCodec.encode(request, variables: variables) } catch { self.error = error.localizedDescription }
         }
     }

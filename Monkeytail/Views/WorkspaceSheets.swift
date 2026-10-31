@@ -44,7 +44,7 @@ struct TransferView: View {
                     } else {
                         Picker("File format", selection: $format) { ForEach(ExportFormat.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("\(store.workspace.collections.count) collections · \(store.requestCount) requests")
+                            Text("\(store.workspace.collections.count) \(store.workspace.collections.count == 1 ? "collection" : "collections") · \(store.requestCount) \(store.requestCount == 1 ? "request" : "requests")")
                             Text(format == .postman ? "Active environment as collection variables" : "All environments").foregroundStyle(.secondary)
                         }.font(.subheadline).padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                         Text("Exports include credentials. Monkeytail includes file bytes; other formats reference filenames.")
@@ -59,7 +59,7 @@ struct TransferView: View {
                     }
                     if let error { Label(error, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red) }
                 }.padding(12)
-            }.background(Palette.canvas).navigationTitle("Import & export").inlineTitle()
+            }.background(Palette.canvas).sheetTitle("Import & export")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
                     ToolbarItem(placement: .confirmationAction) {
@@ -83,7 +83,7 @@ struct TransferView: View {
                 .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "monkeytail-\(format == .postman ? "postman_collection" : format == .insomnia ? "insomnia" : "workspace")") { result in
                     if case .failure(let failure) = result { error = failure.localizedDescription }
                 }
-        }
+        }.macSheetFrame(minHeight: 420)
     }
     private func performImport() {
         do { try store.importContent(source); dismiss() } catch { self.error = error.localizedDescription }
@@ -116,6 +116,7 @@ struct EnvironmentView: View {
                         Button {
                             store.workspace.selectedEnvironmentID = editingID
                         } label: { Label(store.workspace.selectedEnvironmentID == editingID ? "Active environment" : "Use this environment", systemImage: store.workspace.selectedEnvironmentID == editingID ? "checkmark.circle.fill" : "circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+                            .disabled(store.workspace.selectedEnvironmentID == editingID)
                         Button("Delete environment", role: .destructive) {
                             if store.workspace.selectedEnvironmentID == editingID { store.workspace.selectedEnvironmentID = nil }
                             store.workspace.environments.removeAll { $0.id == editingID }; editingID = store.workspace.environments.first?.id
@@ -123,16 +124,19 @@ struct EnvironmentView: View {
                     }
                     Text("Exports include values.").font(.caption).foregroundStyle(.secondary)
                 }.padding(12)
-            }.background(Palette.canvas).navigationTitle("Environments").inlineTitle()
+            }.background(Palette.canvas).sheetTitle("Environments")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
                 .onAppear { editingID = store.workspace.selectedEnvironmentID ?? store.workspace.environments.first?.id }
-        }
+        }.macSheetFrame()
     }
 }
 
 struct SettingsView: View {
     @Bindable var store: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
+    #if os(macOS)
+    @State private var showingLicenses = false
+    #endif
     var body: some View {
         NavigationStack {
             Form {
@@ -176,10 +180,14 @@ struct SettingsView: View {
                         Link("Support", destination: URL(string: "https://docs.kitta.co/monkeytail/support/")!)
                         Spacer(minLength: 0)
                     }
+                    #if os(macOS)
+                    Button("Licenses") { showingLicenses = true }
+                    #else
                     NavigationLink("Licenses") {
                         ScrollView { Text(BrowserImpersonation.thirdPartyNotices).font(.system(.caption, design: .monospaced)).textSelection(.enabled).padding() }
                             .navigationTitle("Licenses")
                     }
+                    #endif
                 } header: { Text("About") } footer: { Text("Kitta Co · No data collected") }
             }.formStyle(.grouped).toggleStyle(.switch).noCapitalization().autocorrectionDisabled()
                 .navigationTitle("Settings").inlineTitle()
@@ -189,10 +197,28 @@ struct SettingsView: View {
         }
         #if os(macOS)
         .frame(width: 520, height: 560)
+        .sheet(isPresented: $showingLicenses) { LicenseSheet() }
         #endif
         .tint(Palette.mint)
     }
 }
+
+#if os(macOS)
+private struct LicenseSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationStack {
+            ScrollView([.horizontal, .vertical]) {
+                Text(BrowserImpersonation.thirdPartyNotices)
+                    .font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(16)
+            }.sheetTitle("Licenses")
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+        }.macSheetFrame(minHeight: 450)
+    }
+}
+#endif
 
 struct HistoryView: View {
     @Bindable var store: WorkspaceStore
@@ -213,8 +239,8 @@ struct HistoryView: View {
                         }.buttonStyle(.plain)
                     }
                 }
-            }.background(Palette.canvas).navigationTitle("Request history").inlineTitle()
+            }.background(Palette.canvas).sheetTitle("Request history")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-        }
+        }.macSheetFrame()
     }
 }
