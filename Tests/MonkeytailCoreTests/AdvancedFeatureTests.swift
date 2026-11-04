@@ -218,5 +218,25 @@ final class AdvancedFeatureTests: XCTestCase {
         XCTAssertFalse(payloads.contains("new-token")); XCTAssertFalse(payloads.contains("new-key")); XCTAssertFalse(payloads.contains("new-part"))
         XCTAssertFalse(encoded.isEmpty)
     }
+    func testCredentialNamesAreNotMarkedSecretButStayProtectedWhenOptedIn() throws {
+        let token = Field("Authorization", "Bearer abc")
+        var marked = Field("X-Plain", "visible"); marked.secret = true
+        var ordinary = Field("X-API-Key", "shown"); ordinary.secret = false
+        XCTAssertFalse(token.isSecret); XCTAssertTrue(token.isCredential)
+        XCTAssertTrue(marked.isSecret); XCTAssertTrue(marked.isCredential)
+        XCTAssertFalse(ordinary.isSecret); XCTAssertFalse(ordinary.isCredential)
+        var workspace = Workspace.starter
+        workspace.collections[0].requests[0].headers = [token, ordinary]
+        var state = WorkspaceSyncState()
+        try state.capture(workspace, includeCredentials: true)
+        let payloads = state.records.compactMap(\.payload).map { String(decoding: $0, as: UTF8.self) }.joined()
+        XCTAssertTrue(payloads.contains("Bearer abc")); XCTAssertTrue(payloads.contains("shown"))
+        var secrets: [String: String] = [:]
+        let stripped = SecretPolicy.strip(workspace, secrets: &secrets, files: false)
+        XCTAssertEqual(stripped.collections[0].requests[0].headers.map(\.value), ["", "shown"])
+        XCTAssertNil(stripped.collections[0].requests[0].headers[0].secret)
+        let restored = SecretPolicy.restore(stripped, secrets: secrets)
+        XCTAssertEqual(restored.collections[0].requests[0].headers, [token, ordinary])
+    }
 
 }

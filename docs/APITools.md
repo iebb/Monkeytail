@@ -1,6 +1,6 @@
 # API tools in 1.2
 
-Monkeytail is a native request debugger. No Monkeytail login is required. iPhone, iPad, and Mac use the same workspace format and optional iCloud Drive container. Credentials remain local.
+Monkeytail is a native request debugger. No Monkeytail login is required. iPhone, iPad, and Mac use the same workspace format and iCloud Drive container. iCloud sync is on by default and syncs everything, including credentials. Turn off **Include credentials** to keep credentials on the device, or **iCloud sync** to stay local.
 
 ## Folders and authentication
 
@@ -10,7 +10,7 @@ Auth supports Basic, Digest, Bearer, API key in a header or query, OAuth 1.0 (HM
 
 ## Variables
 
-Edit environments and **Globals** from the environment sheet. Postman globals exports import as globals. Below the URL, each `{{name}}` shows the value it resolves to; sensitive values stay masked and unresolved names are highlighted. Typing `{{` in the URL, a key/value table, or a bearer/basic/API-key field suggests defined and dynamic variables. `{{$guid}}`, `{{$timestamp}}`, `{{$isoTimestamp}}`, `{{$randomInt}}`, `{{$randomUUID}}`, `{{$randomEmail}}` and similar dynamic variables generate a new value on each use; a defined variable of the same name wins. URL segments such as `/users/:id` appear under Params → Path variables and import/export with Postman's `url.variable`. Every key/value table offers **Bulk edit**: one `name:value` per line, with `//` disabling a row.
+Edit environments and **Globals** from the environment sheet. Postman globals exports import as globals. Below the URL, each `{{name}}` shows the value it resolves to; values marked sensitive stay masked and unresolved names are highlighted. Typing `{{` in the URL, a key/value table, or a bearer/basic/API-key field suggests defined and dynamic variables. `{{$guid}}`, `{{$timestamp}}`, `{{$isoTimestamp}}`, `{{$randomInt}}`, `{{$randomUUID}}`, `{{$randomEmail}}` and similar dynamic variables generate a new value on each use; a defined variable of the same name wins. URL segments such as `/users/:id` appear under Params → Path variables and import/export with Postman's `url.variable`. Every key/value table offers **Bulk edit**: one `name:value` per line, with `//` disabling a row.
 
 ## Collection runner
 

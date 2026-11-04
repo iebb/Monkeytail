@@ -23,10 +23,10 @@ import MonkeytailCompanion
             throw ClientError("Watch supports System HTTP and GraphQL requests. Use iPhone for proxies, browser profiles, cookies, OAuth/AWS/Digest, scripts, or mocks.")
         }
         var built = try RequestBuilder.build(request, variables: variables)
-        var privateHeaders = try request.headers.filter { $0.isSecret || SecretPolicy.isSensitive($0.name) }.map { try RequestBuilder.resolve($0.name, variables: variables) }
+        var privateHeaders = try request.headers.filter { $0.isCredential || SecretPolicy.isSensitive($0.name) }.map { try RequestBuilder.resolve($0.name, variables: variables) }
         if let key = request.auth.apiKey, !key.inQuery { privateHeaders.append(key.name) }
         if !includePrivateData {
-            let secretNames = secretVariableNames.union(variables.keys.filter(SecretPolicy.isSensitive)).union((request.variables ?? []).filter(\.isSecret).map(\.name))
+            let secretNames = secretVariableNames.union(variables.keys.filter(SecretPolicy.isSensitive)).union((request.variables ?? []).filter(\.isCredential).map(\.name))
             let secrets = try (secretNames.compactMap { variables[$0] } + [request.auth.token, request.auth.password, request.auth.apiKey?.value ?? ""]).map { try RequestBuilder.resolve($0, variables: variables) }.filter { !$0.isEmpty }
             func containsSecret(_ text: String) -> Bool { secrets.contains { text.contains($0) } }
             built.httpBody = nil
@@ -35,7 +35,7 @@ import MonkeytailCompanion
                 url.user = nil; url.password = nil
                 guard !containsSecret(url.host ?? ""), !containsSecret(url.path) else { throw ClientError("The URL contains a private value. Enable credentials to copy it to Watch.") }
                 url.fragment = nil
-                let marked = try request.query.filter(\.isSecret).map { try RequestBuilder.resolve($0.name, variables: variables) }
+                let marked = try request.query.filter(\.isCredential).map { try RequestBuilder.resolve($0.name, variables: variables) }
                 url.queryItems = url.queryItems?.filter { !SecretPolicy.isSensitive($0.name) && !containsSecret($0.name) && !containsSecret($0.value ?? "") && !marked.contains($0.name) && !(request.auth.kind == .apiKey && request.auth.apiKey?.inQuery == true && $0.name == request.auth.apiKey?.name) }
                 built.url = url.url
             }

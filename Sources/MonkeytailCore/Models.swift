@@ -5,9 +5,11 @@ public struct Field: Codable, Identifiable, Equatable, Sendable {
     public var name: String
     public var value: String
     public var enabled: Bool
-    /// nil uses the sensitive-name heuristic; an explicit value overrides it.
+    /// Set by the user or an import. Nothing is marked by default, so values stay visible and sync.
     public var secret: Bool?
-    public var isSecret: Bool { secret ?? SecretPolicy.isSensitive(name) }
+    public var isSecret: Bool { secret == true }
+    /// What opt-in protection (Keychain, excluding credentials from sync or Watch, hidden client code) treats as a credential: the explicit mark, otherwise the sensitive-name heuristic.
+    public var isCredential: Bool { secret ?? SecretPolicy.isSensitive(name) }
     public init(_ name: String = "", _ value: String = "", enabled: Bool = true) {
         self.name = name; self.value = value; self.enabled = enabled
     }

@@ -10,7 +10,7 @@ public enum CodeGenerator {
         guard model.transport != .websocket && model.transport != .sse else { throw ClientError("Code generation currently supports HTTP and GraphQL requests.") }
         var model = model
         if redact {
-            for index in model.form.indices where model.form[index].isSecret || SecretPolicy.isSensitive(model.form[index].name) { model.form[index].value = "<SECRET>" }
+            for index in model.form.indices where model.form[index].isCredential || SecretPolicy.isSensitive(model.form[index].name) { model.form[index].value = "<SECRET>" }
             for index in (model.multipart ?? []).indices where SecretPolicy.isSensitive(model.multipart![index].name) && model.multipart![index].file == nil { model.multipart![index].value = "<SECRET>" }
         }
         if redact, model.auth.kind == .oauth2, model.auth.oauth?.accessToken.isEmpty != false { if model.auth.oauth == nil { model.auth.oauth = OAuthConfiguration() }; model.auth.oauth?.accessToken = "<ACCESS_TOKEN>" }
@@ -22,7 +22,7 @@ public enum CodeGenerator {
         if redact {
             for key in (request.allHTTPHeaderFields ?? [:]).keys where SecretPolicy.isSensitive(key) { request.setValue("<" + key.uppercased() + ">", forHTTPHeaderField: key) }
             if model.auth.kind == .apiKey, let key = model.auth.apiKey, !key.inQuery { request.setValue("<API_KEY>", forHTTPHeaderField: key.name) }
-            for field in model.headers where field.isSecret { let name = try RequestBuilder.resolve(field.name, variables: variables); request.setValue("<SECRET>", forHTTPHeaderField: name) }
+            for field in model.headers where field.isCredential { let name = try RequestBuilder.resolve(field.name, variables: variables); request.setValue("<SECRET>", forHTTPHeaderField: name) }
             if let jwt = redactedJWT, !jwt.inQuery { request.setValue(try RequestBuilder.resolve(jwt.headerPrefix.isEmpty ? "<JWT>" : jwt.headerPrefix + " <JWT>", variables: variables), forHTTPHeaderField: "Authorization") }
             if var url = URLComponents(url: request.url!, resolvingAgainstBaseURL: false) {
                 if url.user != nil { url.user = "USERNAME" }; if url.password != nil { url.password = "PASSWORD" }

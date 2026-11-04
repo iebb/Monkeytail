@@ -12,7 +12,7 @@ public enum SecretPolicy {
         func clean(_ fields: [Field], scope: String) -> [Field] {
             fields.map { field in
                 var field = field
-                if credentials && field.isSecret { secrets["\(scope).field.\(field.id)"] = field.value; field.value = ""; field.secret = true }
+                if credentials && field.isCredential { secrets["\(scope).field.\(field.id)"] = field.value; field.value = "" }
                 return field
             }
         }
@@ -80,7 +80,7 @@ public enum SecretPolicy {
         func restoreFields(_ fields: [Field], scope: String) -> [Field] {
             fields.map { field in
                 var field = field
-                if field.isSecret { field.value = secrets["\(scope).field.\(field.id)"] ?? field.value }
+                if field.isCredential { field.value = secrets["\(scope).field.\(field.id)"] ?? field.value }
                 return field
             }
         }

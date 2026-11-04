@@ -44,9 +44,9 @@ final class WorkspaceStore {
     private(set) var syncing = false
     var syncEnabled: Bool { settings.syncEnabled }
     var useKeychain: Bool { settings.useKeychain ?? false }
-    var syncCredentials: Bool { settings.syncCredentials ?? false }
+    var syncCredentials: Bool { settings.syncCredentials ?? true }
     var hideCredentials: Bool { settings.hideCredentials ?? true }
-    var watchIncludesCredentials: Bool { settings.watchIncludesCredentials ?? false }
+    var watchIncludesCredentials: Bool { settings.watchIncludesCredentials ?? true }
     private struct LocalSettings: Codable {
         var syncEnabled = false; var edited = false; var identity: Data?
         var useKeychain: Bool? = false
@@ -54,6 +54,7 @@ final class WorkspaceStore {
         var hideCredentials: Bool? = false
         var watchIncludesCredentials: Bool? = true
         var legacyKeychain: Bool?
+        var syncDefaults: Int?
     }
 
 
@@ -105,6 +106,10 @@ final class WorkspaceStore {
         if !testing {
             if let data = try? Data(contentsOf: self.directory.appendingPathComponent("sync-state.json")), let state = try? JSONDecoder().decode(WorkspaceSyncState.self, from: data) { syncState = state }
             if !FileManager.default.fileExists(atPath: self.directory.appendingPathComponent("settings.json").path) { settings.edited = FileManager.default.fileExists(atPath: location.path) }
+            if directory == nil, (settings.syncDefaults ?? 0) < 1 {
+                if !settings.syncEnabled { settings.syncEnabled = true; settings.identity = nil }
+                settings.syncCredentials = true; settings.watchIncludesCredentials = true; settings.syncDefaults = 1
+            }
         }
         settings.useKeychain = keychain
         Task { await refreshSnapshots() }
@@ -358,7 +363,7 @@ final class WorkspaceStore {
         var response: APIResponse
         if let mock = request.mock, mock.enabled { response = try await mock.response(url: execution.url) }
         else {
-            let protectedHeaders = request.headers.filter(\.isSecret).map(\.name) + (request.auth.apiKey.map { $0.inQuery ? [] : [$0.name] } ?? [])
+            let protectedHeaders = request.headers.filter(\.isCredential).map(\.name) + (request.auth.apiKey.map { $0.inQuery ? [] : [$0.name] } ?? [])
             let client = HTTPClient(followRedirects: request.followRedirects)
             response = try await client.send(built, proxy: proxy, impersonation: request.impersonation, cookies: jar, tls: network.identity(for: built.url), sensitiveHeaders: protectedHeaders, trusted: network.trustedCertificates)
             if request.auth.kind == .digest, response.status == 401, let challenge = DigestAuth.challenge(from: response.headers), let url = built.url {

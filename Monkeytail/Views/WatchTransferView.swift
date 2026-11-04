@@ -44,7 +44,7 @@ struct WatchTransferView: View {
             guard try store.network.identity(for: url) == nil else { throw ClientError("Use iPhone for client certificate requests.") }
             let collection = store.workspace.collections.first { $0.requests.contains { $0.id == request.id } }
             let fields = (store.environment?.variables ?? []) + (collection?.defaults?.variables ?? []) + (collection?.folders ?? []).flatMap { $0.defaults.variables }
-            let payload = try WatchCompanionLink.prepare(effective.request, variables: effective.variables, proxy: store.workspace.proxy, includePrivateData: store.watchIncludesCredentials, secretVariableNames: Set(fields.filter(\.isSecret).map(\.name)))
+            let payload = try WatchCompanionLink.prepare(effective.request, variables: effective.variables, proxy: store.workspace.proxy, includePrivateData: store.watchIncludesCredentials, secretVariableNames: Set(fields.filter(\.isCredential).map(\.name)))
             try link.add(payload); result = "Queued for Watch."
         } catch { result = error.localizedDescription }
     }

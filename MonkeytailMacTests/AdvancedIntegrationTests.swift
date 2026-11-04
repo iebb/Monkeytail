@@ -411,7 +411,7 @@ import MonkeytailCore
         try JSONEncoder().encode(protected).write(to: directory.appendingPathComponent("workspace.json"))
         try Data("{\"syncEnabled\":false,\"edited\":true}".utf8).write(to: directory.appendingPathComponent("settings.json"))
         let store = WorkspaceStore(directory: directory)
-        XCTAssertFalse(store.useKeychain); XCTAssertFalse(store.syncCredentials); XCTAssertTrue(store.hideCredentials)
+        XCTAssertFalse(store.useKeychain); XCTAssertTrue(store.syncCredentials); XCTAssertTrue(store.watchIncludesCredentials); XCTAssertTrue(store.hideCredentials)
         XCTAssertEqual(store.selectedRequest?.auth.token, "")
         store.setUseKeychain(true); XCTAssertNil(store.issue)
         XCTAssertEqual(store.selectedRequest?.auth.token, "old-vault-token")
