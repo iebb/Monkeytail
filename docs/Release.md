@@ -18,16 +18,22 @@ Builds run in GitHub Actions (`.github/workflows/build.yml`); Xcode Cloud is no 
 
 `Build` runs on pushes to `main` and can be started manually for any branch. It cancels superseded builds, runs `Scripts/verify_release.py`, then archives `Monkeytail` (iOS with the embedded Watch app), `MonkeytailMac`, and `MonkeytailVision` on the `xcode-27` runner with automatic signing. Pushes upload every archive to App Store Connect for TestFlight. Manual runs can turn off the upload and keep the exported packages as workflow artifacts instead.
 
-The build number is the commit height (`git rev-list --count HEAD`), so each commit on `main` maps to one build. Re-running a workflow for the same commit reuses its build number, which App Store Connect rejects as a duplicate upload. Build 1003 of version 1.6.1 was uploaded before this scheme, so later builds need a new marketing version to be accepted.
+The build number is the commit height (`git rev-list --count HEAD`), so each commit on `main` maps to one build. Re-running a workflow for the same commit reuses its build number, which App Store Connect rejects as a duplicate upload. Mac build numbers must also exceed earlier Mac uploads, whatever the version, so the Mac App Store upload fails until the commit height passes the Xcode Cloud builds (App Store Connect currently asks for more than 66). iOS and visionOS only need a new marketing version.
 
 Repository secrets:
 
 - `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`: App Store Connect API key (Admin role, for cloud-managed signing) and the contents of its `.p8` file.
-- `SIGNING_CERTIFICATE_P12`, `SIGNING_CERTIFICATE_PASSWORD` (optional): base64-encoded `.p12` with an Apple Development/Distribution identity. Use these if cloud-managed signing is not available.
+- `SIGNING_CERTIFICATE_P12`, `SIGNING_CERTIFICATE_PASSWORD` (optional): base64-encoded `.p12` with signing identities that cloud-managed signing cannot provide: Apple Development, Mac App Distribution, Mac Installer Distribution and Developer ID Application.
 
 Internal TestFlight testers receive uploaded builds when their group has automatic distribution enabled.
 
 After the archives, `TestFlight` jobs wait for Apple to process each uploaded build, set What to Test from the commit message, add the build to the external `Public` group ([public link](https://testflight.apple.com/join/5D3rEVNe)), and submit it for beta review (`Scripts/testflight_submit.py`). Submission problems, such as a build already in review, become warnings and do not fail the run. A build that fails processing does. Set the `BETA_GROUP` repository variable to use a different group. The beta review contact and TestFlight description are configured in App Store Connect.
+
+## GitHub releases
+
+Pushes also publish the Mac app on [GitHub Releases](https://github.com/iebb/Monkeytail/releases). The macOS leg exports the archive with Developer ID signing, notarizes it with the App Store Connect API key, staples the ticket, and keeps `Monkeytail-<version>-<build>-macOS.zip`. The `GitHub release` job then creates the release `v<version>-<build>` at the built commit, using the commit message as notes. Re-runs replace the zip on an existing release.
+
+Only the Account Holder can create a Developer ID Application certificate, and the Admin API key cannot use the cloud-managed one, so the identity must be in `SIGNING_CERTIFICATE_P12`. Without it the step logs a warning and no release is made.
 
 ## Xcode Cloud history
 
