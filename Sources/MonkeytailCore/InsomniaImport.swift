@@ -133,7 +133,7 @@ enum InsomniaImport {
                 let text = normalize(body["text"] as? String ?? "")
                 let payload = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any] ?? [:]
                 var graphql = GraphQLRequest(); graphql.query = payload["query"] as? String ?? ""
-                if let variables = payload["variables"], let data = try? JSONSerialization.data(withJSONObject: variables, options: [.prettyPrinted, .sortedKeys]) { graphql.variables = String(decoding: data, as: UTF8.self) }
+                if let variables = payload["variables"], !(variables is NSNull), let data = try? JSONSerialization.data(withJSONObject: variables, options: [.prettyPrinted, .sortedKeys, .fragmentsAllowed]) { graphql.variables = String(decoding: data, as: UTF8.self) }
                 graphql.operationName = payload["operationName"] as? String ?? ""
                 request.transport = .graphql; request.graphql = graphql; request.bodyKind = .json; request.body = text
                 if !request.headers.contains(where: { $0.name.lowercased() == "content-type" }) { request.headers.append(Field("Content-Type", "application/json")) }

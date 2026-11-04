@@ -158,7 +158,7 @@ enum BrunoImport {
         }
         let examples = (item["examples"] as? [[String: Any]] ?? []).prefix(ResponseExample.maximumCount).compactMap { example -> ResponseExample? in
             let response = example["response"] as? [String: Any] ?? [:], content = (response["body"] as? [String: Any])?["content"]
-            let text = content as? String ?? content.flatMap { try? JSONSerialization.data(withJSONObject: $0, options: [.prettyPrinted, .sortedKeys]) }.map { String(decoding: $0, as: UTF8.self) } ?? ""
+            let text = content as? String ?? content.flatMap { try? JSONSerialization.data(withJSONObject: $0, options: [.prettyPrinted, .sortedKeys, .fragmentsAllowed]) }.map { String(decoding: $0, as: UTF8.self) } ?? ""
             guard text.utf8.count <= ResponseExample.maximumBodyBytes else { return nil }
             return ResponseExample(name: example["name"] as? String ?? "Example", status: (response["status"] as? NSNumber)?.intValue ?? 200, headers: CollectionCodec.fields(response["headers"] as? [[String: Any]] ?? []), body: text)
         }

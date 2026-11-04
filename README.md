@@ -46,6 +46,7 @@ The starter collection uses httpbin.org. Requests are only sent when you tap **S
 - Saved response examples per request (Postman `response` examples), offline response mocks from examples, current responses or snapshots, delays/status/errors, and a foreground loopback mock server.
 - Request tabs on Mac and iPad, restored on relaunch, Markdown documentation for requests, folders, and collections, and a sandboxed HTML response preview.
 - Import from Postman (v1, v2/v2.1 collections, environments, globals, and full data dumps), Insomnia (v4 JSON/YAML and v5 YAML), Bruno (`.bru` folders and JSON exports), Hoppscotch, Thunder Client, HAR, VS Code REST Client/JetBrains `.http` files, OpenAPI, and cURL. Pick several files or a whole folder at once.
+- **Evil Monk** importer: connect Postman (API key), a GitHub repository, or Hoppscotch (personal access token) and pull every collection, environment and global straight into Monkeytail. The token is used only for that import and never saved; Monkeytail still has no account.
 - Postman v2.1 collection export and Insomnia v4 JSON export. Current Insomnia can import this legacy format.
 - Full-fidelity Monkeytail workspace JSON import/export, Files integration, and a system share sheet.
 - Saved response snapshots with search, JSON/status/header comparison, and JSONPath extraction (`$`, keys, indices, wildcards). Snapshots remain local and retain at most 50 entries within 60 MB.
@@ -64,9 +65,10 @@ Layout follows the **available window size**:
 | iPad detail area at least 640 × 440 points | Request and response side by side |
 | Short landscape phone window | Single pane to keep the editor usable |
 | Window at least 1,100 points | Collections sidebar plus request and response panels |
+| Foldable half-open, fold across the screen (tabletop) | Response above the hinge; URL, Send, and request editor below it. Nothing crosses the fold |
 | Accessibility text sizes | Single-pane editor to preserve readable text |
 
-Selection and editor state survive width changes, rotation, iPad window resizing, and foldable size changes. iPhone Duo is tested in its installed simulator configuration; the layout makes no assumption about an undocumented hinge position or APIs for independent physical displays.
+Selection and editor state survive width changes, rotation, iPad window resizing, and foldable size changes. On iOS 27.1 and later the tabletop layout follows `UIHingeInteraction` (partially open) and the system's `.division` reserved region, so the split sits exactly on the reported fold with 7 points of clearance on each side. If the hinge is flat or closed, or the fold isn't horizontal, the regular layouts apply.
 
 ## Apple Watch companion
 
@@ -91,6 +93,14 @@ Postman export preserves nested folders and exports the **active environment** a
 Insomnia v4 JSON/YAML exports and v5 YAML collections import with their folder tree. The base environment becomes collection variables, sub-environments become environments, and folder environments, headers, auth, and scripts become folder defaults. `{{ _.variable }}` and `{{ _['variable'] }}` references are normalized. Template tags (such as response chaining) produce a notice and stay as text; gRPC requests are skipped.
 
 Bruno collection folders (`bruno.json`, `collection.bru`, `folder.bru`, `environments/`) and JSON exports keep folders, defaults, secret environment variables, scripts, and assertions (converted to tests). Hoppscotch collections and environments convert `<<variable>>` references and keep every auth type. Thunder Client collections convert their declarative tests into scripts. HAR files group requests by host and keep recorded responses as saved examples. `.http`/`.rest` files keep `@variables`, `# @name`, bodies, and `> {% %}` response handlers. Imported scripts written for these clients run with compatibility objects; see [Scripting](docs/Scripting.md#other-clients).
+
+Import → **Connect Postman, GitHub or Hoppscotch** opens the Evil Monk importer:
+
+- **Postman:** paste an [API key](https://go.postman.co/settings/me/api-keys), choose the US or EU data region, and select workspaces. Every collection, environment, and the workspace globals are imported, using the [Postman API](https://learning.postman.com/docs/developer/postman-api/intro-api/). Environments are prefixed with their workspace name when several workspaces are imported.
+- **GitHub:** enter `owner/repo`, `owner/repo@branch`, or a folder URL (`…/tree/branch/folder`). Every Postman, Insomnia Git Sync, Bruno, Thunder Client, Hoppscotch, `.http`, HAR, and OpenAPI file is imported, and each Bruno collection is decoded relative to its own `bruno.json`. Public repositories need no token; use a read-only fine-grained token for private ones. At most 1,000 files and 40 MB are imported.
+- **Hoppscotch:** enter the server (default `https://api.hoppscotch.io`, or a self-hosted backend), a personal access token, and team collection or environment IDs, as the Hoppscotch CLI does. Hoppscotch's API does not list collections or expose personal workspaces; export those as JSON.
+
+Insomnia Cloud Sync is end-to-end encrypted and has no export API, so use Insomnia Git Sync with the GitHub option, or export a file. Bruno and Thunder Client store collections as files or in Git. Tokens are sent only to the chosen service over an ephemeral session, without cookies or caching, and are discarded after the import.
 
 Third-party formats do not preserve every Monkeytail setting, such as request timeouts or global proxy selection. Unsupported authentication produces an import notice; unsupported cURL flags produce an explicit error. Imported file paths are metadata only: choose each file using Files or Photos before sending. Native workspace exports include file bytes; Postman/Insomnia/cURL exports reference filenames. Use Body → Export file to transfer the actual attachments alongside third-party exports. gRPC, accounts and team workspaces, cloud monitors/mocks, and the complete scripting runtimes of other clients are outside this version; Monkeytail never requires a login. OpenAPI import and JSON Schema validation have explicit supported subsets; see [API tools](docs/APITools.md).
 

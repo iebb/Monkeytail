@@ -31,6 +31,15 @@ struct TransferView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Picker("Transfer mode", selection: $mode) { Text("Import").tag("Import"); Text("Export").tag("Export") }.pickerStyle(.segmented)
                     if mode == "Import" {
+                        EvilMonkTitle(subtitle: "Import from files, or straight from another app")
+                        NavigationLink { RemoteImportView(store: store) { dismiss() } } label: {
+                            HStack {
+                                Label("Connect Postman, GitHub or Hoppscotch", systemImage: "link")
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+                            }.padding(12).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
+                        }.buttonStyle(.plain).foregroundStyle(.purple).accessibilityIdentifier("Connect a service")
                         Text("cURL, collection, or .http file").font(.subheadline.weight(.medium))
                         CodeEditor(text: $source, label: "Import content", minimumHeight: 240)
                         HStack {
@@ -269,7 +278,7 @@ struct HistoryView: View {
                     List(store.history) { entry in
                         Button { store.restore(entry); dismiss() } label: {
                             VStack(alignment: .leading, spacing: 8) {
-                                HStack { MethodBadge(method: entry.request.method); Text(entry.request.name).font(.subheadline.weight(.medium)); Spacer(); Text(entry.status.map(String.init) ?? "Error").font(.system(.caption, design: .monospaced)).foregroundStyle(entry.status != nil ? Palette.mint : .red) }
+                                HStack { MethodBadge(method: entry.request.method); Text(entry.request.name).font(.subheadline.weight(.medium)); Spacer(); if let status = entry.status { StatusBadge(status: status, showsLabel: false) } else { Text("Error").font(.system(.caption, design: .monospaced)).foregroundStyle(.red) } }
                                 Text(entry.request.url).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1)
                                 Text(entry.date, style: .relative).font(.caption2).foregroundStyle(.secondary)
                                 if let error = entry.error { Text(error).font(.caption).foregroundStyle(.red).lineLimit(2) }

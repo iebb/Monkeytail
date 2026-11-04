@@ -42,7 +42,7 @@ struct VariableAssist: View {
                 chips {
                     ForEach(names, id: \.self) { name in
                         Button { text = VariableHints.complete(text, with: name) } label: {
-                            Text(name).padding(.horizontal, 8).padding(.vertical, 4).background(Palette.mint.opacity(0.15), in: Capsule()).foregroundStyle(Palette.mint)
+                            Text(name).padding(.horizontal, 7).padding(.vertical, 5).background(Palette.mint.opacity(0.10), in: RoundedRectangle(cornerRadius: 5)).foregroundStyle(Palette.mint)
                         }.buttonStyle(.plain).accessibilityLabel("Insert variable \(name)")
                     }
                 }
@@ -54,7 +54,7 @@ struct VariableAssist: View {
                     ForEach(references, id: \.name) { reference in
                         let value = summary(reference), color = reference.isResolved ? Palette.mint : Palette.warning
                         HStack(spacing: 4) { Text(reference.name).foregroundStyle(color); Text(value).foregroundStyle(.secondary).lineLimit(1) }
-                            .padding(.horizontal, 8).padding(.vertical, 4).background(color.opacity(0.12), in: Capsule())
+                            .padding(.horizontal, 7).padding(.vertical, 5).background(color.opacity(0.10), in: RoundedRectangle(cornerRadius: 5))
                             .accessibilityElement(children: .combine).accessibilityLabel("\(reference.name): \(value)")
                     }
                 }
@@ -160,6 +160,47 @@ struct MethodBadge: View {
             .foregroundStyle(Palette.method(method)).padding(.horizontal, 7).padding(.vertical, 5)
             .background(Palette.method(method).opacity(0.10), in: RoundedRectangle(cornerRadius: 5))
             .accessibilityLabel("\(method) method")
+    }
+}
+
+/// Response status pill: mint for success and redirects, warning amber for 4xx/5xx.
+struct StatusBadge: View {
+    let status: Int
+    var showsLabel = true
+    var body: some View {
+        let color = status < 400 ? Palette.mint : Palette.warning
+        Text(showsLabel ? "\(status) \(Self.label(status))" : String(status)).font(.system(.caption, design: .monospaced, weight: .semibold)).lineLimit(1)
+            .foregroundStyle(color).padding(.horizontal, 8).padding(.vertical, 5)
+            .background(color.opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
+    }
+    static func label(_ code: Int) -> String {
+        [200: "OK", 201: "Created", 202: "Accepted", 204: "No Content", 301: "Moved Permanently", 302: "Found", 304: "Not Modified", 307: "Temporary Redirect", 308: "Permanent Redirect", 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found", 405: "Method Not Allowed", 409: "Conflict", 422: "Unprocessable Content", 429: "Too Many Requests", 500: "Internal Server Error", 502: "Bad Gateway", 503: "Service Unavailable"][code] ?? HTTPURLResponse.localizedString(forStatusCode: code).capitalized
+    }
+}
+
+/// Magnifying-glass search field; a clear button appears once there's text.
+struct SearchField: View {
+    let placeholder: String
+    @Binding var text: String
+    var focused: FocusState<Bool>.Binding
+    var canvas = false
+    #if os(macOS)
+    private let radius: CGFloat = 5
+    #else
+    private let radius: CGFloat = 10
+    #endif
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
+            TextField(placeholder, text: $text).textFieldStyle(.plain).font(.subheadline).noCapitalization().autocorrectionDisabled()
+                .focused(focused).submitLabel(.done).onSubmit { focused.wrappedValue = false }.accessibilityIdentifier(placeholder)
+            if !text.isEmpty {
+                Button { text = ""; focused.wrappedValue = false } label: { Image(systemName: "xmark.circle.fill").frame(width: WorkspaceMetrics.controlHeight, height: WorkspaceMetrics.controlHeight).contentShape(Rectangle()) }
+                    .buttonStyle(.plain).foregroundStyle(.secondary).padding(.trailing, -12).accessibilityLabel("Clear search")
+            }
+        }.padding(.horizontal, 12).frame(minHeight: WorkspaceMetrics.controlHeight)
+            .background(canvas ? Palette.canvas : Palette.surface, in: RoundedRectangle(cornerRadius: radius))
+            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(Palette.border))
     }
 }
 

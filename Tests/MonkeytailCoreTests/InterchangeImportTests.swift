@@ -132,6 +132,15 @@ final class InterchangeImportTests: XCTestCase {
             body:
               mimeType: application/graphql
               text: '{"query":"{ shop { name } }","variables":{"id":1}}'
+          - _id: req_3
+            _type: request
+            parentId: wrk_1
+            name: GraphQL without variables
+            method: POST
+            url: https://example.com/graphql
+            body:
+              mimeType: application/graphql
+              text: '{"query":"{ ping }","variables":null}'
           - _id: env_1
             _type: environment
             parentId: wrk_1
@@ -157,6 +166,7 @@ final class InterchangeImportTests: XCTestCase {
         XCTAssertEqual(result.workspace.environments[0].values["origin"], "{{scheme}}://{{host}}{{base_path}}")
         let graphql = try XCTUnwrap(collection.requests.first { $0.name == "GraphQL" })
         XCTAssertEqual(graphql.transport, .graphql); XCTAssertEqual(graphql.graphql?.query, "{ shop { name } }")
+        XCTAssertEqual(collection.requests.first { $0.name == "GraphQL without variables" }?.graphql?.query, "{ ping }")
     }
 
     func testBrunoFolderImportsTreeAuthScriptsAndEnvironments() throws {

@@ -198,8 +198,8 @@ struct CollectionRunnerView: View {
                     Text(result.name).font(.subheadline).lineLimit(1)
                     Spacer(minLength: 0)
                     if !result.tests.isEmpty { Text("\(result.tests.filter(\.passed).count)/\(result.tests.count)").font(.caption).foregroundStyle(.secondary) }
-                    Text(result.status.map(String.init) ?? (result.skipped ? "Skipped" : "Error")).font(.system(.caption, design: .monospaced))
-                        .foregroundStyle((result.status ?? 0) >= 400 || result.error != nil ? Palette.danger : .secondary)
+                    if let status = result.status { StatusBadge(status: status, showsLabel: false) }
+                    else { Text(result.skipped ? "Skipped" : "Error").font(.system(.caption, design: .monospaced)).foregroundStyle(result.skipped ? Color.secondary : .red) }
                     Text("\(Int(result.duration * 1000)) ms").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
                 }.frame(minHeight: 40).contentShape(Rectangle())
             }.buttonStyle(.plain)

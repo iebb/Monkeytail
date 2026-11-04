@@ -164,17 +164,8 @@ struct ResponseView: View {
                             .font(.caption.weight(.medium)).frame(minHeight: 30)
                     }.borderlessMenu().accessibilityIdentifier("Response format")
                     if ["Pretty", "Raw", "Tree"].contains(format) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                            TextField("Find in response", text: $search).textFieldStyle(.plain).font(.caption)
-                                .focused($searchFocused).submitLabel(.done).onSubmit { searchFocused = false }
-                            if !search.isEmpty {
-                                Button { search = ""; searchFocused = false } label: { Image(systemName: "xmark.circle.fill") }
-                                    .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Clear search")
-                            }
-                        }.padding(.horizontal, 8).frame(minWidth: 80, idealWidth: 220, maxWidth: 220).frame(height: 27)
-                            .background(Palette.canvas, in: RoundedRectangle(cornerRadius: 5))
-                            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Palette.border))
+                        SearchField(placeholder: "Find in response", text: $search, focused: $searchFocused, canvas: true)
+                            .frame(minWidth: 80, idealWidth: 220, maxWidth: 220)
                     }
                     Spacer()
                     if !["Image", "Audio", "Video"].contains(format) {
@@ -202,11 +193,7 @@ struct ResponseView: View {
                         }
                     }
                     if ["Pretty", "Raw", "Tree"].contains(format) {
-                        HStack {
-                            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                            TextField("Find in response", text: $search).textFieldStyle(.plain).font(.caption).noCapitalization().autocorrectionDisabled().focused($searchFocused).submitLabel(.done).onSubmit { searchFocused = false }
-                            if !search.isEmpty { Button { search = ""; searchFocused = false } label: { Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44) }.accessibilityLabel("Clear search") }
-                        }.padding(.leading, 10).frame(minHeight: 44).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
+                        SearchField(placeholder: "Find in response", text: $search, focused: $searchFocused, canvas: true)
                     }
                 }.padding(.horizontal, 12).padding(.bottom, 8)
                 #endif
@@ -257,16 +244,9 @@ struct ResponseView: View {
         do { try response.body.write(to: url, options: [.atomic, .completeFileProtectionUnlessOpen]); shareItem = ResponseShare(url: url) } catch { store.issue = error.localizedDescription }
     }
     private func status(_ response: APIResponse) -> some View {
-        Text("\(response.status) \(statusLabel(response.status))").font(.system(.caption, design: .monospaced, weight: .semibold)).lineLimit(1)
-            .foregroundStyle(response.status < 400 ? Palette.mint : Palette.warning)
-            .padding(.horizontal, 8).padding(.vertical, 5)
-            .background((response.status < 400 ? Palette.mint : Palette.warning).opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
-            .accessibilityIdentifier("Response status")
+        StatusBadge(status: response.status).accessibilityIdentifier("Response status")
     }
     private func timing(_ response: APIResponse) -> some View { Text(String(format: "%.0f ms", response.duration * 1000)).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
-    private func statusLabel(_ code: Int) -> String {
-        [200: "OK", 201: "Created", 202: "Accepted", 204: "No Content", 301: "Moved Permanently", 302: "Found", 304: "Not Modified", 307: "Temporary Redirect", 308: "Permanent Redirect", 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found", 405: "Method Not Allowed", 409: "Conflict", 422: "Unprocessable Content", 429: "Too Many Requests", 500: "Internal Server Error", 502: "Bad Gateway", 503: "Service Unavailable"][code] ?? HTTPURLResponse.localizedString(forStatusCode: code).capitalized
-    }
     private func size(_ response: APIResponse) -> some View { Text(ByteCountFormatter.string(fromByteCount: Int64(response.body.count), countStyle: .file)).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
 
     private func codeResponse(_ response: APIResponse, preview: ResponsePreview) -> some View {

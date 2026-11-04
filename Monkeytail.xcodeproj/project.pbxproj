@@ -31,6 +31,7 @@
 		36125EE50030CAF71ED4A81B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3B1CF71F174CE0582C02A22F /* Assets.xcassets */; };
 		387AE10EE4D796E9E86E23A8 /* ScriptLibraries.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4726B75DE984647B6815AC2 /* ScriptLibraries.swift */; };
 		39268C70F6635DDBABED7942 /* WorkspaceSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FF8D9C2DB8DBCD51480B88D /* WorkspaceSheets.swift */; };
+		39B03B53C20DEF74751248C3 /* RemoteImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3D0CA007118F0F11C366D4 /* RemoteImportView.swift */; };
 		3AD1B7402A332E494EF0151A /* ResponseMediaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B9ABF580715316AB6CE849C /* ResponseMediaView.swift */; };
 		3BAEF3C723DE5C6C10E2A0B9 /* IntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E015068A24823CDD3FE171F2 /* IntegrationTests.swift */; };
 		3E8CF00C0CA68E401394426E /* SnapshotStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCD31297689DC03303592345 /* SnapshotStorage.swift */; };
@@ -50,6 +51,7 @@
 		6B3FAC71F4F081CE9931B7E4 /* SecretVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5071325300ABE069E1D857EB /* SecretVault.swift */; };
 		6CDEFF46F13FEB0CE82A7DAA /* AdvancedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D7768D6D4D2997FE0F06E48 /* AdvancedViews.swift */; };
 		76ED1AD83C210C43F3069230 /* MockServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFED1C08E0D8C6B660B122BA /* MockServer.swift */; };
+		7890B65F25D349DE45119B5C /* RemoteImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3D0CA007118F0F11C366D4 /* RemoteImportView.swift */; };
 		7CDE29859B6995FB4416CA8B /* WorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F4743BD555372710532E45 /* WorkspaceView.swift */; };
 		7E0286B0A78CD4711078049C /* UploadEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249960996981BDF096E52556 /* UploadEditor.swift */; };
 		7E8BA664B6A552FACF7E39CC /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */; };
@@ -88,6 +90,7 @@
 		C509B03B66C0A697145786E2 /* MonkeytailUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 022F944F583B9E9D0FB599DE /* MonkeytailUITests.swift */; };
 		C6474B705B4DF0CEAC81B2AA /* LocalNetworkStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28C6E72668FA389E3665FD5B /* LocalNetworkStorage.swift */; };
 		C6F42141933ACB0BE0372F31 /* WorkspacePersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0742AB66F82B8FC3E1F6328 /* WorkspacePersistence.swift */; };
+		C79BECB7A85089C683116F83 /* RemoteImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3D0CA007118F0F11C366D4 /* RemoteImportView.swift */; };
 		C86D43112CCA4AF0E97035BE /* OAuthAuthorizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C3396862DE443E05DF2C1A0 /* OAuthAuthorizer.swift */; };
 		CAB5525D615711937F64CD7D /* UploadEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249960996981BDF096E52556 /* UploadEditor.swift */; };
 		CD05A502A387D97B4D0D3684 /* MonkeytailCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6AE2B7F6ECCE2F85BF760BF4 /* MonkeytailCore */; };
@@ -215,6 +218,7 @@
 		831469D5704A4C38BCF3DFD6 /* MonkeytailApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonkeytailApp.swift; sourceTree = "<group>"; };
 		839F101E5E8622429522DB8C /* WatchTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchTransferView.swift; sourceTree = "<group>"; };
 		8A31DF33FCEF93708F1993A3 /* MonkeytailWatchCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MonkeytailWatchCore; path = Packages/MonkeytailWatchCore; sourceTree = SOURCE_ROOT; };
+		8C3D0CA007118F0F11C366D4 /* RemoteImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteImportView.swift; sourceTree = "<group>"; };
 		8FF8D9C2DB8DBCD51480B88D /* WorkspaceSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSheets.swift; sourceTree = "<group>"; };
 		9831C297D0A5F470506ACF71 /* Monkeytail */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Monkeytail; path = .; sourceTree = SOURCE_ROOT; };
 		9BCBBAD4A09C3F785FE137E1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -376,6 +380,7 @@
 				18BFFDA0E72F9144E8A3271B /* FolderViews.swift */,
 				F8FA8B20A3048C5DB64659D7 /* NetworkToolsView.swift */,
 				C943681490E40EBA8B13274A /* Platform.swift */,
+				8C3D0CA007118F0F11C366D4 /* RemoteImportView.swift */,
 				FF4D0239FCDE78AC65AE32E3 /* RequestEditor.swift */,
 				1B9ABF580715316AB6CE849C /* ResponseMediaView.swift */,
 				33BDE8E4782E6E455DEC06F8 /* ResponseTools.swift */,
@@ -768,6 +773,7 @@
 				7F64C2A7C3FEE2781429BE9E /* NetworkToolsView.swift in Sources */,
 				89A6C4FC11F8DFE2B7831765 /* OAuthAuthorizer.swift in Sources */,
 				593ACE01DA210773B76BB1BA /* Platform.swift in Sources */,
+				7890B65F25D349DE45119B5C /* RemoteImportView.swift in Sources */,
 				A3084FF752E45C07359EA343 /* RequestEditor.swift in Sources */,
 				D67B5EE7BDC10CB12B9B8697 /* ResponseMediaView.swift in Sources */,
 				F1A01C1E7FCF1B61F6CC41B1 /* ResponsePreview.swift in Sources */,
@@ -813,6 +819,7 @@
 				F8F52989FBC574B194987EAD /* NetworkToolsView.swift in Sources */,
 				C17B7EFDFAC07BB60A98A801 /* OAuthAuthorizer.swift in Sources */,
 				0872A1984048AAF702B4A558 /* Platform.swift in Sources */,
+				C79BECB7A85089C683116F83 /* RemoteImportView.swift in Sources */,
 				C333E832865B7C42328A3647 /* RequestEditor.swift in Sources */,
 				3AD1B7402A332E494EF0151A /* ResponseMediaView.swift in Sources */,
 				14D0F5F864BB31607823FF37 /* ResponsePreview.swift in Sources */,
@@ -875,6 +882,7 @@
 				FCC75EDC0F815CC026C3ADFE /* NetworkToolsView.swift in Sources */,
 				C86D43112CCA4AF0E97035BE /* OAuthAuthorizer.swift in Sources */,
 				4E456ED815B6BC8EC4A63FA6 /* Platform.swift in Sources */,
+				39B03B53C20DEF74751248C3 /* RemoteImportView.swift in Sources */,
 				A378707D27785362832500D5 /* RequestEditor.swift in Sources */,
 				F2EA7D8D4526EF5C8607FC7C /* ResponseMediaView.swift in Sources */,
 				E805DCA21D287E7E10687B7D /* ResponsePreview.swift in Sources */,
@@ -956,7 +964,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Monkeytail/Monkeytail.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 70;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Monkeytail/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Monkeytail;
@@ -972,7 +980,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.1;
+				MARKETING_VERSION = 1.6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1004,7 +1012,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MonkeytailMac/Debug.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 70;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MonkeytailMac/Info.plist;
@@ -1015,7 +1023,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.6.1;
+				MARKETING_VERSION = 1.6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				PRODUCT_MODULE_NAME = MonkeytailMac;
 				PRODUCT_NAME = Monkeytail;
@@ -1030,7 +1038,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MonkeytailMac/Monkeytail.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 70;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MonkeytailMac/Info.plist;
@@ -1041,7 +1049,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.6.1;
+				MARKETING_VERSION = 1.6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				PRODUCT_MODULE_NAME = MonkeytailMac;
 				PRODUCT_NAME = Monkeytail;
@@ -1055,7 +1063,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MonkeytailVision/Monkeytail.entitlements;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 70;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MonkeytailVision/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Monkeytail;
@@ -1067,7 +1075,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.1;
+				MARKETING_VERSION = 1.6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				SDKROOT = xros;
 				TARGETED_DEVICE_FAMILY = 7;
@@ -1311,7 +1319,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MonkeytailVision/Monkeytail.entitlements;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 70;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MonkeytailVision/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Monkeytail;
@@ -1323,7 +1331,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.1;
+				MARKETING_VERSION = 1.6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				SDKROOT = xros;
 				TARGETED_DEVICE_FAMILY = 7;
@@ -1369,7 +1377,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 70;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MonkeytailWatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Monkeytail;
@@ -1377,7 +1385,7 @@
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = co.kitta.monkeytail;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
-				MARKETING_VERSION = 1.6.1;
+				MARKETING_VERSION = 1.6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail.watchkitapp;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -1407,7 +1415,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 70;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MonkeytailWatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Monkeytail;
@@ -1415,7 +1423,7 @@
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = co.kitta.monkeytail;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
-				MARKETING_VERSION = 1.6.1;
+				MARKETING_VERSION = 1.6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail.watchkitapp;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -1430,7 +1438,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Monkeytail/Monkeytail.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 70;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Monkeytail/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Monkeytail;
@@ -1446,7 +1454,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.1;
+				MARKETING_VERSION = 1.6.2;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

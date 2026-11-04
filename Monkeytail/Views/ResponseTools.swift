@@ -27,7 +27,7 @@ struct DiagnosticsView: View {
                     }
                     ForEach(Array(diagnostics.transactions.enumerated()), id: \.element.id) { index, transaction in
                         VStack(alignment: .leading, spacing: 10) {
-                            HStack { Text("\(index + 1) · \(transaction.status)").font(.headline); Spacer(); Text(transaction.protocolName ?? "—").font(.caption.monospaced()) }
+                            HStack { Text("\(index + 1)").font(.headline); StatusBadge(status: transaction.status); Spacer(); Text(transaction.protocolName ?? "—").font(.caption.monospaced()) }
                             Text(transaction.request.method + " " + transaction.request.url).font(.caption.monospaced()).textSelection(.enabled)
                             if let address = transaction.remoteAddress { Text(address).font(.caption.monospaced()).foregroundStyle(.secondary) }
                             HStack { if transaction.proxy { Label("Proxy", systemImage: "network") }; if transaction.reusedConnection { Label("Reused", systemImage: "arrow.triangle.2.circlepath") } }.font(.caption)
@@ -112,6 +112,7 @@ struct SnapshotsView: View {
     #if os(macOS)
     @State private var selected: SnapshotSummary?
     @State private var selectedID: UUID?
+    @FocusState private var searchFocused: Bool
     #endif
     private var filtered: [SnapshotSummary] { store.snapshots.filter { search.isEmpty || "\($0.name) \($0.url) \($0.status)".localizedCaseInsensitiveContains(search) } }
     var body: some View {
@@ -137,11 +138,7 @@ struct SnapshotsView: View {
         } else {
             VStack(spacing: 0) {
                 #if os(macOS)
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    TextField("Find snapshot", text: $search).textFieldStyle(.plain)
-                }.padding(8).background(Palette.surface, in: RoundedRectangle(cornerRadius: 6))
-                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Palette.border)).padding(12)
+                SearchField(placeholder: "Find snapshot", text: $search, focused: $searchFocused).padding(12)
                 #endif
                 #if os(macOS)
                 List(selection: $selectedID) {
@@ -162,7 +159,7 @@ struct SnapshotsView: View {
 
     private func snapshotRow(_ item: SnapshotSummary) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack { MethodBadge(method: item.method); Text(item.name).font(.subheadline); Spacer(); Text(String(item.status)).font(.caption.monospaced()).foregroundStyle(Palette.mint) }
+            HStack { MethodBadge(method: item.method); Text(item.name).font(.subheadline); Spacer(); StatusBadge(status: item.status, showsLabel: false) }
             Text(item.url).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(1)
             Text(item.date, format: .dateTime.month().day().hour().minute()).font(.caption2).foregroundStyle(.secondary)
         }.padding(.vertical, 4)

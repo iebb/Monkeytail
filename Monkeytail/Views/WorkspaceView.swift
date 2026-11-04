@@ -173,12 +173,7 @@ struct WorkspaceView: View {
                 .padding(.horizontal, SidebarMetrics.horizontalInset)
                 .padding(.bottom, 12)
             #else
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Find a request", text: $search).textFieldStyle(.plain).font(.subheadline).noCapitalization().autocorrectionDisabled()
-                    .focused($searchFocused).accessibilityIdentifier("Find a request")
-            }.padding(.horizontal, 12).frame(minHeight: SidebarMetrics.rowHeight)
-                .background(Palette.surface, in: RoundedRectangle(cornerRadius: 10)).overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Palette.border))
+            SearchField(placeholder: "Find a request", text: $search, focused: $searchFocused)
                 .padding(.horizontal, SidebarMetrics.horizontalInset).padding(.bottom, 8)
             #endif
             List(selection: $store.selectedRequestID) {
@@ -366,6 +361,7 @@ struct RequestWorkspace: View {
     let requestID: UUID
     @State private var pane = "Request"
     @State private var inputDismissal = 0
+    @State private var fold: CGRect?
     #if os(macOS)
     @AppStorage("macRequestPaneFraction") private var requestPaneFraction = 0.42
     @AppStorage("macStackedRequestFraction") private var stackedRequestFraction = 0.45
@@ -383,59 +379,88 @@ struct RequestWorkspace: View {
             #else
             let sideBySide = geometry.size.width >= 640 && geometry.size.height >= 440 && !dynamicType.isAccessibilitySize
             #endif
+            let tabletop = fold.flatMap { tabletopSplit($0, in: geometry.size) }
             let stream = request.wrappedValue.transport == .websocket || request.wrappedValue.transport == .sse
             let paneLayout = sideBySide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(ZStackLayout(alignment: .topLeading))
-            VStack(spacing: 0) {
-                addressBar(showSend: sideBySide && !stream)
-                VariableAssist(text: request.url, insets: EdgeInsets(top: -4, leading: WorkspaceMetrics.inset, bottom: WorkspaceMetrics.inset - 2, trailing: WorkspaceMetrics.inset))
-                Divider()
-                // Keep both panes alive and fully sized on iPhone. A zero-width
-                // hidden pane gives its scroll views an invalid initial viewport.
-                #if os(macOS)
-                if sideBySide {
-                    macPanes(stream: stream)
-                } else {
-                    compactPanes(sideBySide: false, stream: stream, layout: paneLayout)
-                }
-                #else
-                compactPanes(sideBySide: sideBySide, stream: stream, layout: paneLayout)
-                #endif
-                Divider()
-                if !sideBySide {
-                    HStack(spacing: 12) {
-                        HStack(spacing: 0) {
-                            ForEach(["Request", "Response"], id: \.self) { value in
-                                Button {
-                                    dismissKeyboard()
-                                    pane = value
-                                } label: {
-                                    Text(stream && value == "Response" ? "Messages" : value)
-                                        .font(.subheadline.weight(pane == value ? .semibold : .regular))
-                                        .frame(maxWidth: .infinity, minHeight: 44)
-                                        .foregroundStyle(pane == value ? Palette.mint : Color.secondary)
-                                        .background(pane == value ? Palette.surface : .clear, in: RoundedRectangle(cornerRadius: 8))
-                                }.buttonStyle(.plain).accessibilityAddTraits(pane == value ? .isSelected : [])
-                            }
-                        }.padding(3).background(Palette.canvas, in: RoundedRectangle(cornerRadius: 11))
-                            .frame(maxWidth: 300).accessibilityIdentifier("Workspace pane")
-                        Spacer(minLength: 0)
-                        if !stream { sendButton }
-                    }.padding(.horizontal, 16).padding(.vertical, 8).background(Palette.surface)
-                }
-                #if !os(macOS)
-                if sideBySide {
-                    HStack {
-                        Label(store.runningID == requestID ? "Sending request…" : "Changes save automatically", systemImage: store.runningID == requestID ? "arrow.triangle.2.circlepath" : "checkmark.circle")
-                        Spacer()
-                        if !stream { Text("⌘ ↵  Send request") }
-                    }.font(.caption).foregroundStyle(.secondary)
-                        .padding(.horizontal, 16).frame(height: 30).background(Palette.surface)
-                }
-                #endif
+            Group {
+                if let tabletop { tabletopPanes(top: tabletop.top, bottom: tabletop.bottom, stream: stream) }
+                else { standardPanes(sideBySide: sideBySide, stream: stream, layout: paneLayout) }
             }.background(Palette.canvas).environment(\.inputDismissal, inputDismissal).environment(\.variableHints, store.variableHints(for: request.wrappedValue))
+                #if os(iOS)
+                .background { FoldReader(fold: $fold) }
+                #endif
                 .onChange(of: pane) { _, _ in dismissKeyboard() }
-                .onChange(of: store.responses[requestID]?.response.id) { _, _ in if !sideBySide { pane = "Response" } }
-                .onChange(of: store.errors[requestID]) { _, error in if error != nil && !sideBySide { pane = "Response" } }
+                .onChange(of: store.responses[requestID]?.response.id) { _, _ in if !sideBySide && tabletop == nil { pane = "Response" } }
+                .onChange(of: store.errors[requestID]) { _, error in if error != nil && !sideBySide && tabletop == nil { pane = "Response" } }
+        }
+    }
+
+    /// Half-folded: read the response above the hinge, edit below it. Nothing crosses the fold.
+    private func tabletopSplit(_ fold: CGRect, in size: CGSize) -> (top: CGFloat, bottom: CGFloat)? {
+        guard !dynamicType.isAccessibilitySize else { return nil }
+        let top = min(fold.minY, fold.midY - 7), bottom = max(fold.maxY, fold.midY + 7)
+        return top >= 120 && size.height - bottom >= 200 ? (top, bottom) : nil
+    }
+
+    private func tabletopPanes(top: CGFloat, bottom: CGFloat, stream: Bool) -> some View {
+        VStack(spacing: 0) {
+            responsePane(stream: stream).frame(maxWidth: .infinity).frame(height: top).clipped().background(Palette.surface)
+            Color.clear.frame(height: bottom - top).accessibilityHidden(true)
+            addressBar(showSend: !stream)
+            VariableAssist(text: request.url, insets: EdgeInsets(top: -4, leading: WorkspaceMetrics.inset, bottom: WorkspaceMetrics.inset - 2, trailing: WorkspaceMetrics.inset))
+            Divider()
+            RequestEditor(request: request, store: store).frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+        }
+    }
+
+    private func standardPanes(sideBySide: Bool, stream: Bool, layout paneLayout: AnyLayout) -> some View {
+        VStack(spacing: 0) {
+            addressBar(showSend: sideBySide && !stream)
+            VariableAssist(text: request.url, insets: EdgeInsets(top: -4, leading: WorkspaceMetrics.inset, bottom: WorkspaceMetrics.inset - 2, trailing: WorkspaceMetrics.inset))
+            Divider()
+            // Keep both panes alive and fully sized on iPhone. A zero-width
+            // hidden pane gives its scroll views an invalid initial viewport.
+            #if os(macOS)
+            if sideBySide {
+                macPanes(stream: stream)
+            } else {
+                compactPanes(sideBySide: false, stream: stream, layout: paneLayout)
+            }
+            #else
+            compactPanes(sideBySide: sideBySide, stream: stream, layout: paneLayout)
+            #endif
+            Divider()
+            if !sideBySide {
+                HStack(spacing: 12) {
+                    HStack(spacing: 0) {
+                        ForEach(["Request", "Response"], id: \.self) { value in
+                            Button {
+                                dismissKeyboard()
+                                pane = value
+                            } label: {
+                                Text(stream && value == "Response" ? "Messages" : value)
+                                    .font(.subheadline.weight(pane == value ? .semibold : .regular))
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                                    .foregroundStyle(pane == value ? Palette.mint : Color.secondary)
+                                    .background(pane == value ? Palette.surface : .clear, in: RoundedRectangle(cornerRadius: 8))
+                            }.buttonStyle(.plain).accessibilityAddTraits(pane == value ? .isSelected : [])
+                        }
+                    }.padding(3).background(Palette.canvas, in: RoundedRectangle(cornerRadius: 11))
+                        .frame(maxWidth: 300).accessibilityIdentifier("Workspace pane")
+                    Spacer(minLength: 0)
+                    if !stream { sendButton() }
+                }.padding(.horizontal, 16).padding(.vertical, 8).background(Palette.surface)
+            }
+            #if !os(macOS)
+            if sideBySide {
+                HStack {
+                    Label(store.runningID == requestID ? "Sending request…" : "Changes save automatically", systemImage: store.runningID == requestID ? "arrow.triangle.2.circlepath" : "checkmark.circle")
+                    Spacer()
+                    if !stream { Text("⌘ ↵  Send request") }
+                }.font(.caption).foregroundStyle(.secondary)
+                    .padding(.horizontal, 16).frame(height: 30).background(Palette.surface)
+            }
+            #endif
         }
     }
 
@@ -539,14 +564,20 @@ struct RequestWorkspace: View {
                     .accessibilityIdentifier("Request URL")
             }.background(Palette.surface, in: RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
                 .overlay(RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius).strokeBorder(urlFocused ? Palette.mint : Palette.border, lineWidth: urlFocused ? 1.5 : 1))
-            if showSend { sendButton }
+            if showSend {
+                #if os(macOS)
+                sendButton()
+                #else
+                sendButton(minWidth: 120)
+                #endif
+            }
         }.padding(WorkspaceMetrics.inset)
     }
 
-    private var sendButton: some View {
+    private func sendButton(minWidth: CGFloat? = nil) -> some View {
         Button(action: send) {
             Label(store.runningID == requestID ? "Cancel" : "Send", systemImage: store.runningID == requestID ? "stop.fill" : "arrow.up")
-                .font(.subheadline.weight(.semibold)).padding(.horizontal, 20).frame(minHeight: max(36, WorkspaceMetrics.controlHeight))
+                .font(.subheadline.weight(.semibold)).padding(.horizontal, 20).frame(minWidth: minWidth, minHeight: max(36, WorkspaceMetrics.controlHeight))
                 .foregroundStyle(Palette.surface).background(Palette.mint, in: RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
         }.buttonStyle(.plain).disabled((store.runningID != nil && store.runningID != requestID) || store.collectionRun?.running == true)
             .keyboardShortcut(.return, modifiers: .command).accessibilityIdentifier("Send request")
@@ -608,3 +639,39 @@ struct RequestTabStrip: View {
             .onAppear { if let id = store.selectedRequestID { store.openTab(id) } }
     }
 }
+
+#if os(iOS)
+/// Reports the horizontal fold of a half-open foldable in this view's coordinates, or nil when flat, closed, or unsupported.
+struct FoldReader: UIViewRepresentable {
+    @Binding var fold: CGRect?
+    func makeUIView(context: Context) -> FoldView { let view = FoldView(); view.onChange = { fold = $0 }; return view }
+    func updateUIView(_ view: FoldView, context: Context) { view.onChange = { fold = $0 } }
+}
+
+final class FoldView: UIView {
+    var onChange: ((CGRect?) -> Void)?
+    private var partiallyOpen = false
+    private var reported: CGRect?
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        if #available(iOS 27.1, *) {
+            addInteraction(UIHingeInteraction { [weak self] _, update in
+                self?.partiallyOpen = update.hinge?.status == .partiallyOpen
+                self?.refresh()
+            })
+        }
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func layoutSubviews() { super.layoutSubviews(); refresh() }
+    private func refresh() {
+        var fold: CGRect?
+        if #available(iOS 27.1, *), partiallyOpen {
+            fold = reservedRegions(kind: .division).first { $0.isActive && $0.frame.width > $0.frame.height && $0.frame.width >= bounds.width * 0.9 && bounds.intersects($0.frame) }?.frame
+        }
+        guard fold != reported else { return }
+        reported = fold
+        DispatchQueue.main.async { [weak self] in self?.onChange?(fold) }
+    }
+}
+#endif

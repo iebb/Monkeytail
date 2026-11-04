@@ -216,6 +216,7 @@ final class WorkspaceStore {
         if files.count == 1, let file = files.first, CurlCodec.isCommand(file.text.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? "") { try importContent(file.text); return }
         try apply(InterchangeImport.decode(files: files, name: name))
     }
+    func importRemote(_ result: CollectionImport) throws { try apply(result) }
     private func apply(_ result: CollectionImport) throws {
         var incoming = result.workspace
         let incomingBytes = incoming.collections.flatMap(\.requests).reduce(0) { $0 + attachmentBytes($1) }
