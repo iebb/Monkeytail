@@ -27,12 +27,15 @@ jobs:
           - platform: iOS
             scheme: Monkeytail
             destination: generic/platform=iOS
+            asc_platform: IOS
           - platform: macOS
             scheme: MonkeytailMac
             destination: generic/platform=macOS
+            asc_platform: MAC_OS
           - platform: visionOS
             scheme: MonkeytailVision
             destination: generic/platform=visionOS
+            asc_platform: VISION_OS
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Check release metadata
@@ -87,6 +90,16 @@ jobs:
             -exportPath "$RUNNER_TEMP/export" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -allowProvisioningUpdates -authenticationKeyPath "$ASC_KEY_PATH" \
             -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+      - name: Record upload
+        if: env.UPLOAD == 'true'
+        run: echo "$BUILD_NUMBER" > "$RUNNER_TEMP/uploaded.txt"
+      - name: Mark upload for TestFlight
+        if: env.UPLOAD == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: uploaded-${{ matrix.asc_platform }}
+          path: ${{ runner.temp }}/uploaded.txt
+          retention-days: 1
       - name: Keep exported package
         if: env.UPLOAD != 'true'
         uses: actions/upload-artifact@v4
@@ -110,13 +123,23 @@ jobs:
       matrix:
         platform: [IOS, MAC_OS, VISION_OS]
     steps:
+      - name: Check upload
+        id: uploaded
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: uploaded-${{ matrix.platform }}
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: steps.uploaded.outcome == 'success'
       - uses: actions/setup-python@v5
+        if: steps.uploaded.outcome == 'success'
         with:
           python-version: '3.13'
       - name: Install dependencies
+        if: steps.uploaded.outcome == 'success'
         run: pip install 'pyjwt[crypto]'
       - name: Submit to public TestFlight
+        if: steps.uploaded.outcome == 'success'
         env:
           APP_ID: '6814706725'
           PLATFORM: ${{ matrix.platform }}
