@@ -144,6 +144,32 @@ import MonkeytailCore
         XCTAssertEqual(logs.filter { $0.level == "pass" }.map(\.message), ["Status code is 200", "Body has message"])
         XCTAssertEqual(logs.filter { $0.level == "fail" }.map(\.message), ["fails"])
     }
+    func testImportedClientScriptAPIsRunUnchanged() async throws {
+        let store = WorkspaceStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        var request = APIRequest(name: "Imported", url: "http://127.0.0.1:8766/echo"); request.scriptsEnabled = true
+        request.preScript = "req.setHeader('X-From-Bru', bru.getEnvVar('seed'));"
+        request.postScript = """
+        var data = pm.response.json();
+        bru.setVar('fromBru', data.path);
+        test('bru', () => { expect(res.getStatus()).to.equal(200); expect(bru.getVar('fromBru')).to.equal('/echo'); expect(Object.entries(data.headers).find(([k]) => k.toLowerCase() === 'x-from-bru')[1]).to.equal('seeded'); });
+        insomnia.test('insomnia', () => insomnia.expect(insomnia.response.code).to.equal(200));
+        pw.test('hoppscotch', () => { pw.expect(pw.response.status).toBe(200); pw.expect(pw.response.status).toBeLevel2xx(); pw.expect('monkeytail').not.toInclude('x'); pw.env.set('fromHopp', 'h'); });
+        tc.check('thunder', () => tc.response.json.path, 'equal', '/echo'); tc.setVar('fromThunder', 't');
+        await (async (client, request, response) => {
+          client.global.set('fromJetBrains', response.contentType.mimeType);
+          client.test('jetbrains', () => client.assert(response.status === 200 && response.body.path === '/echo', 'status'));
+        })(__http.client, __http.request, __http.response).catch(e => { if (!e || !e.__exit) throw e; });
+        """
+        var environment = APIEnvironment(name: "Env", variables: [Field("seed", "seeded")]); environment.id = UUID()
+        store.workspace = Workspace(collections: [RequestCollection(name: "Imported", requests: [request])], environments: [environment]); store.workspace.selectedEnvironmentID = environment.id
+        store.selectedRequestID = request.id
+        store.send(); try await wait { store.runningID == nil }
+        XCTAssertNil(store.errors[request.id])
+        let logs = try XCTUnwrap(store.responses[request.id]?.response.logs)
+        XCTAssertEqual(logs.filter { $0.level == "pass" }.map(\.message), ["bru", "insomnia", "hoppscotch", "thunder", "jetbrains"], logs.map { $0.level + ": " + $0.message }.joined(separator: "\n"))
+        XCTAssertEqual(store.environment?.values["fromHopp"], "h"); XCTAssertEqual(store.environment?.values["fromThunder"], "t")
+        XCTAssertEqual(store.workspace.globalValues["fromJetBrains"], "application/json")
+    }
     func testDigestAnswersChallengeAndGlobalsApplyToTheSameSend() async throws {
         let store = WorkspaceStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
         var digest = APIRequest(name: "Digest", url: "http://127.0.0.1:8766/digest?algorithm={{algorithm}}"); digest.auth.kind = .digest; digest.auth.username = "Mufasa"; digest.auth.password = "{{password}}"

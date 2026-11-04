@@ -19,6 +19,7 @@ struct TransferView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var mode = "Import"
     @State private var source = ""
+    @State private var chosenFile: ImportFile?
     @State private var format: ExportFormat = .postman
     @State private var error: String?
     @State private var importing = false
@@ -30,15 +31,15 @@ struct TransferView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Picker("Transfer mode", selection: $mode) { Text("Import").tag("Import"); Text("Export").tag("Export") }.pickerStyle(.segmented)
                     if mode == "Import" {
-                        Text("cURL or collection JSON").font(.subheadline.weight(.medium))
+                        Text("cURL, collection, or .http file").font(.subheadline.weight(.medium))
                         CodeEditor(text: $source, label: "Import content", minimumHeight: 240)
                         HStack {
                             PasteButton(payloadType: String.self) { strings in source = strings.first ?? "" }.labelStyle(.titleAndIcon)
                             Spacer()
-                            Button { importing = true } label: { Label("Choose file", systemImage: "doc") }.buttonStyle(.bordered)
+                            Button { importing = true } label: { Label("Choose files or folder", systemImage: "folder") }.buttonStyle(.bordered)
                         }
                         DisclosureGroup("Supported formats") {
-                            Text("cURL, Postman v2/v2.1, Insomnia v4 JSON, and Monkeytail. Imports append to your workspace. Imported scripts start disabled.")
+                            Text("cURL; Postman v1, v2 and v2.1 collections, environments, globals and data dumps; Insomnia v4 JSON/YAML and v5 YAML; Bruno folders, .bru files and JSON; Hoppscotch; Thunder Client; HAR; .http files (REST Client and JetBrains); OpenAPI and Swagger; and Monkeytail. Choose a Bruno collection folder to import it with its folders and environments. Imports append to your workspace, and imported scripts run when you send.")
                                 .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                         }.font(.subheadline)
                     } else {
@@ -70,14 +71,15 @@ struct TransferView: View {
                         }
                     }
                 }
-                .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .plainText, .data]) { result in
+                .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .yaml, .plainText, .data, .folder], allowsMultipleSelection: true) { result in
                     do {
-                        let url = try result.get()
-                        let granted = url.startAccessingSecurityScopedResource()
-                        defer { if granted { url.stopAccessingSecurityScopedResource() } }
-                        let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                        guard size <= 40 * 1024 * 1024 else { throw ClientError("Import files must be smaller than 40 MB.") }
-                        source = try String(contentsOf: url, encoding: .utf8); error = nil
+                        let urls = try result.get()
+                        let files = try urls.flatMap(ImportFileReader.read)
+                        if urls.count == 1, let url = urls.first, !url.hasDirectoryPath, let file = files.first {
+                            chosenFile = file; source = file.text; error = nil
+                        } else {
+                            try store.importFiles(files, name: urls.count == 1 ? urls[0].lastPathComponent : "Imported files"); dismiss()
+                        }
                     } catch { self.error = error.localizedDescription }
                 }
                 .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "monkeytail-\(format == .postman ? "postman_collection" : format == .insomnia ? "insomnia" : "workspace")") { result in
@@ -86,7 +88,38 @@ struct TransferView: View {
         }.macSheetFrame(minHeight: 420)
     }
     private func performImport() {
-        do { try store.importContent(source); dismiss() } catch { self.error = error.localizedDescription }
+        do {
+            if let chosenFile, chosenFile.text == source { try store.importFiles([chosenFile], name: (chosenFile.path as NSString).deletingPathExtension) } else { try store.importContent(source) }
+            dismiss()
+        } catch { self.error = error.localizedDescription }
+    }
+}
+
+/// Reads chosen files, or every importable file inside a chosen folder, with paths relative to it.
+enum ImportFileReader {
+    static let extensions: Set = ["bru", "json", "yaml", "yml", "http", "rest", "har", "txt", "curl", "sh"]
+    static func read(_ url: URL) throws -> [ImportFile] {
+        let granted = url.startAccessingSecurityScopedResource()
+        defer { if granted { url.stopAccessingSecurityScopedResource() } }
+        guard url.hasDirectoryPath else {
+            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+            guard size <= 40 * 1024 * 1024 else { throw ClientError("Import files must be smaller than 40 MB.") }
+            return [ImportFile(path: url.lastPathComponent, text: try String(contentsOf: url, encoding: .utf8))]
+        }
+        guard let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey], options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return [] }
+        var files: [ImportFile] = [], total = 0
+        let root = url.standardizedFileURL.path.hasSuffix("/") ? url.standardizedFileURL.path : url.standardizedFileURL.path + "/"
+        for case let item as URL in enumerator {
+            let values = try item.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey])
+            if values.isDirectory == true { if ["node_modules", ".git"].contains(item.lastPathComponent) { enumerator.skipDescendants() }; continue }
+            guard extensions.contains(item.pathExtension.lowercased()), let text = try? String(contentsOf: item, encoding: .utf8) else { continue }
+            total += values.fileSize ?? 0
+            guard files.count < 5000, total <= 40 * 1024 * 1024 else { throw ClientError("Folders can contain at most 5,000 files and 40 MB to import.") }
+            let path = item.standardizedFileURL.path
+            files.append(ImportFile(path: path.hasPrefix(root) ? String(path.dropFirst(root.count)) : item.lastPathComponent, text: text))
+        }
+        guard !files.isEmpty else { throw ClientError("The folder contains no importable files.") }
+        return files
     }
 }
 

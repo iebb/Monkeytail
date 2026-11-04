@@ -7,25 +7,7 @@ public enum OpenAPICodec {
         let root: [String: Any]
         if let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any] { root = value }
         else {
-            guard let node = try Yams.compose(yaml: String(decoding: data, as: UTF8.self)) else { throw ClientError("Empty specification.") }
-            var count = 0
-            func convert(_ node: Node, depth: Int) throws -> Any {
-                count += 1
-                guard count < 50000, depth < 64 else { throw ClientError("YAML specification exceeds the depth or node limit.") }
-                switch node {
-                case .scalar: return node.any
-                case .sequence(let values): return try values.map { try convert($0, depth: depth + 1) }
-                case .mapping(let pairs):
-                    var result: [String: Any] = [:]
-                    for pair in pairs {
-                        guard let key = pair.key.string, result[key] == nil else { throw ClientError("YAML contains duplicate or non-string keys.") }
-                        result[key] = try convert(pair.value, depth: depth + 1)
-                    }
-                    return result
-                case .alias: throw ClientError("YAML aliases must be expanded before importing.")
-                }
-            }
-            guard let value = try convert(node, depth: 0) as? [String: Any] else { throw ClientError("Expected an OpenAPI document.") }; root = value
+            guard let value = try YAMLObject.parse(String(decoding: data, as: UTF8.self)) as? [String: Any] else { throw ClientError("Expected an OpenAPI document.") }; root = value
         }
         guard (root["openapi"] as? String)?.hasPrefix("3.") == true || root["swagger"] as? String == "2.0" else { throw ClientError("Import an OpenAPI 3.x or Swagger 2.0 JSON/YAML specification.") }
         func object(_ raw: Any?, depth: Int = 0) throws -> [String: Any] {

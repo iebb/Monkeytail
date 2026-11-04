@@ -11,13 +11,21 @@ public struct CollectionImport {
 public enum CollectionCodec {
     public static func decode(_ data: Data) throws -> CollectionImport {
         guard data.count <= 40 * 1024 * 1024 else { throw ClientError("Import files must be smaller than 40 MB.") }
-        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw ClientError("Choose a JSON collection or environment file.") }
-        if root["collections"] != nil && root["version"] != nil {
+        let object = try JSONSerialization.jsonObject(with: data)
+        if let list = object as? [[String: Any]] { return try InterchangeImport.hoppscotch(list) }
+        guard let root = object as? [String: Any] else { throw ClientError("Choose a JSON collection or environment file.") }
+        if root["collections"] != nil && root["version"] != nil && !InterchangeImport.isPostmanDump(root) {
             let workspace = try JSONDecoder().decode(Workspace.self, from: data)
             guard workspace.version == 1 else { throw ClientError("This Monkeytail file uses an unsupported version.") }
             return CollectionImport(workspace: workspace, includesSettings: true)
         }
+        return try decode(root: root)
+    }
+
+    /// Decodes a third-party collection, environment or export parsed from JSON or YAML.
+    static func decode(root: [String: Any]) throws -> CollectionImport {
         if root["info"] != nil && root["item"] != nil { return try postman(root) }
+        if let format = InterchangeImport.decoder(for: root) { return try format(root) }
         if let values = root["values"] as? [[String: Any]] {
             if root["_postman_variable_scope"] as? String == "globals" {
                 var workspace = Workspace(); workspace.globals = fields(values)
@@ -25,8 +33,8 @@ public enum CollectionCodec {
             }
             return CollectionImport(workspace: Workspace(environments: [APIEnvironment(name: root["name"] as? String ?? "Imported environment", variables: fields(values))]))
         }
-        if let resources = root["resources"] as? [[String: Any]] { return try insomnia(root, resources: resources) }
-        throw ClientError("Unsupported format. Import Monkeytail JSON, Postman v2/v2.1 collections or environments, or Insomnia v4 JSON. Export YAML as JSON in the source app first.")
+        if let resources = root["resources"] as? [[String: Any]] { return try InsomniaImport.decode(root, resources: resources) }
+        throw ClientError(InterchangeImport.unsupportedMessage)
     }
 
     public static func encode(_ workspace: Workspace, format: ExportFormat) throws -> Data {
@@ -77,7 +85,7 @@ public enum CollectionCodec {
         }
     }
 
-    private static func postman(_ root: [String: Any]) throws -> CollectionImport {
+    static func postman(_ root: [String: Any]) throws -> CollectionImport {
         var requests: [APIRequest] = [], warnings: [String] = [], folders: [RequestFolder] = []
         func walk(_ items: [[String: Any]], path: String, inheritedAuth: [String: Any]?, inheritedEvents: [[String: Any]], parent: UUID?) throws {
             for item in items {
@@ -171,65 +179,24 @@ public enum CollectionCodec {
         return CollectionImport(workspace: Workspace(collections: [collection], environments: variables.isEmpty ? [] : [APIEnvironment(name: name, variables: variables)]), warnings: warnings)
     }
 
-    private static func insomnia(_ root: [String: Any], resources: [[String: Any]]) throws -> CollectionImport {
-        var warnings: [String] = [], collections: [RequestCollection] = [], environments: [APIEnvironment] = []
-        let groups = resources.filter { ["workspace", "request_group"].contains($0["_type"] as? String ?? "") }
-        for resource in resources where resource["_type"] as? String == "environment" {
-            let data = resource["data"] as? [String: Any] ?? [:]
-            environments.append(APIEnvironment(name: resource["name"] as? String ?? "Environment", variables: data.keys.sorted().map { Field($0, string(data[$0])) }))
-        }
-        for resource in resources where resource["_type"] as? String == "request" {
-            let parent = resource["parentId"] as? String ?? ""
-            let groupName = groups.first { $0["_id"] as? String == parent }?["name"] as? String ?? "Insomnia collection"
-            if !collections.contains(where: { $0.name == groupName }) { collections.append(RequestCollection(name: groupName)) }
-            var request = APIRequest(name: resource["name"] as? String ?? "Untitled", method: resource["method"] as? String ?? "GET", url: normalizeInsomnia(resource["url"] as? String ?? ""))
-            request.description = description(resource["description"])
-            request.impersonation = try decodeTransport(resource["_monkeytail"])
-            request.headers = fields(resource["headers"] as? [[String: Any]] ?? [])
-            request.query = fields(resource["parameters"] as? [[String: Any]] ?? [])
-            request.auth = decodeAuth(resource["authentication"] as? [String: Any], postman: false, warnings: &warnings)
-            request.followRedirects = resource["settingFollowRedirects"] as? String != "off"
-            if let body = resource["body"] as? [String: Any], let mime = body["mimeType"] as? String, !mime.isEmpty {
-                if mime == "application/x-www-form-urlencoded" { request.bodyKind = .form; request.form = fields(body["params"] as? [[String: Any]] ?? []) }
-                else if mime.contains("multipart") {
-                    request.bodyKind = .multipart
-                    request.multipart = (body["params"] as? [[String: Any]] ?? []).map { field in
-                        MultipartPart(name: string(field["name"]), value: string(field["value"]), enabled: !(field["disabled"] as? Bool ?? false), file: field["type"] as? String == "file" ? RequestFile(filename: string(field["fileName"]), mimeType: field["contentType"] as? String ?? "application/octet-stream") : nil)
-                    }
-                    warnings.append("Choose imported attachment files on this device before sending.")
-                } else if body["fileName"] != nil {
-                    request.bodyKind = .file; request.fileBody = RequestFile(filename: string(body["fileName"]), mimeType: mime)
-                    warnings.append("Choose the imported body file on this device before sending.")
-                }
-                else {
-                    request.bodyKind = mime.contains("json") ? .json : .text; request.body = normalizeInsomnia(body["text"] as? String ?? "")
-                    if !request.headers.contains(where: { $0.name.lowercased() == "content-type" }) { request.headers.append(Field("Content-Type", mime)) }
-                }
-            }
-            request.preScript = resource["preRequestScript"] as? String ?? ""
-            request.postScript = resource["afterResponseScript"] as? String ?? ""
-            decodeAdvanced(resource["_monkeytail"], into: &request)
-            collections[collections.firstIndex { $0.name == groupName }!].requests.append(request)
-        }
-        if collections.flatMap(\.requests).contains(where: { !$0.preScript.isEmpty || !$0.postScript.isEmpty }) { warnings.append("Imported scripts run when you send. Insomnia-specific scripting APIs may require adaptation.") }
-        return CollectionImport(workspace: Workspace(collections: collections, environments: environments), warnings: warnings)
-    }
-
-    private static func decodeAuth(_ source: [String: Any]?, postman: Bool, warnings: inout [String]) -> RequestAuth {
+    static func decodeAuth(_ source: [String: Any]?, postman: Bool, warnings: inout [String]) -> RequestAuth {
         var auth = RequestAuth()
         guard let source, let type = source["type"] as? String else { return auth }
+        if source["disabled"] as? Bool == true { return auth }
         var values = source
         if postman { values = (source[type] as? [[String: Any]] ?? []).reduce(into: [:]) { $0[$1["key"] as? String ?? ""] = $1["value"] } }
         switch type {
         case "bearer": auth.kind = .bearer; auth.token = string(values["token"])
         case "basic": auth.kind = .basic; auth.username = string(values["username"]); auth.password = string(values["password"])
         case "digest": auth.kind = .digest; auth.username = string(values["username"]); auth.password = string(values["password"])
-        case "apikey": auth.kind = .apiKey; var key = APIKeyAuth(); key.name = string(values["key"]); key.value = string(values["value"]); key.inQuery = string(values["in"]) == "query"; auth.apiKey = key
-        case "oauth2": auth.kind = .oauth2; var oauth = OAuthConfiguration(); oauth.accessToken = string(values["accessToken"]); oauth.clientID = string(values["clientId"]); oauth.clientSecret = string(values["clientSecret"]); oauth.authorizationURL = string(values["authUrl"]); oauth.tokenURL = string(values["accessTokenUrl"]); oauth.scope = string(values["scope"]); oauth.grant = ["client_credentials": .clientCredentials, "password_credentials": .password, "password": .password][string(values["grant_type"] ?? values["grantType"])] ?? .pkce; if oauth.grant == .password { oauth.username = string(values["username"]); oauth.password = string(values["password"]) }; auth.oauth = oauth
-        case "awsv4": auth.kind = .aws; var aws = AWSAuth(); aws.accessKey = string(values["accessKey"]); aws.secretKey = string(values["secretKey"]); aws.sessionToken = string(values["sessionToken"]); aws.region = string(values["region"]); aws.service = string(values["service"]); auth.aws = aws
+        case "apikey": auth.kind = .apiKey; var key = APIKeyAuth(); key.name = string(values["key"]); key.value = string(values["value"]); key.inQuery = ["query", "queryParams", "queryparams"].contains(string(values["in"] ?? values["addTo"] ?? values["placement"])); auth.apiKey = key
+        case "oauth2": auth.kind = .oauth2; var oauth = OAuthConfiguration(); oauth.accessToken = string(values["accessToken"]); oauth.clientID = string(values["clientId"]); oauth.clientSecret = string(values["clientSecret"]); oauth.authorizationURL = string(values["authUrl"] ?? values["authorizationUrl"]); oauth.tokenURL = string(values["accessTokenUrl"] ?? values["tokenUrl"]); oauth.scope = string(values["scope"]); oauth.grant = ["client_credentials": .clientCredentials, "password_credentials": .password, "password": .password][string(values["grant_type"] ?? values["grantType"])] ?? .pkce; if oauth.grant == .password { oauth.username = string(values["username"]); oauth.password = string(values["password"]) }; auth.oauth = oauth
+        case "awsv4", "iam", "aws":
+            auth.kind = .aws; var aws = AWSAuth(); aws.accessKey = string(values["accessKey"] ?? values["accessKeyId"]); aws.secretKey = string(values["secretKey"] ?? values["secretAccessKey"]); aws.sessionToken = string(values["sessionToken"])
+            if values["region"] != nil { aws.region = string(values["region"]) }; if values["service"] != nil { aws.service = string(values["service"]) }; auth.aws = aws
         case "oauth1":
             auth.kind = .oauth1; var oauth1 = OAuth1Auth(); oauth1.consumerKey = string(values["consumerKey"]); oauth1.consumerSecret = string(values["consumerSecret"])
-            oauth1.token = string(values["token"] ?? values["tokenKey"]); oauth1.tokenSecret = string(values["tokenSecret"]); oauth1.realm = string(values["realm"])
+            oauth1.token = string(values["token"] ?? values["tokenKey"] ?? values["accessToken"]); oauth1.tokenSecret = string(values["tokenSecret"] ?? values["accessTokenSecret"]); oauth1.realm = string(values["realm"])
             let method = string(values["signatureMethod"])
             if let signature = OAuth1Signature(rawValue: method.isEmpty ? "HMAC-SHA1" : method.uppercased()) { oauth1.signatureMethod = signature } else { warnings.append("OAuth 1.0 signature method ‘\(method)’ is unsupported; HMAC-SHA1 is used instead.") }
             auth.oauth1 = oauth1
@@ -318,7 +285,7 @@ public enum CollectionCodec {
         }
         return value
     }
-    private static func decodeAdvanced(_ raw: Any?, into request: inout APIRequest) {
+    static func decodeAdvanced(_ raw: Any?, into request: inout APIRequest) {
         guard let raw = raw as? [String: Any], let original = try? JSONEncoder().encode(request), var object = try? JSONSerialization.jsonObject(with: original) as? [String: Any] else { return }
         for key in ["transport", "graphql", "assertions", "requestSchema", "responseSchema", "parameterHints", "variables", "cookieJarEnabled", "mock", "auth"] { if let value = raw[key] { object[key] = value } }
         if let data = try? json(object), let decoded = try? JSONDecoder().decode(APIRequest.self, from: data) { request = decoded }
@@ -353,11 +320,11 @@ public enum CollectionCodec {
         return result
     }
     /// Postman stores descriptions as a string or `{content, type}`.
-    private static func description(_ value: Any?) -> String? {
+    static func description(_ value: Any?) -> String? {
         let text = value as? String ?? (value as? [String: Any])?["content"] as? String
         return text?.isEmpty == false ? text : nil
     }
-    private static func fields(_ source: [[String: Any]]) -> [Field] {
+    static func fields(_ source: [[String: Any]]) -> [Field] {
         source.map { Field(normalizeInsomnia($0["key"] as? String ?? $0["name"] as? String ?? ""), normalizeInsomnia(string($0["value"])), enabled: !($0["disabled"] as? Bool ?? false) && ($0["enabled"] as? Bool ?? true)) }
     }
     private static func transportMetadata(_ request: APIRequest) -> [String: Any] {
@@ -368,24 +335,26 @@ public enum CollectionCodec {
         }
         return metadata
     }
-    private static func decodeTransport(_ value: Any?) throws -> BrowserImpersonation? {
+    static func decodeTransport(_ value: Any?) throws -> BrowserImpersonation? {
         guard let metadata = value as? [String: Any], let name = metadata["tlsProfile"] as? String else { return nil }
         return BrowserImpersonation(profile: try BrowserProfile.parse(name), browserHeaders: metadata["browserHeaders"] as? Bool ?? true)
     }
-    private static func string(_ value: Any?) -> String {
+    static func string(_ value: Any?) -> String {
         guard let value else { return "" }
         if let value = value as? String { return value }
         if let data = try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed, .sortedKeys]) { return String(decoding: data, as: UTF8.self) }
         return String(describing: value)
     }
-    private static func normalizeInsomnia(_ value: String) -> String {
+    static func normalizeInsomnia(_ value: String) -> String {
         value.replacingOccurrences(of: #"\{\{\s*_\.([\w.\-]+)\s*\}\}"#, with: "{{$1}}", options: .regularExpression)
+            .replacingOccurrences(of: #"\{\{\s*_\[\s*['"]([^'"\]]+)['"]\s*\]\s*\}\}"#, with: "{{$1}}", options: .regularExpression)
+            .replacingOccurrences(of: #"\{\{\s+([\w.\-$]+)\s*\}\}|\{\{([\w.\-$]+)\s+\}\}"#, with: "{{$1$2}}", options: .regularExpression)
     }
-    private static func withoutQuery(_ value: String) -> String {
+    static func withoutQuery(_ value: String) -> String {
         let withoutFragment = String(value.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0])
         return String(withoutFragment.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)[0])
     }
     private static func postmanField(_ field: Field) -> [String: Any] { ["key": field.name, "value": field.value, "disabled": !field.enabled, "type": "text"] }
     private static func insomniaField(_ field: Field) -> [String: Any] { ["name": field.name, "value": field.value, "disabled": !field.enabled] }
-    private static func json(_ object: Any) throws -> Data { try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]) }
+    static func json(_ object: Any) throws -> Data { try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]) }
 }

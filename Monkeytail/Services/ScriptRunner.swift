@@ -96,7 +96,7 @@ final class ScriptRunner: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard continuation != nil else { return }
         startExecutionTimer()
-        webView.callAsyncJavaScript(ScriptLibraries.source + Self.harness + "\n{\n" + script + "\n}\n" + Self.epilogue, arguments: ["payload": payload], in: nil, in: .page) { [weak self] result in
+        webView.callAsyncJavaScript(ScriptLibraries.source + Self.harness + "\nawait (async () => {\n" + script + "\n})();\n" + Self.epilogue, arguments: ["payload": payload], in: nil, in: .page) { [weak self] result in
             switch result {
             case .success(let value):
                 guard let text = value as? String else { self?.finish(.failure(ClientError("The script did not produce a valid result. Avoid top-level return statements."))); return }
@@ -358,6 +358,51 @@ final class ScriptRunner: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         // Legacy Postman sandbox globals.
         const postman = {setNextRequest: __setNextRequest, getEnvironmentVariable: environment.get, setEnvironmentVariable: environment.set, clearEnvironmentVariable: environment.unset,
           getGlobalVariable: globals.get, setGlobalVariable: globals.set, clearGlobalVariable: globals.unset, getVariable: environment.get, getResponseCookie: cookies.one};
+        // Script APIs of other clients, so imported collections run unchanged.
+        const insomnia = pm;
+        const __parsed = () => { try { return JSON.parse(response.body); } catch { return response.body; } };
+        const __find = name => Object.keys(request.headers).find(k => k.toLowerCase() === String(name).toLowerCase());
+        const bru = {getVar: localVariables.get, setVar: localVariables.set, hasVar: localVariables.has, deleteVar: localVariables.unset, getRequestVar: localVariables.get, getFolderVar: localVariables.get,
+          getEnvVar: environment.get, setEnvVar: (k, v) => environment.set(k, v), hasEnvVar: environment.has, deleteEnvVar: environment.unset, getGlobalEnvVar: globals.get, setGlobalEnvVar: globals.set,
+          getCollectionVar: collectionVariables.get, getProcessEnv: () => undefined, getEnvName: () => undefined, interpolate: localVariables.replaceIn, setNextRequest: __setNextRequest,
+          sleep: ms => new Promise(done => setTimeout(done, Math.min(Number(ms) || 0, 2000))), runner: {setNextRequest: __setNextRequest, skipRequest: () => {__skip = true;}, stopExecution: () => __setNextRequest(null)}};
+        const req = {get url() { return request.url; }, get method() { return request.method; }, get headers() { return request.headers; }, get body() { return request.body; },
+          getUrl: () => request.url, setUrl: u => {request.url = String(u);}, getMethod: () => request.method, setMethod: m => {request.method = String(m).toUpperCase();},
+          getHeader: n => { const k = __find(n); return k === undefined ? undefined : request.headers[k]; }, getHeaders: () => ({...request.headers}),
+          setHeader: (n, v) => { const k = __find(n); if (k !== undefined) delete request.headers[k]; request.headers[n] = String(v); }, deleteHeader: n => { const k = __find(n); if (k !== undefined) delete request.headers[k]; },
+          setHeaders: h => { for (const k of Object.keys(request.headers)) delete request.headers[k]; Object.entries(h || {}).forEach(([k, v]) => {request.headers[k] = String(v);}); },
+          getBody: () => { try { return JSON.parse(request.body); } catch { return request.body; } }, setBody: b => {request.body = typeof b === 'string' ? b : JSON.stringify(b);}, getName: () => pm.info.requestName};
+        const res = response ? {status: response.status, statusText: response.statusText, headers: response.headers, body: __parsed(), responseTime: response.responseTime,
+          getStatus: () => response.status, getStatusText: () => response.statusText, getHeader: n => response.headers.get(n), getHeaders: () => response.headers.toObject(), getBody: __parsed,
+          getResponseTime: () => response.responseTime, getUrl: () => request.url} : undefined;
+        const __jest = (actual, negate = false) => {
+          const check = (ok, message) => { if (negate ? ok : !ok) throw new Error((negate ? 'Expected not ' : 'Expected ') + message); };
+          const level = (low, name) => () => check(Number(actual) >= low && Number(actual) < low + 100, `${__show(actual)} to be ${name}`);
+          return {toBe: v => check(actual === v, `${__show(actual)} to be ${__show(v)}`), toEqual: v => check(__equal(actual, v), `${__show(actual)} to equal ${__show(v)}`),
+            toBeLevel2xx: level(200, '2xx'), toBeLevel3xx: level(300, '3xx'), toBeLevel4xx: level(400, '4xx'), toBeLevel5xx: level(500, '5xx'),
+            toBeType: t => check(typeof actual === t, `${__show(actual)} to be type ${t}`), toHaveLength: n => check(actual != null && actual.length === n, `${__show(actual)} to have length ${n}`),
+            toInclude: v => check(actual != null && actual.includes(v), `${__show(actual)} to include ${__show(v)}`), get not() { return __jest(actual, !negate); }};
+        };
+        const __hoppEnv = {get: environment.get, getRaw: environment.get, getResolve: k => environment.replaceIn(environment.get(k) ?? ''), resolve: environment.replaceIn, set: environment.set, unset: environment.unset};
+        const __hoppResponse = response ? {status: response.status, statusCode: response.status, body: __parsed(), headers: Object.entries(response.headers.toObject()).map(([key, value]) => ({key, value})),
+          responseTime: response.responseTime, text: () => response.body, json: () => response.json(), asText: () => response.body, asJSON: () => response.json()} : undefined;
+        const pw = {env: __hoppEnv, test, expect: v => __jest(v), response: __hoppResponse};
+        const hopp = {env: {...__hoppEnv, active: __hoppEnv, global: {get: globals.get, set: globals.set, unset: globals.unset}}, test, expect, response: __hoppResponse, request};
+        const tc = {getVar: k => localVariables.get(k), setVar: (k, v) => environment.set(k, v), request, test: (name, value) => test(name, () => { if ((typeof value === 'function' ? value() : value) === false) throw new Error('returned false'); }),
+          response: response ? {status: response.status, headers: response.headers.toObject(), text: response.body, get json() { return __parsed(); }, time: response.responseTime} : undefined,
+          check: (name, read, action, expected) => test(name, () => {
+            const actual = read(), number = Number(expected), text = actual === undefined || actual === null ? '' : typeof actual === 'object' ? JSON.stringify(actual) : String(actual);
+            const ok = {equal: text == expected, notequal: text != expected, contains: text.includes(expected), notcontains: !text.includes(expected), '<': Number(actual) < number, '<=': Number(actual) <= number,
+              '>': Number(actual) > number, '>=': Number(actual) >= number, istype: __type(actual) === String(expected).toLowerCase(), count: actual != null && actual.length === number,
+              exists: actual !== undefined, regex: new RegExp(expected).test(text), isjson: (() => { try { JSON.parse(response.body); return true; } catch { return false; } })()}[action];
+            if (ok === undefined) throw new Error('Unsupported Thunder Client test action ' + action);
+            if (!ok) throw new Error(`expected ${text} ${action} ${expected}`);
+          })};
+        const __http = {client: {global: {get: globals.get, set: globals.set, clear: globals.unset, clearAll: globals.clear, isEmpty: () => Object.keys(__globals).length === 0},
+            test, assert: (condition, message) => { if (!condition) throw new Error(message || 'Assertion failed'); }, log: (...x) => log('info', x), exit: () => { throw {__exit: true}; }},
+          request: {variables: {get: localVariables.get, set: localVariables.set}, environment: {get: environment.get}, url: () => request.url, method: request.method, headers: request.headers, body: () => request.body},
+          response: response ? {status: response.status, body: __parsed(), contentType: {mimeType: (response.headers.get('content-type') || '').split(';')[0].trim(), charset: ((response.headers.get('content-type') || '').match(/charset=([^;]+)/) || [])[1]},
+            headers: {valueOf: n => response.headers.get(n) ?? null, valuesOf: n => response.headers.has(n) ? [response.headers.get(n)] : []}} : undefined};
         const tests = {};
         const responseCookies = response ? cookies.all() : undefined;
         const responseBody = response ? response.body : undefined, responseCode = response ? {code: response.status} : undefined;

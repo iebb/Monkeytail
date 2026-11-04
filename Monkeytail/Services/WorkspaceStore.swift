@@ -207,43 +207,48 @@ final class WorkspaceStore {
             if let proxy = result.proxy { workspace.proxy = proxy }
             notice = (["Imported 1 request."] + result.warnings).joined(separator: "\n\n")
         } else {
-            let data = Data(text.utf8)
-            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-            let specification = object?["openapi"] != nil || object?["swagger"] != nil || (object == nil && (text.contains("openapi:") || text.contains("swagger:")))
-            let result = try specification ? OpenAPICodec.decode(data) : CollectionCodec.decode(data)
-            var incoming = result.workspace
-            let incomingBytes = incoming.collections.flatMap(\.requests).reduce(0) { $0 + attachmentBytes($1) }
-            guard workspaceAttachmentBytes + incomingBytes <= 40 * 1024 * 1024 else { throw ClientError("Workspace attachments exceed 40 MB.") }
-            let originalSelected = incoming.selectedEnvironmentID
-            var importedSelection: UUID?
-            for c in incoming.collections.indices {
-                incoming.collections[c].id = UUID()
-                let folderIDs = Dictionary((incoming.collections[c].folders ?? []).map { ($0.id, UUID()) }, uniquingKeysWith: { first, _ in first })
-                incoming.collections[c].folders = incoming.collections[c].folders.map { $0.map { folder in
-                    var folder = folder; folder.id = folderIDs[folder.id]!; folder.parentID = folder.parentID.flatMap { folderIDs[$0] }; return folder
-                } }
-                for r in incoming.collections[c].requests.indices {
-                    incoming.collections[c].requests[r].id = UUID()
-                    incoming.collections[c].requests[r].folderID = incoming.collections[c].requests[r].folderID.flatMap { folderIDs[$0] }
-                }
-            }
-            for e in incoming.environments.indices {
-                let old = incoming.environments[e].id
-                incoming.environments[e].id = UUID()
-                if old == originalSelected { importedSelection = incoming.environments[e].id }
-            }
-            workspace.collections += incoming.collections
-            workspace.environments += incoming.environments
-            if let globals = incoming.globals, !globals.isEmpty {
-                workspace.globals = (workspace.globals ?? []).filter { field in !globals.contains { $0.name == field.name } } + globals
-            }
-            if result.includesSettings { workspace.proxy = incoming.proxy }
-            if let selected = importedSelection ?? incoming.environments.first?.id { workspace.selectedEnvironmentID = selected }
-            selectedRequestID = incoming.collections.first?.requests.first?.id ?? selectedRequestID
-            let count = incoming.collections.reduce(0) { $0 + $1.requests.count }
-            let globalsNote = (incoming.globals ?? []).isEmpty ? "" : " and \(incoming.globals!.count) globals"
-            notice = (["Imported \(count) requests and \(incoming.environments.count) environments\(globalsNote)."] + result.warnings).joined(separator: "\n\n")
+            try apply(InterchangeImport.decode(text))
         }
+    }
+    /// Imports several files or a chosen folder, such as a Bruno collection.
+    func importFiles(_ files: [ImportFile], name: String) throws {
+        guard files.reduce(0, { $0 + $1.text.utf8.count }) <= 40 * 1024 * 1024 else { throw ClientError("Imports must be smaller than 40 MB.") }
+        if files.count == 1, let file = files.first, CurlCodec.isCommand(file.text.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? "") { try importContent(file.text); return }
+        try apply(InterchangeImport.decode(files: files, name: name))
+    }
+    private func apply(_ result: CollectionImport) throws {
+        var incoming = result.workspace
+        let incomingBytes = incoming.collections.flatMap(\.requests).reduce(0) { $0 + attachmentBytes($1) }
+        guard workspaceAttachmentBytes + incomingBytes <= 40 * 1024 * 1024 else { throw ClientError("Workspace attachments exceed 40 MB.") }
+        let originalSelected = incoming.selectedEnvironmentID
+        var importedSelection: UUID?
+        for c in incoming.collections.indices {
+            incoming.collections[c].id = UUID()
+            let folderIDs = Dictionary((incoming.collections[c].folders ?? []).map { ($0.id, UUID()) }, uniquingKeysWith: { first, _ in first })
+            incoming.collections[c].folders = incoming.collections[c].folders.map { $0.map { folder in
+                var folder = folder; folder.id = folderIDs[folder.id]!; folder.parentID = folder.parentID.flatMap { folderIDs[$0] }; return folder
+            } }
+            for r in incoming.collections[c].requests.indices {
+                incoming.collections[c].requests[r].id = UUID()
+                incoming.collections[c].requests[r].folderID = incoming.collections[c].requests[r].folderID.flatMap { folderIDs[$0] }
+            }
+        }
+        for e in incoming.environments.indices {
+            let old = incoming.environments[e].id
+            incoming.environments[e].id = UUID()
+            if old == originalSelected { importedSelection = incoming.environments[e].id }
+        }
+        workspace.collections += incoming.collections
+        workspace.environments += incoming.environments
+        if let globals = incoming.globals, !globals.isEmpty {
+            workspace.globals = (workspace.globals ?? []).filter { field in !globals.contains { $0.name == field.name } } + globals
+        }
+        if result.includesSettings { workspace.proxy = incoming.proxy }
+        if let selected = importedSelection ?? incoming.environments.first?.id { workspace.selectedEnvironmentID = selected }
+        selectedRequestID = incoming.collections.first?.requests.first?.id ?? selectedRequestID
+        let count = incoming.collections.reduce(0) { $0 + $1.requests.count }
+        let globalsNote = (incoming.globals ?? []).isEmpty ? "" : " and \(incoming.globals!.count) globals"
+        notice = (["Imported \(count) requests and \(incoming.environments.count) environments\(globalsNote)."] + result.warnings).joined(separator: "\n\n")
     }
 
     func send() {

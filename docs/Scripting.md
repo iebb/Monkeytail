@@ -63,6 +63,18 @@ Most everyday Postman scripts run unchanged:
 | `pm.execution.setNextRequest(name or null)`, `pm.execution.skipRequest()` | Honoured by the collection runner; `skipRequest` in a before-request hook also skips a single send |
 | Legacy `tests[...]`, `responseBody`, `responseCode`, `responseTime`, `responseHeaders`, `responseCookies`, `data`, `postman.*` | Supported for older collections |
 
-Dynamic variables such as `{{$guid}}`, `{{$timestamp}}`, `{{$isoTimestamp}}`, `{{$randomInt}}`, and `{{$randomEmail}}` resolve on every use. Other modules (cheerio, chai, tv4, moment-timezone and similar), CryptoJS DES/RC4/Rabbit/SHA3, `pm.cookies.jar()`, `pm.vault`, `pm.visualizer`, and Insomnia APIs are unsupported.
+Dynamic variables such as `{{$guid}}`, `{{$timestamp}}`, `{{$isoTimestamp}}`, `{{$randomInt}}`, and `{{$randomEmail}}` resolve on every use. Other modules (cheerio, chai, tv4, moment-timezone and similar), CryptoJS DES/RC4/Rabbit/SHA3, `pm.cookies.jar()`, `pm.vault`, and `pm.visualizer` are unsupported.
 
-Uncaught before-request errors prevent sending. After-response errors appear in Console while keeping the received response. Failed tests remain visible in Console. Logs are bounded to 200 entries of 10,000 characters each. Direct network access (`fetch`, XHR, navigation) is blocked; use `pm.sendRequest`. Top-level `await` is permitted within the three-second deadline. Avoid top-level `return`, because it bypasses the result envelope.
+Uncaught before-request errors prevent sending. After-response errors appear in Console while keeping the received response. Failed tests remain visible in Console. Logs are bounded to 200 entries of 10,000 characters each. Direct network access (`fetch`, XHR, navigation) is blocked; use `pm.sendRequest`. Each script runs inside its own async function, so top-level `await`, `var`/`const` names such as `data` or `tests`, and an early `return` are all allowed within the three-second deadline.
+
+## Other clients
+
+Imported scripts from other clients run against the same sandbox through small compatibility objects. They cover common variable, request, response, and test calls, not each client's full runtime.
+
+| Client | Objects |
+| --- | --- |
+| Insomnia | `insomnia` is an alias of `pm` |
+| Bruno | `bru.getVar/setVar/getEnvVar/setEnvVar/getCollectionVar/getGlobalEnvVar/setGlobalEnvVar/interpolate/setNextRequest/sleep/runner`, `req.getUrl/setUrl/getMethod/setMethod/getHeader/setHeader/deleteHeader/getBody/setBody`, `res.status/body/getStatus/getHeader/getBody/getResponseTime`, global `test` and `expect` |
+| Hoppscotch | `pw.env`, `pw.test`, `pw.expect(...).toBe/toEqual/toBeLevel2xx…5xx/toBeType/toHaveLength/toInclude` with `.not`, `pw.response`; `hopp.env` (including `active` and `global`), `hopp.test`, `hopp.expect`, `hopp.response` |
+| Thunder Client | `tc.getVar/setVar/test/request/response`; imported declarative tests become `tc.check(...)` lines |
+| VS Code REST Client / JetBrains HTTP | `> {% %}` handlers receive `client` (`global`, `test`, `assert`, `log`, `exit`), `request`, and `response` (`status`, `body`, `contentType`, `headers.valueOf`) |
