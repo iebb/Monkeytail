@@ -38,6 +38,8 @@ jobs:
             asc_platform: VISION_OS
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
       - name: Check release metadata
         run: python3 Scripts/verify_release.py
       - name: Prepare signing
@@ -49,7 +51,7 @@ jobs:
           key_path="$RUNNER_TEMP/AuthKey.p8"
           printf '%s' "$ASC_KEY_P8" > "$key_path"
           echo "ASC_KEY_PATH=$key_path" >> "$GITHUB_ENV"
-          echo "BUILD_NUMBER=$(( ${{ vars.BUILD_NUMBER_OFFSET || 1000 }} + GITHUB_RUN_NUMBER ))" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$(( ${{ vars.BUILD_NUMBER_OFFSET || 1000 }} + $(git rev-list --count HEAD) ))" >> "$GITHUB_ENV"
           if [[ -n "$SIGNING_CERTIFICATE_P12" ]]; then
             keychain="$RUNNER_TEMP/signing.keychain-db"
             keychain_password=$(uuidgen)
@@ -129,6 +131,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: uploaded-${{ matrix.platform }}
+          path: ${{ runner.temp }}/uploaded
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         if: steps.uploaded.outcome == 'success'
       - uses: actions/setup-python@v5
@@ -143,12 +146,11 @@ jobs:
         env:
           APP_ID: '6814706725'
           PLATFORM: ${{ matrix.platform }}
-          BUILD_NUMBER_OFFSET: ${{ vars.BUILD_NUMBER_OFFSET || 1000 }}
           BETA_GROUP: ${{ vars.BETA_GROUP || 'Public' }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
-          export BUILD_NUMBER=$(( BUILD_NUMBER_OFFSET + GITHUB_RUN_NUMBER ))
+          export BUILD_NUMBER="$(cat "$RUNNER_TEMP/uploaded/uploaded.txt")"
           export WHATS_NEW="$(git log -1 --format=%B)"
           python3 Scripts/testflight_submit.py
