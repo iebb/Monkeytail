@@ -1,28 +1,37 @@
-# Release and Xcode Cloud
+# Release
 
 - Apple Developer organization: Kitta Ltd (Kitta Co)
 - Team: `7P8CLHDH5G`
 - App: Monkeytail, version 1.6
 - Bundle ID: `co.kitta.monkeytail`
-- Repository: [iebb/Monkeytail](https://github.com/iebb/Monkeytail), private
+- Repository: [iebb/Monkeytail](https://github.com/iebb/Monkeytail), public, BSD 3-Clause
 - Branch: `main`; project: `Monkeytail.xcodeproj`; shared scheme: `Monkeytail`
 - Price: free; no in-app purchases
 
-For documentation-only pushes, use `[ci skip]` in the commit message ([Apple start-condition guidance](https://developer.apple.com/documentation/xcode/configuring-start-conditions)).
+For documentation-only pushes, use `[ci skip]` in the commit message ([GitHub guidance](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/skipping-workflow-runs)).
 
-The generated project is committed, so Cloud does not need XcodeGen. Regenerate with `xcodegen generate` after changing `project.yml`.
+The generated project is committed, so CI does not need XcodeGen. Regenerate with `xcodegen generate` after changing `project.yml`.
 
-The Mac workflow includes required Archive and Test actions. Native Mac integration tests use the scheme settings and the selected builder's macOS version. Run 63 passed all 13 tests on macOS 27 at `b783f3a`. GitHub Actions could not start that commit because of an account billing limit; Cloud provides the independent native Mac check.
+## GitHub Actions build
 
-## Build hooks
+Builds run in GitHub Actions (`.github/workflows/build.yml`); Xcode Cloud is no longer used and CI runs no tests. Run tests locally with `swift test` and `Scripts/test.sh`.
 
-`ci_post_clone.sh` validates the bundle ID, team, privacy manifest, encryption declaration, and opaque 1024px app icon. `ci_pre_xcodebuild.sh` starts HTTP, CONNECT, and SOCKS5 fixtures on the separate test worker. `ci_post_xcodebuild.sh` stops them after testing. The fixture is self-contained in `ci_scripts` so it is available in the testing environment.
+`Build` runs on pushes to `main` and can be started manually for any branch. It cancels superseded builds, runs `Scripts/verify_release.py`, then archives `Monkeytail` (iOS with the embedded Watch app), `MonkeytailMac`, and `MonkeytailVision` on the `xcode-27` runner with automatic signing. Pushes upload every archive to App Store Connect for TestFlight. Manual runs can turn off the upload and keep the exported packages as workflow artifacts instead.
 
-The shared scheme runs hosted integration tests and UI tests without parallel execution. GitHub Actions separately runs core tests and the native Mac integration suite. Tests use loopback servers and require no production credentials.
+The build number is `BUILD_NUMBER_OFFSET + run number`. Set the `BUILD_NUMBER_OFFSET` repository variable to change the default of 1000, which keeps builds above the Xcode Cloud build numbers.
 
-## Active workflow
+Repository secrets:
 
-`Monkeytail CI` runs on changes to `main` and can be started manually for any branch. It cancels superseded push builds and archives for App Store Connect with automatic signing, followed by TestFlight internal distribution. This workflow runs Archive only. A separate `Monkeytail iOS Tests` workflow runs hosted integration and UI tests on an iPhone 18 Pro with iOS 27.0. Both Xcode and macOS track the latest release. GitHub Actions runs core and native Mac integration tests for pushes and pull requests to `main`.
+- `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`: App Store Connect API key (Admin role, for cloud-managed signing) and the contents of its `.p8` file.
+- `SIGNING_CERTIFICATE_P12`, `SIGNING_CERTIFICATE_PASSWORD` (optional): base64-encoded `.p12` with an Apple Development/Distribution identity. Use these if cloud-managed signing is not available.
+
+Internal TestFlight testers receive uploaded builds when their group has automatic distribution enabled.
+
+After the archives, `TestFlight` jobs wait for Apple to process each uploaded build, set What to Test from the commit message, add the build to the external `Public` group ([public link](https://testflight.apple.com/join/5D3rEVNe)), and submit it for beta review (`Scripts/testflight_submit.py`). Submission problems, such as a build already in review, become warnings and do not fail the run. A build that fails processing does. Set the `BETA_GROUP` repository variable to use a different group. The beta review contact and TestFlight description are configured in App Store Connect.
+
+## Xcode Cloud history
+
+Earlier releases were archived and tested in Xcode Cloud. Its hooks validated release metadata and started the local network fixtures, which now live in `Scripts/`. Mac run 63 passed all 13 native Mac tests on macOS 27 at `b783f3a`.
 
 - [App Store Connect app](https://appstoreconnect.apple.com/apps/6814706725/distribution): `6814706725`
 - [Cloud workflow](https://appstoreconnect.apple.com/teams/cbaca10a-f696-4d2b-959e-0d3fa1b23452/xcode-cloud/products/503e6b3e-e4f0-497c-84de-827b8c8b88bd/workflows/31C47B5F-652E-4FB9-8998-248C9C0E2CB8)

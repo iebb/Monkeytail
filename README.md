@@ -6,7 +6,7 @@
 
 Free. No in-app purchases. No account. No data collected by Kitta Co.
 
-[Product](https://docs.kitta.co/monkeytail/) · [Privacy](https://docs.kitta.co/monkeytail/privacy/) · [Support](https://docs.kitta.co/monkeytail/support/) · [API tools](docs/APITools.md) · [Scripting](docs/Scripting.md) · [Browser profiles](docs/BrowserProfiles.md) · [Release setup](docs/XcodeCloud.md)
+[Product](https://docs.kitta.co/monkeytail/) · [Privacy](https://docs.kitta.co/monkeytail/privacy/) · [Support](https://docs.kitta.co/monkeytail/support/) · [API tools](docs/APITools.md) · [Scripting](docs/Scripting.md) · [Browser profiles](docs/BrowserProfiles.md) · [Release setup](docs/Release.md)
 
 <p><img src="docs/screenshots/iphone-request.png" alt="Monkeytail iPhone request editor with inline headers" width="285"> <img src="docs/screenshots/iphone-response.png" alt="Monkeytail JSON response viewer on iPhone" width="285"></p>
 
@@ -135,15 +135,14 @@ MonkeytailWatch/       Compact favourite-request companion and WatchConnectivity
 Packages/              System-only visionOS and bounded Watch core packages
 MonkeytailTests/       Hosted simulator integration tests
 MonkeytailUITests/     End-to-end device UI tests
-Scripts/               Local verification, samples, icon packaging
-ci_scripts/            Xcode Cloud hooks and local network fixtures
+Scripts/               Local verification and network fixtures, samples, icon packaging
 docs/                  Scripting, release metadata, branding, screenshots
 ```
 
 Protocol references: [Apple proxy configuration](https://developer.apple.com/documentation/network/proxyconfiguration), [WebKit JavaScript execution](https://developer.apple.com/documentation/webkit/wkwebview/callasyncjavascript(_:arguments:in:in:completionhandler:)), [Postman schema](https://schema.postman.com/), [Insomnia import/export](https://developer.konghq.com/insomnia/import-export/).
 
-## Ownership
+## License
 
-Private source repository for Kitta Co (Kitta Ltd). Copyright © 2026 Kitta Ltd. All rights reserved. The public product, support, and privacy pages are hosted at [docs.kitta.co](https://docs.kitta.co/monkeytail/).
+Copyright © 2026 Kitta Ltd. Released under the [BSD 3-Clause License](LICENSE). The public product, support, and privacy pages are hosted at [docs.kitta.co](https://docs.kitta.co/monkeytail/).
 
-Third-party library notices are included in Settings → Licenses. See [vendor provenance](Vendor/README.md) for the pinned binaries and regeneration procedure.
+Third-party components keep their own licenses; their notices are included in Settings → Licenses. See [vendor provenance](Vendor/README.md) for the pinned binaries and regeneration procedure.

@@ -1,0 +1,131 @@
+name: Build
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload to App Store Connect (TestFlight)
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  UPLOAD: ${{ github.event_name == 'push' || inputs.upload }}
+jobs:
+  archive:
+    name: Archive ${{ matrix.platform }}
+    runs-on: xcode-27
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: iOS
+            scheme: Monkeytail
+            destination: generic/platform=iOS
+          - platform: macOS
+            scheme: MonkeytailMac
+            destination: generic/platform=macOS
+          - platform: visionOS
+            scheme: MonkeytailVision
+            destination: generic/platform=visionOS
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Check release metadata
+        run: python3 Scripts/verify_release.py
+      - name: Prepare signing
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          SIGNING_CERTIFICATE_P12: ${{ secrets.SIGNING_CERTIFICATE_P12 }}
+          SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
+        run: |
+          key_path="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s' "$ASC_KEY_P8" > "$key_path"
+          echo "ASC_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$(( ${{ vars.BUILD_NUMBER_OFFSET || 1000 }} + GITHUB_RUN_NUMBER ))" >> "$GITHUB_ENV"
+          if [[ -n "$SIGNING_CERTIFICATE_P12" ]]; then
+            keychain="$RUNNER_TEMP/signing.keychain-db"
+            keychain_password=$(uuidgen)
+            printf '%s' "$SIGNING_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+            security create-keychain -p "$keychain_password" "$keychain"
+            security set-keychain-settings -lut 21600 "$keychain"
+            security unlock-keychain -p "$keychain_password" "$keychain"
+            security import "$RUNNER_TEMP/signing.p12" -P "$SIGNING_CERTIFICATE_PASSWORD" \
+              -A -t cert -f pkcs12 -k "$keychain"
+            security set-key-partition-list -S apple-tool:,apple: -k "$keychain_password" "$keychain"
+            security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          fi
+      - name: Archive
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild archive -project Monkeytail.xcodeproj -scheme "${{ matrix.scheme }}" \
+            -configuration Release -destination "${{ matrix.destination }}" \
+            -archivePath "$RUNNER_TEMP/${{ matrix.scheme }}.xcarchive" \
+            -allowProvisioningUpdates -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+      - name: Export
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          destination=export
+          [[ "$UPLOAD" == "true" ]] && destination=upload
+          plutil -create xml1 "$RUNNER_TEMP/ExportOptions.plist"
+          plutil -insert method -string app-store-connect "$RUNNER_TEMP/ExportOptions.plist"
+          plutil -insert destination -string "$destination" "$RUNNER_TEMP/ExportOptions.plist"
+          plutil -insert teamID -string 7P8CLHDH5G "$RUNNER_TEMP/ExportOptions.plist"
+          plutil -insert signingStyle -string automatic "$RUNNER_TEMP/ExportOptions.plist"
+          plutil -insert manageAppVersionAndBuildNumber -bool NO "$RUNNER_TEMP/ExportOptions.plist"
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/${{ matrix.scheme }}.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+      - name: Keep exported package
+        if: env.UPLOAD != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Monkeytail-${{ matrix.platform }}-${{ env.BUILD_NUMBER }}
+          path: ${{ runner.temp }}/export
+          if-no-files-found: error
+      - name: Clean up signing
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/AuthKey.p8" "$RUNNER_TEMP/signing.p12"
+  testflight:
+    name: TestFlight ${{ matrix.platform }}
+    needs: archive
+    if: ${{ !cancelled() && (github.event_name == 'push' || inputs.upload) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [IOS, MAC_OS, VISION_OS]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: pip install 'pyjwt[crypto]'
+      - name: Submit to public TestFlight
+        env:
+          APP_ID: '6814706725'
+          PLATFORM: ${{ matrix.platform }}
+          BUILD_NUMBER_OFFSET: ${{ vars.BUILD_NUMBER_OFFSET || 1000 }}
+          BETA_GROUP: ${{ vars.BETA_GROUP || 'Public' }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          export BUILD_NUMBER=$(( BUILD_NUMBER_OFFSET + GITHUB_RUN_NUMBER ))
+          export WHATS_NEW="$(git log -1 --format=%B)"
+          python3 Scripts/testflight_submit.py
