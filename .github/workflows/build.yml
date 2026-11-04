@@ -51,7 +51,7 @@ jobs:
           key_path="$RUNNER_TEMP/AuthKey.p8"
           printf '%s' "$ASC_KEY_P8" > "$key_path"
           echo "ASC_KEY_PATH=$key_path" >> "$GITHUB_ENV"
-          echo "BUILD_NUMBER=$(( ${{ vars.BUILD_NUMBER_OFFSET || 1000 }} + $(git rev-list --count HEAD) ))" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
           if [[ -n "$SIGNING_CERTIFICATE_P12" ]]; then
             keychain="$RUNNER_TEMP/signing.keychain-db"
             keychain_password=$(uuidgen)

@@ -18,7 +18,7 @@ Builds run in GitHub Actions (`.github/workflows/build.yml`); Xcode Cloud is no 
 
 `Build` runs on pushes to `main` and can be started manually for any branch. It cancels superseded builds, runs `Scripts/verify_release.py`, then archives `Monkeytail` (iOS with the embedded Watch app), `MonkeytailMac`, and `MonkeytailVision` on the `xcode-27` runner with automatic signing. Pushes upload every archive to App Store Connect for TestFlight. Manual runs can turn off the upload and keep the exported packages as workflow artifacts instead.
 
-The build number is `BUILD_NUMBER_OFFSET + commit height` (`git rev-list --count HEAD`), so each commit on `main` maps to one build. The default offset of 1000 keeps builds above those already uploaded (Xcode Cloud builds and the first GitHub build, 1003); change it with the `BUILD_NUMBER_OFFSET` repository variable. Re-running a workflow for the same commit reuses its build number, which App Store Connect rejects as a duplicate upload.
+The build number is the commit height (`git rev-list --count HEAD`), so each commit on `main` maps to one build. Re-running a workflow for the same commit reuses its build number, which App Store Connect rejects as a duplicate upload. Build 1003 of version 1.6.1 was uploaded before this scheme, so later builds need a new marketing version to be accepted.
 
 Repository secrets:
 
