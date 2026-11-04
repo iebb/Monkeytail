@@ -173,7 +173,7 @@ final class CoreTests: XCTestCase {
             XCTAssertFalse(requests[0].query[1].enabled)
             XCTAssertEqual(requests[0].auth.token, "{{token}}")
             XCTAssertEqual(requests[1].body, workspace.collections[0].requests[1].body)
-            XCTAssertFalse(requests[1].scriptsEnabled)
+            XCTAssertTrue(requests[1].scriptsEnabled, "Imported scripts run on send, as in Postman.")
         }
     }
 
@@ -185,7 +185,7 @@ final class CoreTests: XCTestCase {
         let request = result.workspace.collections[0].requests[0]
         XCTAssertEqual(request.name, "List")
         XCTAssertEqual(result.workspace.collections[0].folders?.first?.name, "Users")
-        var collection = result.workspace.collections[0]; collection.defaults?.scriptsEnabled = true
+        let collection = result.workspace.collections[0]; XCTAssertEqual(collection.defaults?.scriptsEnabled, true)
         let resolved = try RequestInheritance.resolve(request, collection: collection, environment: [:])
         XCTAssertEqual(resolved.request.auth.token, "abc")
         XCTAssertEqual(request.url, "https://example.com")

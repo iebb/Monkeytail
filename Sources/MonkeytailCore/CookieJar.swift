@@ -70,13 +70,17 @@ public struct CookieJar: Codable, Equatable, Sendable {
         cookies.removeAll { $0.expires.map { $0 <= now } ?? false }
         if cookies.count > 300 { cookies = Array(cookies.suffix(300)) }
     }
-    public func header(for url: URL, now: Date = Date()) -> String {
+    /// Cookies a request to this URL would send, longest path first.
+    public func cookies(for url: URL, now: Date = Date()) -> [StoredCookie] {
         let host = url.host?.lowercased() ?? "", path = url.path.isEmpty ? "/" : url.path
         return cookies.filter { c in
             (c.hostOnly ? host == c.domain : host == c.domain || host.hasSuffix("." + c.domain)) &&
             (path == c.path || path.hasPrefix(c.path.hasSuffix("/") ? c.path : c.path + "/")) &&
             (!c.secure || url.scheme == "https") && (c.expires.map { $0 > now } ?? true)
-        }.sorted { $0.path.count == $1.path.count ? $0.created < $1.created : $0.path.count > $1.path.count }.map { $0.name + "=" + $0.value }.joined(separator: "; ")
+        }.sorted { $0.path.count == $1.path.count ? $0.created < $1.created : $0.path.count > $1.path.count }
+    }
+    public func header(for url: URL, now: Date = Date()) -> String {
+        cookies(for: url, now: now).map { $0.name + "=" + $0.value }.joined(separator: "; ")
     }
 }
 

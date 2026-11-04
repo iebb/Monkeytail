@@ -14,7 +14,7 @@ import UIKit
 @MainActor final class OAuthAuthorizer: NSObject, ASWebAuthenticationPresentationContextProviding {
     private var session: ASWebAuthenticationSession?
     func authorize(_ config: OAuthConfiguration, proxy: ProxySettings) async throws -> OAuthConfiguration {
-        if config.grant == .clientCredentials { return try await exchange(config, request: OAuthFlow.tokenRequest(config), proxy: proxy) }
+        if config.grant == .clientCredentials || config.grant == .password { return try await exchange(config, request: OAuthFlow.tokenRequest(config), proxy: proxy) }
         let verifier = try OAuthFlow.random(), state = try OAuthFlow.random(), url = try OAuthFlow.authorizationURL(config, state: state, verifier: verifier)
         let callback: URL = try await withCheckedThrowingContinuation { continuation in
             let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "monkeytail") { callback, error in

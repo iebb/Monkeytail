@@ -14,7 +14,7 @@ public struct Field: Codable, Identifiable, Equatable, Sendable {
 }
 
 public enum BodyKind: String, Codable, CaseIterable, Sendable { case none = "None", json = "JSON", text = "Text", form = "Form", multipart = "Multipart", file = "File" }
-public enum AuthKind: String, Codable, CaseIterable, Sendable { case none = "None", inherit = "Inherit", bearer = "Bearer", basic = "Basic", apiKey = "API key", oauth2 = "OAuth 2.0", aws = "AWS SigV4" }
+public enum AuthKind: String, Codable, CaseIterable, Sendable { case none = "None", inherit = "Inherit", bearer = "Bearer", basic = "Basic", digest = "Digest", apiKey = "API key", oauth1 = "OAuth 1.0", oauth2 = "OAuth 2.0", jwt = "JWT Bearer", aws = "AWS SigV4" }
 public struct RequestAuth: Codable, Equatable, Sendable {
     public var kind: AuthKind = .none
     public var token = ""
@@ -22,6 +22,8 @@ public struct RequestAuth: Codable, Equatable, Sendable {
     public var password = ""
     public var apiKey: APIKeyAuth?
     public var oauth: OAuthConfiguration?
+    public var oauth1: OAuth1Auth?
+    public var jwt: JWTAuth?
     public var aws: AWSAuth?
     public init() {}
 }
@@ -33,6 +35,8 @@ public struct APIRequest: Codable, Identifiable, Equatable, Sendable {
     public var url = "https://httpbin.org/get"
     public var headers: [Field] = [Field("Accept", "application/json")]
     public var query: [Field] = []
+    /// Values for `:name` URL path segments, as in Postman.
+    public var pathVariables: [Field]?
     public var bodyKind: BodyKind = .none
     public var body = ""
     public var form: [Field] = []
@@ -41,8 +45,7 @@ public struct APIRequest: Codable, Identifiable, Equatable, Sendable {
     public var auth = RequestAuth()
     public var preScript = ""
     public var postScript = ""
-    // Imported scripts remain opt-in; importing never executes code or sends a request.
-    public var scriptsEnabled = false
+    public var scriptsEnabled = true
     public var followRedirects = true
     public var timeout: Double = 30
     public var impersonation: BrowserImpersonation?
@@ -57,6 +60,10 @@ public struct APIRequest: Codable, Identifiable, Equatable, Sendable {
     public var cookieJarEnabled: Bool?
     public var mock: MockResponse?
     public var favorite: Bool?
+    /// Markdown documentation, as in Postman request descriptions.
+    public var description: String?
+    /// Saved responses, as in Postman examples.
+    public var examples: [ResponseExample]?
     public init(name: String = "Untitled request", method: String = "GET", url: String = "https://httpbin.org/get") {
         self.name = name; self.method = method; self.url = url
     }
@@ -132,9 +139,14 @@ public struct Workspace: Codable, Equatable, Sendable {
     public var collections: [RequestCollection]
     public var environments: [APIEnvironment]
     public var selectedEnvironmentID: UUID?
+    /// Postman-style globals: available in every environment at the lowest precedence.
+    public var globals: [Field]?
     public var proxy = ProxySettings()
     public init(collections: [RequestCollection] = [], environments: [APIEnvironment] = []) {
         self.collections = collections; self.environments = environments
+    }
+    public var globalValues: [String: String] {
+        (globals ?? []).filter { $0.enabled && !$0.name.isEmpty }.reduce(into: [:]) { $0[$1.name] = $1.value }
     }
     public static var starter: Workspace {
         let echo = APIRequest(name: "Echo a request", url: "{{base_url}}/get")

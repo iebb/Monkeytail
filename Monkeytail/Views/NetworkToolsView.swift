@@ -56,6 +56,15 @@ struct NetworkToolsView: View {
                     TextField("Exact hostname", text: $host); TextField("Port", text: $port).numberInput(); SecureField("PKCS#12 password", text: $password)
                     Button("Import .p12 / .pfx") { choosing = true }.accessibilityIdentifier("Import client certificate")
                 }
+                Section("Trusted server certificates · System TLS") {
+                    ForEach(store.network.trustedCertificates) { item in
+                        HStack {
+                            VStack(alignment: .leading) { Text(item.id); Text(item.subject).font(.caption).foregroundStyle(.secondary); Text(item.sha256).font(.system(.caption2, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle) }
+                            Spacer(); Button("Remove", role: .destructive) { do { try store.network.removeTrust(item.id) } catch { self.error = error.localizedDescription } }
+                        }
+                    }
+                    Text("Trust a self-signed or private-CA certificate from the error shown after a failed send. Each trust covers one exact certificate for one host and port, on this device only.").font(.caption).foregroundStyle(.secondary)
+                }
                 Section("Local mock server") {
                     if let address = store.mockServer.address { Text(address).font(.footnote.monospaced()).textSelection(.enabled); Button("Copy URL") { Clipboard.copy(address) }; Button("Stop") { store.mockServer.stop() } }
                     else { Button("Start") {

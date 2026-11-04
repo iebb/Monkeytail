@@ -18,7 +18,7 @@ struct RequestEditor: View {
             #if !os(macOS)
             if verticalSizeClass != .compact { PanelHeading(title: "Request", symbol: "slider.horizontal.3") }
             #endif
-            PillTabs(tabs: ["Params", "Headers", "Body", "Auth", "Tests", "Scripts", "Mock"], selection: $tab)
+            PillTabs(tabs: ["Params", "Headers", "Body", "Auth", "Tests", "Scripts", "Mock", "Docs"], selection: $tab)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
@@ -26,6 +26,10 @@ struct RequestEditor: View {
                     case "Params":
                         editorHeading("Query parameters", message: "Add key–value pairs to your request URL.")
                         FieldEditor(fields: $request.query, name: "Parameter")
+                        if !(request.pathVariables ?? []).isEmpty {
+                            editorHeading("Path variables", message: "Values for :name segments in the URL path.").padding(.top, 12)
+                            FieldEditor(fields: Binding(get: { request.pathVariables ?? [] }, set: { request.pathVariables = $0 }), name: "Path variable")
+                        }
                         editorHeading("Request variables", message: "Reference these values with {{variable}}.").padding(.top, 12)
                         FieldEditor(fields: Binding(get: { request.variables ?? [] }, set: { request.variables = $0 }), name: "Variable")
                         if let hints = request.parameterHints, !hints.isEmpty { DisclosureGroup("API parameters") { ForEach(hints) { hint in Text(parameterSummary(hint)).font(.caption) } } }
@@ -40,12 +44,24 @@ struct RequestEditor: View {
                         authEditor
                     case "Tests": TestsEditor(request: $request)
                     case "Mock": MockEditor(request: $request, response: store.responses[request.id]?.response)
+                    case "Docs":
+                        editorHeading("Documentation", message: "Markdown notes; imported from and exported to Postman descriptions.")
+                        DocsEditor(text: $request.description)
                     default: scriptsEditor
                     }
                     if let editorError { Label(editorError, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red) }
                 }.padding(WorkspaceMetrics.inset)
             }.dismissKeyboardOnScroll()
         }.background(Palette.canvas)
+            .onChange(of: request.url) { _, url in syncPathVariables(url) }
+    }
+
+    /// Keeps one path variable per `:name` segment, preserving existing values.
+    private func syncPathVariables(_ url: String) {
+        let names = RequestBuilder.pathVariableNames(in: url), existing = request.pathVariables ?? []
+        guard names != existing.map(\.name) else { return }
+        let synced = names.map { name in existing.first { $0.name == name } ?? Field(name) }
+        request.pathVariables = synced.isEmpty && request.pathVariables == nil ? nil : synced
     }
 
     @ViewBuilder private func editorHeading(_ title: String, message: String) -> some View {
@@ -127,18 +143,24 @@ struct RequestEditor: View {
     private var scriptsEditor: some View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle("Run scripts", isOn: $request.scriptsEnabled).font(.subheadline)
+            if !request.scriptsEnabled && !(request.preScript.isEmpty && request.postScript.isEmpty) {
+                Label("This request's scripts are saved but skipped on send.", systemImage: "pause.circle").font(.caption).foregroundStyle(.orange)
+            }
             Picker("Script phase", selection: $scriptTab) { Text("Before request").tag("Before"); Text("After response").tag("After") }.pickerStyle(.segmented)
             CodeEditor(text: scriptTab == "Before" ? $request.preScript : $request.postScript, label: "JavaScript editor", minimumHeight: 250)
             Menu {
                 Button("Set header") { request.preScript = "request.headers['X-Request-ID'] = crypto.randomUUID();\nconsole.log('Sending', request.method, request.url);"; scriptTab = "Before" }
                 Button("Assert status") { request.postScript = "test('Status is OK', () => {\n  assert(response.status === 200, 'Expected HTTP 200');\n});\nconsole.log(response.json());"; scriptTab = "After" }
                 Button("Save token") { request.postScript = "const data = response.json();\nenvironment.set('token', data.token);"; scriptTab = "After" }
+                Button("Postman test") { request.postScript = "pm.test('Status code is 200', () => {\n  pm.response.to.have.status(200);\n});\npm.test('Body is JSON', () => {\n  pm.expect(pm.response.json()).to.be.an('object');\n});"; scriptTab = "After" }
+                Button("Sign with HMAC") { request.preScript = "const timestamp = Date.now().toString();\nconst signature = CryptoJS.HmacSHA256(timestamp, pm.environment.get('secret') || '').toString();\npm.request.headers.upsert({ key: 'X-Timestamp', value: timestamp });\npm.request.headers.upsert({ key: 'X-Signature', value: signature });"; scriptTab = "Before" }
+                Button("Fetch token first") { request.preScript = "const res = await pm.sendRequest({ url: pm.environment.replaceIn('{{base_url}}/token'), method: 'POST' });\npm.environment.set('token', res.json().token);"; scriptTab = "Before" }
             } label: { Label("Examples", systemImage: "text.badge.plus").font(.subheadline).frame(minHeight: 44) }
             DisclosureGroup("Scripting reference") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("request · response · environment\nconsole.log() · test() · assert()")
+                    Text("pm.environment · pm.collectionVariables · pm.globals\npm.variables · pm.request · pm.response · pm.cookies\npm.test() · pm.expect() · pm.sendRequest()\nCryptoJS · _ · moment() · require() · console.log()")
                         .font(.system(.caption, design: .monospaced))
-                    Text("3-second limit. No network or file access. Before-request hooks can change the URL, method, headers, and raw body. Results appear in Console.")
+                    Text("Scripts run on every send and collection run, after any collection and folder scripts. 3-second limit; network only through pm.sendRequest; no file access. Before-request hooks can change the URL, method, headers, and raw body. Results appear in Console.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding(.top, 8)
             }.font(.footnote)

@@ -21,7 +21,7 @@ public enum SecretPolicy {
                 var value = value
                 value.headers = clean(value.headers, scope: scope + ".headers"); value.variables = clean(value.variables, scope: scope + ".variables")
                 if credentials { stripAllAuth(&value.auth, scope: scope + ".auth", secrets: &secrets) }
-                if files { value.scriptsEnabled = false }; return value
+                return value
             }
             let scope = "collection.\(copy.collections[c].id)"
             copy.collections[c].defaults = copy.collections[c].defaults.map { cleanDefaults($0, scope: scope) }
@@ -64,13 +64,12 @@ public enum SecretPolicy {
                             if credentials && SecretPolicy.isSensitive(request.multipart![index].name) { request.multipart![index].value = "" }
                         }
                     }
-                    // Enabling scripts is a per-device decision, even for synced scripts.
-                    request.scriptsEnabled = false
                 }
                 copy.collections[c].requests[r] = request
             }
         }
         for e in copy.environments.indices { copy.environments[e].variables = clean(copy.environments[e].variables, scope: "environment.\(copy.environments[e].id)") }
+        copy.globals = copy.globals.map { clean($0, scope: "globals") }
         if credentials {
         secrets["proxy.password"] = copy.proxy.password; secrets["proxy.username"] = copy.proxy.username; copy.proxy.password = ""; copy.proxy.username = ""
         }
@@ -95,12 +94,6 @@ public enum SecretPolicy {
             let scope = "collection.\(copy.collections[c].id)"
             copy.collections[c].defaults = copy.collections[c].defaults.map { restoreDefaults($0, scope: scope) }
             copy.collections[c].folders = copy.collections[c].folders.map { $0.map { folder in var folder = folder; folder.defaults = restoreDefaults(folder.defaults, scope: "folder.\(folder.id)"); return folder } }
-            if let previous = local?.collections.first(where: { $0.id == copy.collections[c].id }) {
-                copy.collections[c].defaults?.scriptsEnabled = previous.defaults?.scriptsEnabled ?? false
-                if copy.collections[c].folders != nil { for i in copy.collections[c].folders!.indices {
-                    copy.collections[c].folders![i].defaults.scriptsEnabled = previous.folders?.first(where: { $0.id == copy.collections[c].folders![i].id })?.defaults.scriptsEnabled ?? false
-                } }
-            }
             for r in copy.collections[c].requests.indices {
                 var request = copy.collections[c].requests[r]
                 request.headers = restoreFields(request.headers, scope: "request.\(request.id).headers"); request.query = restoreFields(request.query, scope: "request.\(request.id).query"); request.form = restoreFields(request.form, scope: "request.\(request.id).form")
@@ -134,12 +127,12 @@ public enum SecretPolicy {
                             }
                         }
                     }
-                    request.scriptsEnabled = previous.scriptsEnabled
                 }
                 copy.collections[c].requests[r] = request
             }
         }
         for e in copy.environments.indices { copy.environments[e].variables = restoreFields(copy.environments[e].variables, scope: "environment.\(copy.environments[e].id)") }
+        copy.globals = copy.globals.map { restoreFields($0, scope: "globals") }
         copy.proxy.password = secrets["proxy.password"] ?? copy.proxy.password
         copy.proxy.username = secrets["proxy.username"] ?? copy.proxy.username
         return copy
@@ -147,21 +140,35 @@ public enum SecretPolicy {
     private static func stripAdvancedAuth(_ auth: inout RequestAuth, scope: String, secrets: inout [String: String]) {
         if var key = auth.apiKey { secrets[scope + ".apiKey"] = key.value; key.value = ""; auth.apiKey = key }
         if var oauth = auth.oauth {
-            secrets[scope + ".clientSecret"] = oauth.clientSecret; secrets[scope + ".accessToken"] = oauth.accessToken; secrets[scope + ".refreshToken"] = oauth.refreshToken
-            if let expires = oauth.expiresAt { secrets[scope + ".expires"] = String(expires.timeIntervalSince1970) }; oauth.clientSecret = ""; oauth.accessToken = ""; oauth.refreshToken = ""; oauth.expiresAt = nil; auth.oauth = oauth
+            secrets[scope + ".clientSecret"] = oauth.clientSecret; secrets[scope + ".accessToken"] = oauth.accessToken; secrets[scope + ".refreshToken"] = oauth.refreshToken; secrets[scope + ".oauthPassword"] = oauth.password
+            if let expires = oauth.expiresAt { secrets[scope + ".expires"] = String(expires.timeIntervalSince1970) }; oauth.clientSecret = ""; oauth.accessToken = ""; oauth.refreshToken = ""; oauth.password = oauth.password.map { _ in "" }; oauth.expiresAt = nil; auth.oauth = oauth
         }
         if var aws = auth.aws {
             secrets[scope + ".awsAccess"] = aws.accessKey; secrets[scope + ".awsSecret"] = aws.secretKey; secrets[scope + ".awsSession"] = aws.sessionToken
             aws.accessKey = ""; aws.secretKey = ""; aws.sessionToken = ""; auth.aws = aws
         }
+        if var oauth1 = auth.oauth1 {
+            secrets[scope + ".oauth1Consumer"] = oauth1.consumerSecret; secrets[scope + ".oauth1Token"] = oauth1.token; secrets[scope + ".oauth1TokenSecret"] = oauth1.tokenSecret
+            oauth1.consumerSecret = ""; oauth1.token = ""; oauth1.tokenSecret = ""; auth.oauth1 = oauth1
+        }
+        if var jwt = auth.jwt {
+            secrets[scope + ".jwtSecret"] = jwt.secret; secrets[scope + ".jwtKey"] = jwt.privateKey
+            jwt.secret = ""; jwt.privateKey = ""; auth.jwt = jwt
+        }
     }
     private static func restoreAdvancedAuth(_ auth: inout RequestAuth, scope: String, secrets: [String: String]) {
         if var key = auth.apiKey { key.value = secrets[scope + ".apiKey"] ?? key.value; auth.apiKey = key }
         if var oauth = auth.oauth {
-            oauth.clientSecret = secrets[scope + ".clientSecret"] ?? oauth.clientSecret; oauth.accessToken = secrets[scope + ".accessToken"] ?? oauth.accessToken; oauth.refreshToken = secrets[scope + ".refreshToken"] ?? oauth.refreshToken; if let value = secrets[scope + ".expires"], let seconds = Double(value) { oauth.expiresAt = Date(timeIntervalSince1970: seconds) }; auth.oauth = oauth
+            oauth.clientSecret = secrets[scope + ".clientSecret"] ?? oauth.clientSecret; oauth.accessToken = secrets[scope + ".accessToken"] ?? oauth.accessToken; oauth.refreshToken = secrets[scope + ".refreshToken"] ?? oauth.refreshToken; oauth.password = secrets[scope + ".oauthPassword"] ?? oauth.password; if let value = secrets[scope + ".expires"], let seconds = Double(value) { oauth.expiresAt = Date(timeIntervalSince1970: seconds) }; auth.oauth = oauth
         }
         if var aws = auth.aws {
             aws.accessKey = secrets[scope + ".awsAccess"] ?? aws.accessKey; aws.secretKey = secrets[scope + ".awsSecret"] ?? aws.secretKey; aws.sessionToken = secrets[scope + ".awsSession"] ?? aws.sessionToken; auth.aws = aws
+        }
+        if var oauth1 = auth.oauth1 {
+            oauth1.consumerSecret = secrets[scope + ".oauth1Consumer"] ?? oauth1.consumerSecret; oauth1.token = secrets[scope + ".oauth1Token"] ?? oauth1.token; oauth1.tokenSecret = secrets[scope + ".oauth1TokenSecret"] ?? oauth1.tokenSecret; auth.oauth1 = oauth1
+        }
+        if var jwt = auth.jwt {
+            jwt.secret = secrets[scope + ".jwtSecret"] ?? jwt.secret; jwt.privateKey = secrets[scope + ".jwtKey"] ?? jwt.privateKey; auth.jwt = jwt
         }
     }
     private static func stripAllAuth(_ auth: inout RequestAuth, scope: String, secrets: inout [String: String]) {
@@ -200,6 +207,7 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
             for (position, request) in collection.requests.enumerated() { current["request.\(request.id)"] = try encoder.encode(Request(collection: collection.id, request: request, position: position)) }
         }
         for (position, environment) in workspace.environments.enumerated() { current["environment.\(environment.id)"] = try encoder.encode(Environment(environment: environment, position: position)) }
+        if let globals = workspace.globals { current["globals"] = try encoder.encode(globals) }
         let previous = Dictionary(records.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first })
         for key in Set(current.keys).union(previous.keys) where current[key] != previous[key]?.payload {
             let date = max(now, (previous[key]?.changed ?? .distantPast).addingTimeInterval(0.001))
@@ -220,11 +228,13 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
     public func workspace(local: Workspace, includeCredentials: Bool = false) throws -> Workspace {
         let decoder = JSONDecoder()
         var collections: [Collection] = [], requests: [Request] = [], environments: [Environment] = []
+        var globals: [Field]?
         for record in records {
             guard let data = record.payload else { continue }
             if record.key.hasPrefix("collection.") { collections.append(try decoder.decode(Collection.self, from: data)) }
             if record.key.hasPrefix("request.") { requests.append(try decoder.decode(Request.self, from: data)) }
             if record.key.hasPrefix("environment.") { environments.append(try decoder.decode(Environment.self, from: data)) }
+            if record.key == "globals" { globals = try decoder.decode([Field].self, from: data) }
         }
         collections.sort { $0.position == $1.position ? $0.id.uuidString < $1.id.uuidString : $0.position < $1.position }
         environments.sort { $0.position == $1.position ? $0.environment.id.uuidString < $1.environment.id.uuidString : $0.position < $1.position }
@@ -236,6 +246,7 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
             return collection
         }
         result.environments = environments.map(\.environment)
+        result.globals = records.contains { $0.key == "globals" } ? globals : local.globals
         if !result.environments.contains(where: { $0.id == result.selectedEnvironmentID }) { result.selectedEnvironmentID = result.environments.first?.id }
         var secrets: [String: String] = [:]
         _ = SecretPolicy.strip(local, secrets: &secrets, files: false, credentials: !includeCredentials)

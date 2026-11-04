@@ -25,17 +25,21 @@ public final class HTTPClient: NSObject, URLSessionTaskDelegate, @unchecked Send
         return configuration
     }
 
-    public func send(_ request: URLRequest, proxy: ProxySettings = ProxySettings(), impersonation: BrowserImpersonation? = nil, cookies: CookieJar? = nil, tls: TLSConfiguration? = nil, sensitiveHeaders: [String] = []) async throws -> APIResponse {
+    public func send(_ request: URLRequest, proxy: ProxySettings = ProxySettings(), impersonation: BrowserImpersonation? = nil, cookies: CookieJar? = nil, tls: TLSConfiguration? = nil, sensitiveHeaders: [String] = [], trusted: [TrustedCertificate] = []) async throws -> APIResponse {
         if let impersonation {
             guard tls == nil else { throw ClientError("Client certificates require the System TLS profile.") }
             return try await BrowserHTTPClient(followRedirects: followRedirects).send(request, proxy: proxy, impersonation: impersonation, cookies: cookies, sensitiveHeaders: sensitiveHeaders)
         }
-        let trace = SessionTrace(followRedirects: followRedirects, original: request, cookies: cookies, tls: tls, sensitiveHeaders: sensitiveHeaders)
+        let trace = SessionTrace(followRedirects: followRedirects, original: request, cookies: cookies, tls: tls, sensitiveHeaders: sensitiveHeaders, trusted: trusted)
         let session = URLSession(configuration: try Self.configuration(proxy: proxy, timeout: request.timeoutInterval), delegate: trace, delegateQueue: nil)
         defer { session.invalidateAndCancel() }
         let started = ContinuousClock.now
         // Stream into a bounded buffer so an accidental download cannot exhaust phone memory.
-        let (bytes, response) = try await session.bytes(for: request)
+        let bytes: URLSession.AsyncBytes, response: URLResponse
+        do { (bytes, response) = try await session.bytes(for: request) } catch {
+            if (error as? URLError)?.code != .cancelled, let rejected = trace.rejectedCertificate() { throw UntrustedCertificateError(certificate: rejected) }
+            throw error
+        }
         guard let http = response as? HTTPURLResponse else { throw ClientError("The server did not return an HTTP response.") }
         let maximum = 20 * 1024 * 1024
         if response.expectedContentLength > maximum { throw ClientError("The response exceeds the 20 MB limit.") }
@@ -62,14 +66,17 @@ private final class SessionTrace: NSObject, URLSessionTaskDelegate, @unchecked S
     private let original: URLRequest
     private let identity: TLSConfiguration?
     private let sensitiveHeaders: [String]
+    private let trusted: [TrustedCertificate]
+    private var rejected: TrustedCertificate?
     private var jar: CookieJar?
     private var tls = TLSDetails()
     private let lock = NSLock()
     private var requests: [URLRequest] = []
     private var captured: [HTTPTransaction]?
     private var pending: CheckedContinuation<[HTTPTransaction], Never>?
-    init(followRedirects: Bool, original: URLRequest, cookies: CookieJar?, tls: TLSConfiguration?, sensitiveHeaders: [String]) { self.followRedirects = followRedirects; self.original = original; self.jar = cookies; self.identity = tls; self.sensitiveHeaders = sensitiveHeaders; requests = [original] }
+    init(followRedirects: Bool, original: URLRequest, cookies: CookieJar?, tls: TLSConfiguration?, sensitiveHeaders: [String], trusted: [TrustedCertificate]) { self.followRedirects = followRedirects; self.original = original; self.jar = cookies; self.identity = tls; self.sensitiveHeaders = sensitiveHeaders; self.trusted = trusted; requests = [original] }
     func tlsDetails() -> TLSDetails { lock.lock(); defer { lock.unlock() }; return tls }
+    func rejectedCertificate() -> TrustedCertificate? { lock.lock(); defer { lock.unlock() }; return rejected }
     func cookies(response: HTTPURLResponse) -> CookieJar? {
         lock.lock(); defer { lock.unlock() }
         if let url = response.url { jar?.capture(headers: response.allHeaderFields.map { Field(String(describing: $0.key), String(describing: $0.value)) }, url: url) }; return jar
@@ -83,6 +90,9 @@ private final class SessionTrace: NSObject, URLSessionTaskDelegate, @unchecked S
         if space.authenticationMethod == NSURLAuthenticationMethodServerTrust, let trust = space.serverTrust {
             let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate] ?? []
             lock.lock(); tls.certificates = chain.map(CertificateDetails.init); lock.unlock()
+            let evaluation = TrustedCertificate.evaluate(space, trusted: trusted)
+            if let credential = evaluation.credential { completionHandler(.useCredential, credential); return }
+            if let candidate = evaluation.rejected { lock.lock(); rejected = candidate; lock.unlock() }
         }
         completionHandler(.performDefaultHandling, nil)
     }

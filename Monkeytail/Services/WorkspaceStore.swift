@@ -8,13 +8,20 @@ import MonkeytailCore
 
 @MainActor @Observable
 final class WorkspaceStore {
-    var workspace: Workspace { didSet { workspaceChanged(); scheduleSave() } }
-    var selectedRequestID: UUID?
+    var workspace: Workspace { didSet { pruneTabs(); workspaceChanged(); scheduleSave() } }
+    var selectedRequestID: UUID? { didSet { if let id = selectedRequestID { openTab(id) }; saveTabs() } }
+    /// Open request tabs, in order; restored on the next launch.
+    private(set) var openRequestIDs: [UUID] = [] { didSet { saveTabs() } }
+    static let maximumTabs = 20
+    private var persistsTabs = false
     private(set) var responses: [UUID: PreparedResponse] = [:]
     var errors: [UUID: String] = [:]
     var history: [HistoryEntry] = []
     var runningID: UUID?
+    var collectionRun: CollectionRun?
     var testResults: [UUID: [AssertionResult]] = [:]
+    /// The certificate a request's server presented when the system rejected it, offered for per-host trust.
+    private(set) var untrustedCertificates: [UUID: TrustedCertificate] = [:]
     let network: LocalNetworkStorage
     let mockServer = MockServer()
     var issue: String?
@@ -94,6 +101,7 @@ final class WorkspaceStore {
         }
         if testing, let url = ProcessInfo.processInfo.environment["MONKEYTAIL_TEST_URL"] { workspace.collections[0].requests[0].url = url }
         selectedRequestID = workspace.collections.first?.requests.first?.id
+        if !testing { restoreTabs() }
         if !testing {
             if let data = try? Data(contentsOf: self.directory.appendingPathComponent("sync-state.json")), let state = try? JSONDecoder().decode(WorkspaceSyncState.self, from: data) { syncState = state }
             if !FileManager.default.fileExists(atPath: self.directory.appendingPathComponent("settings.json").path) { settings.edited = FileManager.default.fileExists(atPath: location.path) }
@@ -130,6 +138,37 @@ final class WorkspaceStore {
         let index = workspace.collections.firstIndex { $0.id == collectionID } ?? 0
         let request = APIRequest()
         workspace.collections[index].requests.append(request); selectedRequestID = request.id
+    }
+    func openTab(_ id: UUID) {
+        guard !openRequestIDs.contains(id) else { return }
+        openRequestIDs.append(id)
+        if openRequestIDs.count > Self.maximumTabs, let oldest = openRequestIDs.first(where: { $0 != id }) { openRequestIDs.removeAll { $0 == oldest } }
+    }
+    /// Drops tabs whose requests were deleted, replaced, or synced away.
+    private func pruneTabs() {
+        guard !openRequestIDs.isEmpty else { return }
+        let ids = Set(workspace.collections.lazy.flatMap(\.requests).map(\.id))
+        if openRequestIDs.contains(where: { !ids.contains($0) }) { openRequestIDs.removeAll { !ids.contains($0) } }
+    }
+    /// Closes tabs; selection moves to the neighbouring tab, as in Postman.
+    func closeTabs(_ ids: Set<UUID>) {
+        guard let selected = selectedRequestID, ids.contains(selected), let index = openRequestIDs.firstIndex(of: selected) else { openRequestIDs.removeAll { ids.contains($0) }; return }
+        let next = (openRequestIDs[index...].dropFirst() + openRequestIDs[..<index].reversed()).first { !ids.contains($0) && request($0) != nil }
+        openRequestIDs.removeAll { ids.contains($0) }
+        selectedRequestID = next
+    }
+    private struct TabState: Codable { var open: [UUID]; var selected: UUID? }
+    private func restoreTabs() {
+        defer { persistsTabs = true }
+        guard let data = try? Data(contentsOf: directory.appendingPathComponent("tabs.json")), let state = try? JSONDecoder().decode(TabState.self, from: data) else { return }
+        let ids = Set(workspace.collections.lazy.flatMap(\.requests).map(\.id)), open = state.open.filter(ids.contains).suffix(Self.maximumTabs)
+        guard !open.isEmpty else { return }
+        openRequestIDs = Array(open)
+        selectedRequestID = state.selected.flatMap { ids.contains($0) ? $0 : nil } ?? open.last
+    }
+    private func saveTabs() {
+        guard persistsTabs, let data = try? JSONEncoder().encode(TabState(open: openRequestIDs, selected: selectedRequestID)) else { return }
+        try? write(data, name: "tabs.json")
     }
     func duplicate(_ request: APIRequest) {
         guard workspaceAttachmentBytes + attachmentBytes(request) <= 40 * 1024 * 1024 else { issue = "Workspace attachments exceed 40 MB."; return }
@@ -181,13 +220,11 @@ final class WorkspaceStore {
                 incoming.collections[c].id = UUID()
                 let folderIDs = Dictionary((incoming.collections[c].folders ?? []).map { ($0.id, UUID()) }, uniquingKeysWith: { first, _ in first })
                 incoming.collections[c].folders = incoming.collections[c].folders.map { $0.map { folder in
-                    var folder = folder; folder.id = folderIDs[folder.id]!; folder.parentID = folder.parentID.flatMap { folderIDs[$0] }; folder.defaults.scriptsEnabled = false; return folder
+                    var folder = folder; folder.id = folderIDs[folder.id]!; folder.parentID = folder.parentID.flatMap { folderIDs[$0] }; return folder
                 } }
-                incoming.collections[c].defaults?.scriptsEnabled = false
                 for r in incoming.collections[c].requests.indices {
                     incoming.collections[c].requests[r].id = UUID()
                     incoming.collections[c].requests[r].folderID = incoming.collections[c].requests[r].folderID.flatMap { folderIDs[$0] }
-                    incoming.collections[c].requests[r].scriptsEnabled = false
                 }
             }
             for e in incoming.environments.indices {
@@ -197,73 +234,29 @@ final class WorkspaceStore {
             }
             workspace.collections += incoming.collections
             workspace.environments += incoming.environments
+            if let globals = incoming.globals, !globals.isEmpty {
+                workspace.globals = (workspace.globals ?? []).filter { field in !globals.contains { $0.name == field.name } } + globals
+            }
             if result.includesSettings { workspace.proxy = incoming.proxy }
             if let selected = importedSelection ?? incoming.environments.first?.id { workspace.selectedEnvironmentID = selected }
             selectedRequestID = incoming.collections.first?.requests.first?.id ?? selectedRequestID
             let count = incoming.collections.reduce(0) { $0 + $1.requests.count }
-            notice = (["Imported \(count) requests and \(incoming.environments.count) environments."] + result.warnings).joined(separator: "\n\n")
+            let globalsNote = (incoming.globals ?? []).isEmpty ? "" : " and \(incoming.globals!.count) globals"
+            notice = (["Imported \(count) requests and \(incoming.environments.count) environments\(globalsNote)."] + result.warnings).joined(separator: "\n\n")
         }
     }
 
     func send() {
-        guard let saved = selectedRequest, runningID == nil, saved.transport != .websocket, saved.transport != .sse else { return }
-        runningID = saved.id; errors[saved.id] = nil
+        guard let saved = selectedRequest, runningID == nil, collectionRun?.running != true, saved.transport != .websocket, saved.transport != .sse else { return }
+        runningID = saved.id; errors[saved.id] = nil; untrustedCertificates[saved.id] = nil
         let environmentID = workspace.selectedEnvironmentID
-        let environmentVariables = variables
         let proxy = workspace.proxy
         sendTask = Task {
             defer { runningID = nil; sendTask = nil }
-            var request = saved, variables = environmentVariables, logs: [ScriptLog] = []
             do {
-                let resolved = try effective(saved)
-                request = resolved.request; variables = resolved.variables
-                let initialVariables = variables
-                if request.auth.kind == .oauth2, let oauth = request.auth.oauth, let expires = oauth.expiresAt, expires < Date().addingTimeInterval(30), !oauth.refreshToken.isEmpty {
-                    request.auth.oauth = try await OAuthAuthorizer().refresh(oauth, proxy: proxy)
-                    persistAuth(request.auth, for: saved)
-                }
-                if request.scriptsEnabled && !request.preScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    let result = try await ScriptRunner().run(request.preScript, request: request, variables: variables)
-                    request.method = result.request.method; request.url = result.request.url
-                    request.headers = result.request.headers.sorted { $0.key < $1.key }.map { Field($0.key, $0.value) }
-                    if request.body != result.request.body && request.bodyKind == .none { request.bodyKind = .text }
-                    request.body = result.request.body
-                    variables = result.variables; logs += result.logs.map { ScriptLog($0.level, $0.message) }
-                    applyScriptVariables(variables, original: initialVariables, to: environmentID)
-                }
-                try Task.checkCancellation()
-                var built = try RequestBuilder.build(request, variables: variables)
-                let cookiesEnabled = request.cookieJarEnabled ?? false
-                if cookiesEnabled, let issue = network.issue { throw ClientError(issue) }
-                let jar = cookiesEnabled ? network.jar(environmentID) : nil
-                if let url = built.url, let jar, built.value(forHTTPHeaderField: "Cookie") == nil {
-                    let value = jar.header(for: url)
-                    if !value.isEmpty {
-                        request.headers.append(Field("Cookie", value))
-                        built = try RequestBuilder.build(request, variables: variables)
-                    }
-                }
-                var response: APIResponse
-                if let mock = request.mock, mock.enabled { response = try await mock.response(url: built.url!.absoluteString) }
-                else {
-                    let protectedHeaders = request.headers.filter(\.isSecret).map(\.name) + (request.auth.apiKey.map { $0.inQuery ? [] : [$0.name] } ?? [])
-                    response = try await HTTPClient(followRedirects: request.followRedirects).send(built, proxy: proxy, impersonation: request.impersonation, cookies: jar, tls: network.identity(for: built.url), sensitiveHeaders: protectedHeaders)
-                }
-                if cookiesEnabled, let received = response.sessionCookies { var jar = CookieJar(); jar.cookies = received; try network.setJar(jar, environment: environmentID) }
-                let assertionResults = await Task.detached { [request, response] in ResponseTests.evaluate(request.assertions ?? [], response: response, schema: request.responseSchema) }.value
-                testResults[saved.id] = assertionResults
-                logs += assertionResults.map { ScriptLog($0.passed ? "pass" : "fail", $0.name + ": " + $0.message) }
-                if request.scriptsEnabled && !request.postScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    do {
-                        let result = try await ScriptRunner().run(request.postScript, request: request, response: response, variables: variables)
-                        logs += result.logs.map { ScriptLog($0.level, $0.message) }
-                        applyScriptVariables(result.variables, original: variables, to: environmentID)
-                    } catch {
-                        if Task.isCancelled { throw CancellationError() }
-                        logs.append(ScriptLog("error", error.localizedDescription))
-                    }
-                }
-                response.logs = logs
+                let execution = try await execute(saved, environmentID: environmentID, proxy: proxy)
+                testResults[saved.id] = execution.tests
+                guard let response = execution.response else { throw ClientError("A before-request script skipped this request.") }
                 let prepared = await Task.detached(priority: .userInitiated) { [response] in
                     PreparedResponse(response: response)
                 }.value
@@ -278,6 +271,7 @@ final class WorkspaceStore {
             } catch {
                 let message = Task.isCancelled ? "Request cancelled." : error.localizedDescription
                 errors[saved.id] = message
+                if let error = error as? UntrustedCertificateError { untrustedCertificates[saved.id] = error.certificate }
                 history.insert(HistoryEntry(request: saved, status: nil, duration: 0, error: message), at: 0)
             }
             history = Array(history.prefix(50)).map { entry in
@@ -287,8 +281,157 @@ final class WorkspaceStore {
             }; persistHistory()
         }
     }
-    func effective(_ request: APIRequest) throws -> ResolvedRequest {
-        try RequestInheritance.resolve(request, collection: workspace.collections.first { $0.requests.contains { $0.id == request.id } }, environment: variables)
+    /// Trusts the rejected certificate for its exact host and port on this device, then resends.
+    func trustCertificate(for requestID: UUID) {
+        guard let certificate = untrustedCertificates[requestID] else { return }
+        do { try network.trust(certificate); untrustedCertificates[requestID] = nil; send() } catch { issue = error.localizedDescription }
+    }
+
+    struct RequestExecution {
+        /// nil when a before-request script called `pm.execution.skipRequest()`.
+        var response: APIResponse?
+        var url = ""
+        var tests: [AssertionResult] = []
+        var scriptError: String?
+        var directive: RunnerDirective?
+        /// Script variable edits; nil values were unset.
+        var changes: [String: String?] = [:]
+    }
+
+    /// Sends one saved request with inheritance, scripts, cookies, mocks, and assertions.
+    /// `scope` overlays the active environment, as collection-run variables and data rows do.
+    func execute(_ saved: APIRequest, environmentID: UUID?, proxy: ProxySettings, scope: [String: String] = [:], context: ScriptContext = ScriptContext()) async throws -> RequestExecution {
+        var execution = RequestExecution(), logs: [ScriptLog] = [], context = context
+        context.proxy = proxy
+        let resolved = try effective(saved, scope: scope)
+        var request = resolved.request, variables = resolved.variables
+        let initialVariables = variables
+        var globalKeys = Set<String>()
+        func recordChanges() {
+            for (key, value) in variables where initialVariables[key] != value && !globalKeys.contains(key) { execution.changes[key] = value }
+            for key in initialVariables.keys where variables[key] == nil && !globalKeys.contains(key) { execution.changes[key] = .some(nil) }
+        }
+        if request.auth.kind == .oauth2, let oauth = request.auth.oauth, let expires = oauth.expiresAt, expires < Date().addingTimeInterval(30), !oauth.refreshToken.isEmpty {
+            request.auth.oauth = try await OAuthAuthorizer().refresh(oauth, proxy: proxy)
+            persistAuth(request.auth, for: saved)
+        }
+        if request.scriptsEnabled && !request.preScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            context.globals = workspace.globalValues; context.collectionVariables = collectionValues(of: saved.id)
+            if request.cookieJarEnabled == true, network.issue == nil, let url = (try? RequestBuilder.resolve(request.url, variables: variables)).flatMap(URL.init(string:)) { context.cookies = network.jar(environmentID).cookies(for: url) }
+            let result = try await ScriptRunner().run(request.preScript, request: request, variables: variables, context: context)
+            request.method = result.request.method; request.url = result.request.url
+            request.headers = result.request.headers.sorted { $0.key < $1.key }.map { Field($0.key, $0.value) }
+            if request.body != result.request.body && request.bodyKind == .none { request.bodyKind = .text }
+            request.body = result.request.body
+            variables = result.variables; logs += result.logs.map { ScriptLog($0.level, $0.message) }
+            execution.directive = result.directive
+            applyScriptVariables(variables, original: initialVariables, to: environmentID)
+            let changedGlobals = applyGlobals(result.globals, original: context.globals).union(applyCollectionVariables(result.collectionVariables, original: context.collectionVariables, request: saved.id))
+            if !changedGlobals.isEmpty {
+                // Global and collection edits apply to this send unless a higher scope defines the same name.
+                let refreshed = try effective(saved, scope: scope).variables
+                for key in changedGlobals { variables[key] = refreshed[key] }
+                globalKeys.formUnion(changedGlobals)
+            }
+            variables.merge(result.locals ?? [:]) { _, local in local }
+            if result.skip == true { recordChanges(); return execution }
+        }
+        try Task.checkCancellation()
+        var built = try RequestBuilder.build(request, variables: variables)
+        let cookiesEnabled = request.cookieJarEnabled ?? false
+        if cookiesEnabled, let issue = network.issue { throw ClientError(issue) }
+        let jar = cookiesEnabled ? network.jar(environmentID) : nil
+        if let url = built.url, let jar, built.value(forHTTPHeaderField: "Cookie") == nil {
+            let value = jar.header(for: url)
+            if !value.isEmpty {
+                request.headers.append(Field("Cookie", value))
+                built = try RequestBuilder.build(request, variables: variables)
+            }
+        }
+        execution.url = built.url?.absoluteString ?? request.url
+        var response: APIResponse
+        if let mock = request.mock, mock.enabled { response = try await mock.response(url: execution.url) }
+        else {
+            let protectedHeaders = request.headers.filter(\.isSecret).map(\.name) + (request.auth.apiKey.map { $0.inQuery ? [] : [$0.name] } ?? [])
+            let client = HTTPClient(followRedirects: request.followRedirects)
+            response = try await client.send(built, proxy: proxy, impersonation: request.impersonation, cookies: jar, tls: network.identity(for: built.url), sensitiveHeaders: protectedHeaders, trusted: network.trustedCertificates)
+            if request.auth.kind == .digest, response.status == 401, let challenge = DigestAuth.challenge(from: response.headers), let url = built.url {
+                try Task.checkCancellation()
+                built.setValue(try DigestAuth.authorization(challenge, username: RequestBuilder.resolve(request.auth.username, variables: variables), password: RequestBuilder.resolve(request.auth.password, variables: variables),
+                                                            method: built.httpMethod ?? "GET", uri: DigestAuth.uri(for: url), body: built.httpBody), forHTTPHeaderField: "Authorization")
+                response = try await client.send(built, proxy: proxy, impersonation: request.impersonation, cookies: jar, tls: network.identity(for: built.url), sensitiveHeaders: protectedHeaders, trusted: network.trustedCertificates)
+            }
+        }
+        if cookiesEnabled, let received = response.sessionCookies { var jar = CookieJar(); jar.cookies = received; try network.setJar(jar, environment: environmentID) }
+        let assertionResults = await Task.detached { [request, response] in ResponseTests.evaluate(request.assertions ?? [], response: response, schema: request.responseSchema) }.value
+        execution.tests = assertionResults
+        logs += assertionResults.map { ScriptLog($0.passed ? "pass" : "fail", $0.name + ": " + $0.message) }
+        if request.scriptsEnabled && !request.postScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            do {
+                context.globals = workspace.globalValues; context.collectionVariables = collectionValues(of: saved.id)
+                if let url = built.url {
+                    var visible = CookieJar()
+                    if cookiesEnabled { visible.cookies = response.sessionCookies ?? jar?.cookies ?? [] } else { visible.capture(headers: response.headers, url: url) }
+                    context.cookies = visible.cookies(for: url)
+                }
+                let result = try await ScriptRunner().run(request.postScript, request: request, response: response, variables: variables, context: context)
+                logs += result.logs.map { ScriptLog($0.level, $0.message) }
+                applyScriptVariables(result.variables, original: variables, to: environmentID)
+                applyGlobals(result.globals, original: context.globals)
+                applyCollectionVariables(result.collectionVariables, original: context.collectionVariables, request: saved.id)
+                variables = result.variables.merging(result.locals ?? [:]) { _, local in local }
+                execution.directive = result.directive ?? execution.directive
+            } catch {
+                if Task.isCancelled { throw CancellationError() }
+                logs.append(ScriptLog("error", error.localizedDescription))
+                execution.scriptError = error.localizedDescription
+            }
+        }
+        response.logs = logs
+        execution.response = response
+        recordChanges()
+        return execution
+    }
+    func effective(_ request: APIRequest, scope: [String: String] = [:]) throws -> ResolvedRequest {
+        try RequestInheritance.resolve(request, collection: workspace.collections.first { $0.requests.contains { $0.id == request.id } },
+                                       environment: variables.merging(scope) { _, overlay in overlay }, globals: workspace.globalValues)
+    }
+    /// Values that `{{variables}}` resolve to for this request, and which names are sensitive.
+    func variableHints(for request: APIRequest) -> VariableHintContext {
+        let collection = workspace.collections.first { $0.requests.contains { $0.id == request.id } }
+        let fields = (workspace.globals ?? []) + (environment?.variables ?? []) + (collection?.defaults?.variables ?? []) + (collection?.folders ?? []).flatMap(\.defaults.variables) + (request.variables ?? [])
+        return VariableHintContext(values: (try? effective(request).variables) ?? variables, secrets: Set(fields.filter(\.isSecret).map(\.name)))
+    }
+    /// Applies script edits to globals and returns the changed names.
+    @discardableResult private func applyGlobals(_ values: [String: String]?, original: [String: String]) -> Set<String> {
+        var fields = workspace.globals ?? []
+        let changed = Self.apply(values, original: original, to: &fields)
+        if !changed.isEmpty { workspace.globals = fields }
+        return changed
+    }
+    private func collectionValues(of requestID: UUID) -> [String: String] {
+        (workspace.collections.first { $0.requests.contains { $0.id == requestID } }?.defaults?.variables ?? []).filter { $0.enabled && !$0.name.isEmpty }.reduce(into: [:]) { $0[$1.name] = $1.value }
+    }
+    /// Applies `pm.collectionVariables` edits to the request's collection and returns the changed names.
+    @discardableResult private func applyCollectionVariables(_ values: [String: String]?, original: [String: String], request requestID: UUID) -> Set<String> {
+        guard let c = workspace.collections.firstIndex(where: { $0.requests.contains { $0.id == requestID } }) else { return [] }
+        var fields = workspace.collections[c].defaults?.variables ?? []
+        let changed = Self.apply(values, original: original, to: &fields)
+        if !changed.isEmpty {
+            if workspace.collections[c].defaults == nil { workspace.collections[c].defaults = RequestDefaults() }
+            workspace.collections[c].defaults?.variables = fields
+        }
+        return changed
+    }
+    private static func apply(_ values: [String: String]?, original: [String: String], to fields: inout [Field]) -> Set<String> {
+        guard let values, values != original else { return [] }
+        var changed = Set<String>()
+        for (key, value) in values where original[key] != value {
+            changed.insert(key)
+            if let index = fields.firstIndex(where: { $0.name == key }) { fields[index].value = value; fields[index].enabled = true } else { fields.append(Field(key, value)) }
+        }
+        for key in original.keys where values[key] == nil { changed.insert(key); fields.removeAll { $0.name == key } }
+        return changed
     }
     func persistAuth(_ auth: RequestAuth, for request: APIRequest) {
         guard let c = workspace.collections.firstIndex(where: { $0.requests.contains { $0.id == request.id } }) else { return }

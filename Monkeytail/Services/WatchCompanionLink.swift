@@ -18,9 +18,9 @@ import MonkeytailCompanion
     }
     static func prepare(_ request: APIRequest, variables: [String: String], proxy: ProxySettings, includePrivateData: Bool, secretVariableNames: Set<String> = []) throws -> WatchRequest {
         guard proxy.kind == .system, request.impersonation == nil, request.cookieJarEnabled != true, request.mock?.enabled != true,
-              request.transport != .websocket, request.transport != .sse, request.auth.kind != .oauth2, request.auth.kind != .aws,
+              request.transport != .websocket, request.transport != .sse, ![.oauth1, .oauth2, .jwt, .aws, .digest].contains(request.auth.kind),
               !request.scriptsEnabled || (request.preScript.isEmpty && request.postScript.isEmpty) else {
-            throw ClientError("Watch supports System HTTP and GraphQL requests. Use iPhone for proxies, browser profiles, cookies, OAuth/AWS, scripts, or mocks.")
+            throw ClientError("Watch supports System HTTP and GraphQL requests. Use iPhone for proxies, browser profiles, cookies, OAuth/AWS/Digest, scripts, or mocks.")
         }
         var built = try RequestBuilder.build(request, variables: variables)
         var privateHeaders = try request.headers.filter { $0.isSecret || SecretPolicy.isSensitive($0.name) }.map { try RequestBuilder.resolve($0.name, variables: variables) }

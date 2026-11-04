@@ -2,6 +2,20 @@ import XCTest
 @testable import MonkeytailCore
 
 final class WorkspaceFeatureTests: XCTestCase {
+    func testVariableHintsFindReferencesAndCompleteTrailingBraces() {
+        let variables = ["base_url": "https://api.example.com", "token": "t", "user.id": "7"]
+        let references = VariableHints.references(in: "{{base_url}}/users/{{ user.id }}?q={{missing}}&id={{$guid}}&again={{base_url}}", variables: variables)
+        XCTAssertEqual(references.map(\.name), ["base_url", "user.id", "missing", "$guid"])
+        XCTAssertEqual(references.map(\.isResolved), [true, true, false, true])
+        XCTAssertFalse(VariableHints.Reference(name: "$nope").isResolved)
+        XCTAssertEqual(VariableHints.pendingName(in: "https://x/{{ba"), "ba"); XCTAssertEqual(VariableHints.pendingName(in: "{{"), "")
+        XCTAssertNil(VariableHints.pendingName(in: "{{base_url}}/x")); XCTAssertNil(VariableHints.pendingName(in: "{{a b"))
+        XCTAssertEqual(VariableHints.suggestions(for: "", variables: variables).prefix(3), ["base_url", "token", "user.id"])
+        XCTAssertEqual(VariableHints.suggestions(for: "id", variables: variables).first, "user.id")
+        XCTAssertEqual(VariableHints.suggestions(for: "$rand", variables: variables, limit: 2), ["$randomUUID", "$randomInt"])
+        XCTAssertEqual(VariableHints.complete("https://x/{{ ba", with: "base_url"), "https://x/{{base_url}}")
+        XCTAssertEqual(VariableHints.complete("no braces", with: "base_url"), "no braces")
+    }
     func testMultipartIncludesBinaryBytesAndEscapedName() throws {
         var request = APIRequest(method: "POST", url: "https://example.com")
         request.bodyKind = .multipart

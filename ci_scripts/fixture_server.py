@@ -54,10 +54,39 @@ class API(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
+        if path.path == '/digest':
+            algorithm = parse_qs(path.query).get('algorithm', ['MD5'])[0]
+            digest = (lambda text: hashlib.sha256(text.encode()).hexdigest()) if algorithm == 'SHA-256' else (lambda text: hashlib.md5(text.encode()).hexdigest())
+            realm, nonce = 'fixture@monkeytail', 'fixture-nonce'
+            header = self.headers.get('Authorization', '')
+            fields = {}
+            if header.startswith('Digest '):
+                for part in header[7:].split(', '):
+                    key, _, value = part.partition('=')
+                    fields[key] = value.strip('"')
+            expected = digest(f"{digest(f'Mufasa:{realm}:Circle of Life')}:{nonce}:{fields.get('nc')}:{fields.get('cnonce')}:auth:{digest(self.command + ':' + fields.get('uri', ''))}")
+            valid = fields.get('response') == expected and fields.get('uri') == self.path and fields.get('opaque') == 'fixture-opaque'
+            data = json.dumps({'authenticated': valid}).encode()
+            self.send_response(200 if valid else 401)
+            if not valid:
+                self.send_header('WWW-Authenticate', f'Digest realm="{realm}", qop="auth,auth-int", algorithm={algorithm}, nonce="{nonce}", opaque="fixture-opaque"')
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path.path == '/cookie-redirect':
             self.send_response(302)
             self.send_header('Location', '/echo')
             self.send_header('Set-Cookie', 'fixture=redirect; Path=/; HttpOnly')
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
+        if path.path == '/set-cookies':
+            self.send_response(200)
+            self.send_header('Set-Cookie', 'session=abc; Path=/; HttpOnly')
+            self.send_header('Set-Cookie', 'theme=dark; Path=/')
+            self.send_header('Set-Cookie', 'scoped=no; Path=/elsewhere')
             self.send_header('Content-Length', '0')
             self.end_headers()
             return

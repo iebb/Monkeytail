@@ -1,10 +1,50 @@
 import SwiftUI
 import AVKit
 import Combine
+import WebKit
 #if os(visionOS)
 import MonkeytailSystemCore
 #else
 import MonkeytailCore
+#endif
+
+/// Renders HTML like Postman's Preview, without scripts, navigation, or remote loads.
+struct HTMLPreviewView {
+    let html: String
+    static let policy = #"<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' data:; img-src data:; font-src data:">"#
+    func makeWebView(_ coordinator: Coordinator) -> WKWebView {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .nonPersistent()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        let view = WKWebView(frame: .zero, configuration: configuration)
+        view.navigationDelegate = coordinator
+        view.setAccessibilityIdentifier("Response HTML preview")
+        return view
+    }
+    func load(_ view: WKWebView, _ coordinator: Coordinator) {
+        guard coordinator.loaded != html else { return }
+        coordinator.loaded = html
+        view.loadHTMLString(Self.policy + html, baseURL: nil)
+    }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var loaded: String?
+        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
+            decisionHandler(action.navigationType == .other && action.targetFrame?.isMainFrame == true && action.request.url?.absoluteString == "about:blank" ? .allow : .cancel)
+        }
+    }
+}
+#if os(iOS) || os(visionOS)
+extension HTMLPreviewView: UIViewRepresentable {
+    func makeUIView(context: Context) -> WKWebView { let view = makeWebView(context.coordinator); load(view, context.coordinator); return view }
+    func updateUIView(_ view: WKWebView, context: Context) { load(view, context.coordinator) }
+}
+private extension WKWebView { func setAccessibilityIdentifier(_ value: String) { accessibilityIdentifier = value } }
+#else
+extension HTMLPreviewView: NSViewRepresentable {
+    func makeNSView(context: Context) -> WKWebView { let view = makeWebView(context.coordinator); load(view, context.coordinator); return view }
+    func updateNSView(_ view: WKWebView, context: Context) { load(view, context.coordinator) }
+}
 #endif
 
 struct ResponseBytesView: View {

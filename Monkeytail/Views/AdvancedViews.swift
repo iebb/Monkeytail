@@ -53,6 +53,7 @@ struct MockEditor: View {
     @Binding var request: APIRequest
     let response: APIResponse?
     @State private var error: String?
+    @State private var exampleName = ""
     private var mock: Binding<MockResponse> { Binding(get: { request.mock ?? MockResponse() }, set: { request.mock = $0 }) }
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -67,6 +68,37 @@ struct MockEditor: View {
             FieldEditor(fields: mock.headers)
             CodeEditor(text: mock.body, label: "Mock response body", minimumHeight: 200)
             if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            Divider().padding(.vertical, 6)
+            Text("Saved examples").font(.headline)
+            Text("Saved responses travel with the request and export as Postman examples.").font(.caption).foregroundStyle(.secondary)
+            HStack {
+                TextField("Example name", text: $exampleName).textFieldStyle(.roundedBorder)
+                Button("Save response") {
+                    guard let response else { return }
+                    do {
+                        let name = exampleName.trimmingCharacters(in: .whitespaces)
+                        request.examples = (request.examples ?? []) + [try ResponseExample(name: name.isEmpty ? "\(response.status) response" : name, response: response)]; exampleName = ""; error = nil
+                    } catch { self.error = error.localizedDescription }
+                }.disabled(response == nil || (request.examples?.count ?? 0) >= ResponseExample.maximumCount).accessibilityIdentifier("Save response as example")
+            }.frame(minHeight: 44)
+            ForEach(Binding(get: { request.examples ?? [] }, set: { request.examples = $0.isEmpty ? nil : $0 })) { $example in
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("Name", text: $example.name).textFieldStyle(.roundedBorder)
+                        Stepper("Status: \(example.status)", value: $example.status, in: 100...599)
+                        FieldEditor(fields: $example.headers)
+                        CodeEditor(text: $example.body, label: "Example body", minimumHeight: 150)
+                    }.padding(.top, 6)
+                } label: {
+                    HStack {
+                        Text(example.name).lineLimit(1); Text("\(example.status)").foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Use as mock") { request.mock = MockResponse(example: example) }.accessibilityIdentifier("Use example as mock")
+                        Button(role: .destructive) { request.examples?.removeAll { $0.id == example.id }; if request.examples?.isEmpty == true { request.examples = nil } } label: { Image(systemName: "trash") }
+                            .accessibilityLabel("Delete example \(example.name)")
+                    }.frame(minHeight: 44)
+                }
+            }
         }
     }
 }
@@ -179,14 +211,14 @@ struct GraphQLEditor: View {
             let raw = try RequestBuilder.resolve(resolved.request.url, variables: resolved.variables).replacingOccurrences(of: "wss://", with: "https://").replacingOccurrences(of: "ws://", with: "http://")
             let url = URL(string: raw), enabled = resolved.request.cookieJarEnabled == true
             if enabled, let issue = store.network.issue { throw ClientError(issue) }
-            live.connect(resolved.request, variables: resolved.variables, proxy: store.workspace.proxy, tls: try store.network.identity(for: url), cookies: enabled ? store.network.jar(store.workspace.selectedEnvironmentID) : nil)
+            live.connect(resolved.request, variables: resolved.variables, proxy: store.workspace.proxy, tls: try store.network.identity(for: url), cookies: enabled ? store.network.jar(store.workspace.selectedEnvironmentID) : nil, trusted: store.network.trustedCertificates)
         } catch { live.error = error.localizedDescription }
     }
 }
 struct CodeExportView: View {
     let store: WorkspaceStore
     let request: APIRequest
-    @State private var language: CodeLanguage = .swift
+    @State private var language: CodeLanguage = .curl
     @State private var code = ""
     @State private var error: String?
     @Environment(\.dismiss) private var dismiss

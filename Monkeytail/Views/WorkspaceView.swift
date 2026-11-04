@@ -29,8 +29,10 @@ struct WorkspaceView: View {
     @State private var folderName = ""
     @State private var editingCollectionID: UUID?
     @State private var editingFolderID: UUID?
+    @State private var runnerCollectionID: UUID?
+    @State private var runnerFolderID: UUID?
 
-    enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, history, snapshots, curl, code, network, defaults, watch; var id: String { rawValue } }
+    enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, history, snapshots, curl, code, network, defaults, watch, runner; var id: String { rawValue } }
 
     var body: some View {
         GeometryReader { geometry in
@@ -38,8 +40,15 @@ struct WorkspaceView: View {
             sidebar.navigationSplitViewColumnWidth(min: 240, ideal: 272, max: 340)
         } detail: {
             if let request = store.selectedRequest {
-                RequestWorkspace(store: store, requestID: request.id)
-                    .id(request.id)
+                VStack(spacing: 0) {
+                    #if os(macOS)
+                    RequestTabStrip(store: store); Divider()
+                    #else
+                    if geometry.size.width >= 700 { RequestTabStrip(store: store); Divider() }
+                    #endif
+                    RequestWorkspace(store: store, requestID: request.id)
+                        .id(request.id)
+                }
                     .requestWindowTitle(request.name)
                     .toolbar { workspaceToolbar }
             } else {
@@ -74,6 +83,7 @@ struct WorkspaceView: View {
                 EmptyView()
                 #endif
             case .defaults: if let id = editingCollectionID { FolderSettingsView(store: store, collectionID: id, folderID: editingFolderID) }
+            case .runner: if let id = runnerCollectionID { CollectionRunnerView(store: store, collectionID: id, folderID: runnerFolderID) }
             }
         }
         .alert("Workspace", isPresented: Binding(get: { sheet == nil && (store.issue != nil || store.notice != nil) }, set: { if !$0 { store.issue = nil; store.notice = nil } })) {
@@ -175,7 +185,7 @@ struct WorkspaceView: View {
                 ForEach(store.workspace.collections) { collection in
                     Section {
                         if search.isEmpty {
-                            FolderRows(store: store, collectionID: collection.id, edit: { id in editingCollectionID = collection.id; editingFolderID = id; sheet = .defaults }, add: { parent in folderCollectionID = collection.id; folderParentID = parent; folderName = ""; addingFolder = true })
+                            FolderRows(store: store, collectionID: collection.id, edit: { id in editingCollectionID = collection.id; editingFolderID = id; sheet = .defaults }, add: { parent in folderCollectionID = collection.id; folderParentID = parent; folderName = ""; addingFolder = true }, run: { id in runCollection(collection.id, folder: id) })
                         }
                         ForEach(collection.requests.filter { search.isEmpty ? $0.folderID == nil : $0.name.localizedCaseInsensitiveContains(search) || $0.url.localizedCaseInsensitiveContains(search) }) { request in
                             RequestSidebarRow(store: store, request: request, collectionID: collection.id)
@@ -187,6 +197,7 @@ struct WorkspaceView: View {
                             Menu {
                                 Button("Add request", systemImage: "plus") { store.addRequest(to: collection.id) }
                                 Button("New folder", systemImage: "folder.badge.plus") { folderCollectionID = collection.id; folderParentID = nil; folderName = ""; addingFolder = true }
+                                Button("Run collection", systemImage: "play.circle") { runCollection(collection.id, folder: nil) }
                                 Button("Collection settings", systemImage: "slider.horizontal.3") { editingCollectionID = collection.id; editingFolderID = nil; sheet = .defaults }
                                 Button("Rename", systemImage: "pencil") { renameID = collection.id; collectionName = collection.name; newCollection = true }
                                 if collection.requests.isEmpty {
@@ -245,6 +256,10 @@ struct WorkspaceView: View {
         Button { sheet = value } label: { sidebarActionLabel(title, symbol: symbol) }
             .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(title)
         #endif
+    }
+
+    private func runCollection(_ id: UUID, folder: UUID?) {
+        runnerCollectionID = id; runnerFolderID = folder; sheet = .runner
     }
 
     private func sidebarActionLabel(_ title: String, symbol: String) -> some View {
@@ -312,6 +327,9 @@ struct WorkspaceView: View {
                 Button("Apple Watch", systemImage: "applewatch") { sheet = .watch }
                 #endif
                 Button("Client code", systemImage: "curlybraces") { sheet = .code }.disabled(store.selectedRequest == nil)
+                if let collection = store.workspace.collections.first(where: { $0.requests.contains { $0.id == store.selectedRequestID } }) {
+                    Button("Run collection", systemImage: "play.circle") { runCollection(collection.id, folder: nil) }
+                }
                 Button("Cookies & certificates", systemImage: "lock.shield") { sheet = .network }
                 Button("Export cURL", systemImage: "terminal") { sheet = .curl }.disabled(store.selectedRequest == nil)
                 Button("Import & export", systemImage: "arrow.down.doc") { sheet = .transfer }.accessibilityIdentifier("Import workspace")
@@ -369,6 +387,7 @@ struct RequestWorkspace: View {
             let paneLayout = sideBySide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(ZStackLayout(alignment: .topLeading))
             VStack(spacing: 0) {
                 addressBar(showSend: sideBySide && !stream)
+                VariableAssist(text: request.url, insets: EdgeInsets(top: -4, leading: WorkspaceMetrics.inset, bottom: WorkspaceMetrics.inset - 2, trailing: WorkspaceMetrics.inset))
                 Divider()
                 // Keep both panes alive and fully sized on iPhone. A zero-width
                 // hidden pane gives its scroll views an invalid initial viewport.
@@ -413,7 +432,7 @@ struct RequestWorkspace: View {
                         .padding(.horizontal, 16).frame(height: 30).background(Palette.surface)
                 }
                 #endif
-            }.background(Palette.canvas).environment(\.inputDismissal, inputDismissal)
+            }.background(Palette.canvas).environment(\.inputDismissal, inputDismissal).environment(\.variableHints, store.variableHints(for: request.wrappedValue))
                 .onChange(of: pane) { _, _ in dismissKeyboard() }
                 .onChange(of: store.responses[requestID]?.response.id) { _, _ in if !sideBySide { pane = "Response" } }
                 .onChange(of: store.errors[requestID]) { _, error in if error != nil && !sideBySide { pane = "Response" } }
@@ -529,7 +548,7 @@ struct RequestWorkspace: View {
             Label(store.runningID == requestID ? "Cancel" : "Send", systemImage: store.runningID == requestID ? "stop.fill" : "arrow.up")
                 .font(.subheadline.weight(.semibold)).padding(.horizontal, 20).frame(minHeight: max(36, WorkspaceMetrics.controlHeight))
                 .foregroundStyle(Palette.surface).background(Palette.mint, in: RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
-        }.buttonStyle(.plain).disabled(store.runningID != nil && store.runningID != requestID)
+        }.buttonStyle(.plain).disabled((store.runningID != nil && store.runningID != requestID) || store.collectionRun?.running == true)
             .keyboardShortcut(.return, modifiers: .command).accessibilityIdentifier("Send request")
     }
 
@@ -545,5 +564,47 @@ struct RequestWorkspace: View {
     private func send() {
         dismissKeyboard()
         if store.runningID == requestID { store.cancel() } else { store.send() }
+    }
+}
+
+/// Postman-style tabs for requests opened this session.
+struct RequestTabStrip: View {
+    @Bindable var store: WorkspaceStore
+    var body: some View {
+        let tabs = store.openRequestIDs.compactMap { store.request($0) }
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    ForEach(tabs) { request in
+                        let selected = request.id == store.selectedRequestID
+                        HStack(spacing: 6) {
+                            Button { store.selectedRequestID = request.id } label: {
+                                HStack(spacing: 6) {
+                                    Text(request.transport == .websocket ? "WS" : request.transport == .sse ? "SSE" : request.method)
+                                        .font(.system(.caption2, design: .monospaced, weight: .bold)).foregroundStyle(Palette.method(request.method))
+                                    Text(request.name).font(.caption.weight(selected ? .semibold : .regular)).lineLimit(1)
+                                        .foregroundStyle(selected ? Color.primary : Color.secondary)
+                                }.frame(maxWidth: 200, minHeight: 34).contentShape(Rectangle())
+                            }.buttonStyle(.plain).accessibilityLabel("\(request.method) \(request.name) tab").accessibilityAddTraits(selected ? .isSelected : [])
+                            Button { store.closeTabs([request.id]) } label: { Image(systemName: "xmark").font(.caption2.weight(.semibold)).frame(width: 20, height: 20) }
+                                .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Close \(request.name) tab")
+                        }.padding(.leading, 12).padding(.trailing, 6)
+                            .background(selected ? Palette.surface : Color.clear)
+                            .overlay(alignment: .bottom) { if selected { Rectangle().fill(Palette.mint).frame(height: 2) } }
+                            .overlay(alignment: .trailing) { Divider().frame(height: 18) }
+                            .contextMenu {
+                                Button("Close tab") { store.closeTabs([request.id]) }
+                                Button("Close other tabs") { store.closeTabs(Set(store.openRequestIDs).subtracting([request.id])) }
+                                Button("Duplicate request") { store.duplicate(request) }
+                            }
+                            .id(request.id)
+                    }
+                    Button { store.addRequest(to: store.workspace.collections.first { $0.requests.contains { $0.id == store.selectedRequestID } }?.id) } label: {
+                        Image(systemName: "plus").frame(width: 34, height: 34)
+                    }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("New request tab")
+                }
+            }.onChange(of: store.selectedRequestID) { _, id in if let id { withAnimation { proxy.scrollTo(id) } } }
+        }.background(Palette.canvas).accessibilityIdentifier("Request tabs")
+            .onAppear { if let id = store.selectedRequestID { store.openTab(id) } }
     }
 }

@@ -50,6 +50,15 @@ struct ResponseView: View {
             if let error = store.errors[requestID] {
                 Label(error, systemImage: "exclamationmark.circle").font(.subheadline).foregroundStyle(.red).padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading).background(Color.red.opacity(0.06))
+                if let certificate = store.untrustedCertificates[requestID] {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("SHA-256 \(certificate.sha256)").font(.system(.caption2, design: .monospaced)).textSelection(.enabled).foregroundStyle(.secondary)
+                        Text("Trust only a certificate you recognise, such as a local development server. Only this exact certificate is accepted, and only for \(certificate.host):\(String(certificate.port)). Every other host is still verified. Remove it in Network settings.")
+                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Button { store.trustCertificate(for: requestID) } label: { Label("Trust for \(certificate.host):\(String(certificate.port)) and resend", systemImage: "checkmark.shield") }
+                            .buttonStyle(.bordered).accessibilityIdentifier("Trust certificate")
+                    }.padding(.horizontal, 16).padding(.bottom, 12).frame(maxWidth: .infinity, alignment: .leading)
+                }
                 if response != nil { Text("Previous response shown below").font(.caption).foregroundStyle(.secondary).padding(12) }
             }
             if let result = result {
@@ -208,6 +217,8 @@ struct ResponseView: View {
                         ResponseMediaView(url: preview.mediaURL, error: preview.mediaError, audio: format == "Audio")
                             .frame(width: geometry.size.width, height: geometry.size.height).clipped()
                     }.frame(maxWidth: .infinity, maxHeight: .infinity).id(response.id)
+                } else if format == "Preview" {
+                    HTMLPreviewView(html: String(decoding: response.body.prefix(1_000_000), as: UTF8.self)).id(response.id).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if format == "Hex" || format == "Binary" {
                     ResponseBytesView(bytes: preview.bytes, totalCount: response.body.count, binary: format == "Binary")
                         .id(ResponseScrollIdentity(responseID: response.id, format: format, search: ""))
@@ -233,7 +244,7 @@ struct ResponseView: View {
             let text = await Task.detached(priority: .userInitiated) {
                 switch selectedFormat {
                 case "Hex", "Binary": return ByteFormatter.dump(preview.bytes, width: selectedFormat == "Binary" ? 4 : 8, binary: selectedFormat == "Binary")
-                case "Raw": return response.text
+                case "Raw", "Preview": return response.text
                 default: return preview.formatted
                 }
             }.value

@@ -88,6 +88,7 @@ public enum OpenAPICodec {
                 let name = operation["summary"] as? String ?? operation["operationId"] as? String ?? method.uppercased() + " " + path
                 var request = APIRequest(name: name, method: method.uppercased(), url: "")
                 request.variables = []; request.parameterHints = []; request.headers = []
+                if let description = operation["description"] as? String, !description.isEmpty { request.description = description }
                 let parameters = try ((pathObject["parameters"] as? [Any] ?? []) + (operation["parameters"] as? [Any] ?? [])).map { try object($0) }
                 // Operation-level parameters override a path parameter of the same name/location.
                 var merged: [String: [String: Any]] = [:]
@@ -128,7 +129,7 @@ public enum OpenAPICodec {
                     let security = try object(securitySchemes[selected])
                     switch security["type"] as? String {
                     case "apiKey": var key = APIKeyAuth(); key.name = text(security["name"]); key.inQuery = security["in"] as? String == "query"; request.auth.kind = .apiKey; request.auth.apiKey = key
-                    case "http": request.auth.kind = security["scheme"] as? String == "basic" ? .basic : .bearer
+                    case "http": request.auth.kind = ["basic": .basic, "digest": .digest][(security["scheme"] as? String ?? "").lowercased()] ?? .bearer
                     case "basic": request.auth.kind = .basic
                     case "oauth2":
                         request.auth.kind = .oauth2; var config = OAuthConfiguration()

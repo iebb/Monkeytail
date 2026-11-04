@@ -42,7 +42,7 @@ struct ResponsePreview: Sendable {
     var formats: [String] {
         switch kind {
         case .json: return ["Pretty", "Tree", "Raw", "Hex", "Binary"]
-        case .text: return ["Raw", "Hex", "Binary"]
+        case .text: return mimeType.lowercased().contains("html") ? ["Raw", "Preview", "Hex", "Binary"] : ["Raw", "Hex", "Binary"]
         case .binary: return ["Hex", "Binary", "Raw"]
         case .image: return ["Image", "Hex", "Binary"]
         case .audio: return ["Audio", "Hex", "Binary"]

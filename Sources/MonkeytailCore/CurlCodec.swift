@@ -50,7 +50,7 @@ public enum CurlCodec {
         let name = command.split(separator: "/").last.map(String.init) ?? command
         if name.hasPrefix("curl_") { request.impersonation = BrowserImpersonation(profile: try BrowserProfile.parse(String(name.dropFirst(5)))) }
         request.headers = []; request.followRedirects = false
-        var index = 1, explicitMethod: String?, useGet = false, head = false, data: [String] = []
+        var index = 1, explicitMethod: String?, useGet = false, head = false, digest = false, data: [String] = []
         var proxy: ProxySettings?, warnings: [String] = []
         func setURL(_ value: String) throws {
             guard request.url.isEmpty else { throw ClientError("Import one URL at a time.") }
@@ -152,6 +152,8 @@ public enum CurlCodec {
                 settings.host = host; settings.port = String(parts.port ?? (settings.kind == .socks ? 1080 : settings.kind == .https ? 443 : 8080))
                 settings.username = parts.user ?? ""; settings.password = parts.password ?? ""; proxy = settings
             case "--compressed", "-s", "-S", "-sS", "--silent", "--show-error", "--globoff", "-g": break
+            case "--digest": digest = true
+            case "--basic": digest = false
             case "-k", "--insecure": warnings.append("TLS certificate verification remains enabled. Install and trust your development CA in iOS Settings when needed.")
             default:
                 if option.hasPrefix("-") { throw ClientError("Unsupported cURL option: \(option). Remove it before importing.") }
@@ -161,6 +163,7 @@ public enum CurlCodec {
         }
         if useGet && (request.fileBody != nil || request.multipart != nil) { throw ClientError("Multipart and file bodies cannot be combined with --get.") }
         guard !request.url.isEmpty else { throw ClientError("The cURL command needs a URL.") }
+        if digest && request.auth.kind == .basic { request.auth.kind = .digest }
         if !data.isEmpty {
             let body = data.joined(separator: "&")
             if useGet {
@@ -186,6 +189,7 @@ public enum CurlCodec {
             parts.append("--impersonate \(quote(impersonation.profile.rawValue + (impersonation.browserHeaders ? "" : ":no")))")
         }
         if model.followRedirects { parts.append("--location") }
+        if model.auth.kind == .digest { parts.append("--digest --user \(quote(try RequestBuilder.resolve(model.auth.username + ":" + model.auth.password, variables: variables)))") }
         parts.append("--max-time \(Int(model.timeout))")
         parts.append(quote(request.url!.absoluteString))
         if model.bodyKind == .file, let file = model.fileBody, request.value(forHTTPHeaderField: "Content-Type") == nil { parts.append("--header \(quote("Content-Type: " + (try MultipartEncoder.mime(file.mimeType))))") }

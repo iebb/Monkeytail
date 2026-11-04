@@ -19,6 +19,10 @@ public enum CollectionCodec {
         }
         if root["info"] != nil && root["item"] != nil { return try postman(root) }
         if let values = root["values"] as? [[String: Any]] {
+            if root["_postman_variable_scope"] as? String == "globals" {
+                var workspace = Workspace(); workspace.globals = fields(values)
+                return CollectionImport(workspace: workspace)
+            }
             return CollectionImport(workspace: Workspace(environments: [APIEnvironment(name: root["name"] as? String ?? "Imported environment", variables: fields(values))]))
         }
         if let resources = root["resources"] as? [[String: Any]] { return try insomnia(root, resources: resources) }
@@ -62,8 +66,8 @@ public enum CollectionCodec {
                     }
                     var auth: [String: Any] = [:]
                     if request.auth.kind == .bearer { auth = ["type": "bearer", "token": request.auth.token] }
-                    if request.auth.kind == .basic { auth = ["type": "basic", "username": request.auth.username, "password": request.auth.password] }
-                    resources.append(["_id": "req_" + request.id.uuidString, "_type": "request", "parentId": groupID, "name": request.name, "url": request.url, "method": request.method,
+                    if request.auth.kind == .basic || request.auth.kind == .digest { auth = ["type": request.auth.kind == .basic ? "basic" : "digest", "username": request.auth.username, "password": request.auth.password] }
+                    resources.append(["_id": "req_" + request.id.uuidString, "_type": "request", "parentId": groupID, "name": request.name, "url": request.url, "method": request.method, "description": request.description ?? "",
                                       "headers": request.headers.map(insomniaField), "parameters": request.query.map(insomniaField), "body": body, "authentication": auth,
                                       "settingFollowRedirects": request.followRedirects ? "on" : "off", "preRequestScript": request.preScript, "afterResponseScript": request.postScript,
                                       "_monkeytail": transportMetadata(request)])
@@ -92,6 +96,7 @@ public enum CollectionCodec {
                 guard !raw.isEmpty else { throw ClientError("Request ‘\(name)’ is missing a raw URL.") }
                 var request = APIRequest(name: name, method: source["method"] as? String ?? "GET", url: raw)
                 request.folderID = parent
+                request.description = description(source["description"]) ?? description(item["description"])
                 request.impersonation = try decodeTransport(item["_monkeytail"])
                 decodeAdvanced(item["_monkeytail"], into: &request)
                 request.headers = fields(source["header"] as? [[String: Any]] ?? [])
@@ -99,6 +104,7 @@ public enum CollectionCodec {
                     request.query = fields(query)
                     request.url = withoutQuery(raw)
                 }
+                if let variables = urlObject?["variable"] as? [[String: Any]], !variables.isEmpty { request.pathVariables = fields(variables) }
                 if let sourceAuth = source["auth"] as? [String: Any] { request.auth = decodeAuth(sourceAuth, postman: true, warnings: &warnings) }
                 else { request.auth.kind = .inherit }
                 if let metadata = item["_monkeytail"] as? [String: Any], let value = metadata["auth"], let data = try? json(value), let restored = try? JSONDecoder().decode(RequestAuth.self, from: data) { request.auth = restored }
@@ -109,6 +115,10 @@ public enum CollectionCodec {
                         let options = body["options"] as? [String: Any]
                         let language = (options?["raw"] as? [String: Any])?["language"] as? String
                         request.bodyKind = language == "json" || request.headers.contains { $0.name.lowercased() == "content-type" && $0.value.contains("json") } ? .json : .text
+                        // Postman sends a Content-Type matching the raw language.
+                        if let type = ["xml": "application/xml", "html": "text/html", "javascript": "application/javascript"][language ?? ""], !request.headers.contains(where: { $0.name.lowercased() == "content-type" }) {
+                            request.headers.append(Field("Content-Type", type))
+                        }
                     case "urlencoded": request.bodyKind = .form; request.form = fields(body["urlencoded"] as? [[String: Any]] ?? [])
                     case "formdata":
                         request.bodyKind = .multipart
@@ -142,15 +152,22 @@ public enum CollectionCodec {
                     if event["listen"] as? String == "prerequest" { request.preScript += code + "\n" }
                     if event["listen"] as? String == "test" { request.postScript += code + "\n" }
                 }
+                let examples = (item["response"] as? [[String: Any]] ?? []).compactMap { source -> ResponseExample? in
+                    let body = source["body"] as? String ?? ""
+                    guard body.utf8.count <= ResponseExample.maximumBodyBytes else { return nil }
+                    return ResponseExample(name: source["name"] as? String ?? "Example", status: source["code"] as? Int ?? 200, headers: fields(source["header"] as? [[String: Any]] ?? []), body: body)
+                }.prefix(ResponseExample.maximumCount)
+                if !examples.isEmpty { request.examples = Array(examples) }
                 requests.append(request)
             }
         }
         try walk(root["item"] as? [[String: Any]] ?? [], path: "", inheritedAuth: root["auth"] as? [String: Any], inheritedEvents: [], parent: nil)
         let name = (root["info"] as? [String: Any])?["name"] as? String ?? "Postman collection"
         let variables = fields(root["variable"] as? [[String: Any]] ?? [])
-        if requests.contains(where: { !$0.preScript.isEmpty || !$0.postScript.isEmpty }) || !(root["event"] as? [Any] ?? []).isEmpty || folders.contains(where: { !$0.defaults.preScript.isEmpty || !$0.defaults.postScript.isEmpty }) { warnings.append("Scripts were imported disabled. Review them before enabling; only the documented scripting API and basic pm aliases are supported.") }
+        if requests.contains(where: { !$0.preScript.isEmpty || !$0.postScript.isEmpty }) || !(root["event"] as? [Any] ?? []).isEmpty || folders.contains(where: { !$0.defaults.preScript.isEmpty || !$0.defaults.postScript.isEmpty }) { warnings.append("Imported scripts run when you send. Review them in each Scripts tab; turn off Run scripts to skip them.") }
         var collection = RequestCollection(name: name, requests: requests)
         collection.folders = folders; collection.defaults = decodeDefaults(root, warnings: &warnings, inherit: false)
+        if let text = description((root["info"] as? [String: Any])?["description"]) { collection.defaults?.description = text }
         return CollectionImport(workspace: Workspace(collections: [collection], environments: variables.isEmpty ? [] : [APIEnvironment(name: name, variables: variables)]), warnings: warnings)
     }
 
@@ -166,6 +183,7 @@ public enum CollectionCodec {
             let groupName = groups.first { $0["_id"] as? String == parent }?["name"] as? String ?? "Insomnia collection"
             if !collections.contains(where: { $0.name == groupName }) { collections.append(RequestCollection(name: groupName)) }
             var request = APIRequest(name: resource["name"] as? String ?? "Untitled", method: resource["method"] as? String ?? "GET", url: normalizeInsomnia(resource["url"] as? String ?? ""))
+            request.description = description(resource["description"])
             request.impersonation = try decodeTransport(resource["_monkeytail"])
             request.headers = fields(resource["headers"] as? [[String: Any]] ?? [])
             request.query = fields(resource["parameters"] as? [[String: Any]] ?? [])
@@ -193,7 +211,7 @@ public enum CollectionCodec {
             decodeAdvanced(resource["_monkeytail"], into: &request)
             collections[collections.firstIndex { $0.name == groupName }!].requests.append(request)
         }
-        if collections.flatMap(\.requests).contains(where: { !$0.preScript.isEmpty || !$0.postScript.isEmpty }) { warnings.append("Imported scripts are disabled until reviewed. Insomnia-specific scripting APIs may require adaptation.") }
+        if collections.flatMap(\.requests).contains(where: { !$0.preScript.isEmpty || !$0.postScript.isEmpty }) { warnings.append("Imported scripts run when you send. Insomnia-specific scripting APIs may require adaptation.") }
         return CollectionImport(workspace: Workspace(collections: collections, environments: environments), warnings: warnings)
     }
 
@@ -205,9 +223,23 @@ public enum CollectionCodec {
         switch type {
         case "bearer": auth.kind = .bearer; auth.token = string(values["token"])
         case "basic": auth.kind = .basic; auth.username = string(values["username"]); auth.password = string(values["password"])
+        case "digest": auth.kind = .digest; auth.username = string(values["username"]); auth.password = string(values["password"])
         case "apikey": auth.kind = .apiKey; var key = APIKeyAuth(); key.name = string(values["key"]); key.value = string(values["value"]); key.inQuery = string(values["in"]) == "query"; auth.apiKey = key
-        case "oauth2": auth.kind = .oauth2; var oauth = OAuthConfiguration(); oauth.accessToken = string(values["accessToken"]); oauth.clientID = string(values["clientId"]); oauth.clientSecret = string(values["clientSecret"]); oauth.authorizationURL = string(values["authUrl"]); oauth.tokenURL = string(values["accessTokenUrl"]); oauth.scope = string(values["scope"]); auth.oauth = oauth
+        case "oauth2": auth.kind = .oauth2; var oauth = OAuthConfiguration(); oauth.accessToken = string(values["accessToken"]); oauth.clientID = string(values["clientId"]); oauth.clientSecret = string(values["clientSecret"]); oauth.authorizationURL = string(values["authUrl"]); oauth.tokenURL = string(values["accessTokenUrl"]); oauth.scope = string(values["scope"]); oauth.grant = ["client_credentials": .clientCredentials, "password_credentials": .password, "password": .password][string(values["grant_type"] ?? values["grantType"])] ?? .pkce; if oauth.grant == .password { oauth.username = string(values["username"]); oauth.password = string(values["password"]) }; auth.oauth = oauth
         case "awsv4": auth.kind = .aws; var aws = AWSAuth(); aws.accessKey = string(values["accessKey"]); aws.secretKey = string(values["secretKey"]); aws.sessionToken = string(values["sessionToken"]); aws.region = string(values["region"]); aws.service = string(values["service"]); auth.aws = aws
+        case "oauth1":
+            auth.kind = .oauth1; var oauth1 = OAuth1Auth(); oauth1.consumerKey = string(values["consumerKey"]); oauth1.consumerSecret = string(values["consumerSecret"])
+            oauth1.token = string(values["token"] ?? values["tokenKey"]); oauth1.tokenSecret = string(values["tokenSecret"]); oauth1.realm = string(values["realm"])
+            let method = string(values["signatureMethod"])
+            if let signature = OAuth1Signature(rawValue: method.isEmpty ? "HMAC-SHA1" : method.uppercased()) { oauth1.signatureMethod = signature } else { warnings.append("OAuth 1.0 signature method ‘\(method)’ is unsupported; HMAC-SHA1 is used instead.") }
+            auth.oauth1 = oauth1
+        case "jwt":
+            auth.kind = .jwt; var jwt = JWTAuth(); let algorithm = string(values["algorithm"]).uppercased()
+            if let value = JWTAlgorithm(rawValue: algorithm.isEmpty ? "HS256" : algorithm) { jwt.algorithm = value } else { warnings.append("JWT algorithm ‘\(algorithm)’ is unsupported; HS256 is used instead.") }
+            jwt.secret = string(values["secret"]); jwt.secretIsBase64 = string(values["isSecretBase64Encoded"]) == "true"; jwt.privateKey = string(values["privateKey"])
+            jwt.payload = values["payload"] == nil ? "{}" : string(values["payload"]); jwt.header = values["header"] == nil ? "{}" : string(values["header"])
+            jwt.inQuery = string(values["addTokenTo"]) == "queryParam"; jwt.headerPrefix = values["headerPrefix"] == nil ? "Bearer" : string(values["headerPrefix"])
+            jwt.queryKey = string(values["queryParamKey"]).isEmpty ? "token" : string(values["queryParamKey"]); auth.jwt = jwt
         case "noauth", "none", "": break
         default: warnings.append("Authentication type ‘\(type)’ is unsupported. Configure an Authorization header manually.")
         }
@@ -221,10 +253,15 @@ public enum CollectionCodec {
         }
         var raw = withoutQuery(request.url)
         if !query.isEmpty { raw += "?" + query.filter(\.enabled).map { RequestBuilder.formEncode($0.name) + "=" + RequestBuilder.formEncode($0.value) }.joined(separator: "&") }
-        source["url"] = ["raw": raw, "query": query.map(postmanField)]
+        var url: [String: Any] = ["raw": raw, "query": query.map(postmanField)]
+        if let variables = request.pathVariables, !variables.isEmpty { url["variable"] = variables.map(postmanField) }
+        source["url"] = url
         switch request.bodyKind {
         case .none: break
-        case .json, .text: source["body"] = ["mode": "raw", "raw": request.body, "options": ["raw": ["language": request.bodyKind == .json ? "json" : "text"]]]
+        case .json, .text:
+            let type = request.headers.first { $0.enabled && $0.name.lowercased() == "content-type" }?.value.lowercased() ?? ""
+            let language = request.bodyKind == .json ? "json" : ["xml", "html", "javascript"].first { type.contains($0) } ?? "text"
+            source["body"] = ["mode": "raw", "raw": request.body, "options": ["raw": ["language": language]]]
         case .form: source["body"] = ["mode": "urlencoded", "urlencoded": request.form.map(postmanField)]
         case .multipart: source["body"] = ["mode": "formdata", "formdata": (request.multipart ?? []).map { part in
             var field: [String: Any] = ["key": part.name, "value": part.value, "disabled": !part.enabled, "type": part.file == nil ? "text" : "file"]
@@ -236,20 +273,42 @@ public enum CollectionCodec {
         switch request.auth.kind {
         case .inherit: break
         case .apiKey: source["auth"] = ["type": "apikey", "apikey": [["key": "key", "value": request.auth.apiKey?.name ?? ""], ["key": "value", "value": request.auth.apiKey?.value ?? ""], ["key": "in", "value": request.auth.apiKey?.inQuery == true ? "query" : "header"]]]
-        case .oauth2: source["auth"] = ["type": "oauth2", "oauth2": [["key": "accessToken", "value": request.auth.oauth?.accessToken ?? ""]]]
+        case .oauth2:
+            let oauth = request.auth.oauth ?? OAuthConfiguration(), grant = [OAuthGrant.clientCredentials: "client_credentials", .password: "password_credentials"][oauth.grant] ?? "authorization_code_with_pkce"
+            source["auth"] = ["type": "oauth2", "oauth2": [["key": "accessToken", "value": oauth.accessToken], ["key": "grant_type", "value": grant], ["key": "accessTokenUrl", "value": oauth.tokenURL], ["key": "authUrl", "value": oauth.authorizationURL],
+                                                       ["key": "clientId", "value": oauth.clientID], ["key": "scope", "value": oauth.scope], ["key": "username", "value": oauth.username ?? ""]].filter { !($0["value"] ?? "").isEmpty }]
         case .aws: source["auth"] = ["type": "awsv4", "awsv4": [["key": "accessKey", "value": request.auth.aws?.accessKey ?? ""], ["key": "secretKey", "value": request.auth.aws?.secretKey ?? ""], ["key": "region", "value": request.auth.aws?.region ?? ""], ["key": "service", "value": request.auth.aws?.service ?? ""], ["key": "sessionToken", "value": request.auth.aws?.sessionToken ?? ""]]]
+        case .oauth1:
+            let oauth1 = request.auth.oauth1 ?? OAuth1Auth()
+            source["auth"] = ["type": "oauth1", "oauth1": [["key": "consumerKey", "value": oauth1.consumerKey], ["key": "consumerSecret", "value": oauth1.consumerSecret], ["key": "token", "value": oauth1.token], ["key": "tokenSecret", "value": oauth1.tokenSecret],
+                                                       ["key": "signatureMethod", "value": oauth1.signatureMethod.rawValue], ["key": "realm", "value": oauth1.realm], ["key": "version", "value": "1.0"], ["key": "addParamsToHeader", "value": true]]]
+        case .jwt:
+            let jwt = request.auth.jwt ?? JWTAuth()
+            source["auth"] = ["type": "jwt", "jwt": [["key": "algorithm", "value": jwt.algorithm.rawValue], ["key": "isSecretBase64Encoded", "value": jwt.secretIsBase64], ["key": "secret", "value": jwt.secret],
+                                                 ["key": "privateKey", "value": jwt.privateKey], ["key": "payload", "value": jwt.payload], ["key": "header", "value": jwt.header], ["key": "addTokenTo", "value": jwt.inQuery ? "queryParam" : "header"],
+                                                 ["key": "headerPrefix", "value": jwt.headerPrefix], ["key": "queryParamKey", "value": jwt.queryKey]] as [[String: Any]]]
         case .none: source["auth"] = ["type": "noauth"]
         case .bearer: source["auth"] = ["type": "bearer", "bearer": [["key": "token", "value": request.auth.token, "type": "string"]]]
         case .basic: source["auth"] = ["type": "basic", "basic": [["key": "username", "value": request.auth.username, "type": "string"], ["key": "password", "value": request.auth.password, "type": "string"]]]
+        case .digest: source["auth"] = ["type": "digest", "digest": [["key": "username", "value": request.auth.username, "type": "string"], ["key": "password", "value": request.auth.password, "type": "string"]]]
         }
         if request.transport == .graphql { let graph = request.graphql ?? GraphQLRequest(); source["body"] = ["mode": "graphql", "graphql": ["query": graph.query, "variables": graph.variables]] }
+        if let text = request.description, !text.isEmpty { source["description"] = text }
         var item: [String: Any] = ["name": request.name, "request": source, "_monkeytail": transportMetadata(request)]
+        if let examples = request.examples, !examples.isEmpty {
+            item["response"] = examples.map { example -> [String: Any] in
+                let type = example.headers.first { $0.name.lowercased() == "content-type" }?.value.lowercased() ?? ""
+                return ["name": example.name, "originalRequest": source, "code": example.status, "header": example.headers.map(postmanField), "body": example.body,
+                        "_postman_previewlanguage": ["json", "html", "xml"].first { type.contains($0) } ?? "text"]
+            }
+        }
         item["event"] = [("prerequest", request.preScript), ("test", request.postScript)].filter { !$0.1.isEmpty }.map { ["listen": $0.0, "script": ["type": "text/javascript", "exec": $0.1.components(separatedBy: "\n")]] as [String: Any] }
         return item
     }
     private static func decodeDefaults(_ source: [String: Any], warnings: inout [String], inherit: Bool) -> RequestDefaults {
-        if let raw = source["_monkeytailDefaults"], let data = try? json(raw), var value = try? JSONDecoder().decode(RequestDefaults.self, from: data) { value.scriptsEnabled = false; return value }
+        if let raw = source["_monkeytailDefaults"], let data = try? json(raw), var value = try? JSONDecoder().decode(RequestDefaults.self, from: data) { return value }
         var value = RequestDefaults(); value.variables = fields(source["variable"] as? [[String: Any]] ?? [])
+        value.description = description(source["description"])
         value.auth = decodeAuth(source["auth"] as? [String: Any], postman: true, warnings: &warnings)
         if source["auth"] == nil && inherit { value.auth.kind = .inherit }
         for event in source["event"] as? [[String: Any]] ?? [] {
@@ -289,8 +348,14 @@ public enum CollectionCodec {
         let item = postmanItem(request), source = item["request"] as? [String: Any] ?? [:]
         var result: [String: Any] = ["name": name, "variable": defaults.variables.map(postmanField), "event": item["event"] ?? []]
         result["auth"] = source["auth"]
+        if let text = defaults.description, !text.isEmpty { result["description"] = text }
         if let data = try? JSONEncoder().encode(defaults), let encoded = try? JSONSerialization.jsonObject(with: data) { result["_monkeytailDefaults"] = encoded }
         return result
+    }
+    /// Postman stores descriptions as a string or `{content, type}`.
+    private static func description(_ value: Any?) -> String? {
+        let text = value as? String ?? (value as? [String: Any])?["content"] as? String
+        return text?.isEmpty == false ? text : nil
     }
     private static func fields(_ source: [[String: Any]]) -> [Field] {
         source.map { Field(normalizeInsomnia($0["key"] as? String ?? $0["name"] as? String ?? ""), normalizeInsomnia(string($0["value"])), enabled: !($0["disabled"] as? Bool ?? false) && ($0["enabled"] as? Bool ?? true)) }

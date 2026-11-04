@@ -23,6 +23,24 @@ public struct TLSConfiguration: @unchecked Sendable {
         return TLSConfiguration(identity: raw as! SecIdentity, certificates: item[kSecImportItemCertChain as String] as? [SecCertificate] ?? [], host: host, port: port)
     }
 }
+/// A server certificate trusted for one exact host and port: the per-host alternative to turning verification off.
+public struct TrustedCertificate: Codable, Equatable, Identifiable, Sendable {
+    public var host: String, port: Int, sha256: String, subject: String
+    public var id: String { host + ":" + String(port) }
+    public init(host: String, port: Int, sha256: String, subject: String) { self.host = host.lowercased(); self.port = port; self.sha256 = sha256; self.subject = subject }
+    /// A credential when the system rejects the server but its leaf certificate matches a trusted fingerprint; otherwise the rejected leaf.
+    public static func evaluate(_ space: URLProtectionSpace, trusted: [TrustedCertificate]) -> (credential: URLCredential?, rejected: TrustedCertificate?) {
+        guard space.authenticationMethod == NSURLAuthenticationMethodServerTrust, let trust = space.serverTrust, !SecTrustEvaluateWithError(trust, nil),
+              let leaf = (SecTrustCopyCertificateChain(trust) as? [SecCertificate])?.first else { return (nil, nil) }
+        let details = CertificateDetails(leaf), candidate = TrustedCertificate(host: space.host, port: space.port, sha256: details.sha256, subject: details.subject)
+        return trusted.contains { $0.id == candidate.id && $0.sha256 == candidate.sha256 } ? (URLCredential(trust: trust), nil) : (nil, candidate)
+    }
+}
+public struct UntrustedCertificateError: LocalizedError, Sendable {
+    public var certificate: TrustedCertificate
+    public init(certificate: TrustedCertificate) { self.certificate = certificate }
+    public var errorDescription: String? { "The certificate for \(certificate.host):\(certificate.port) (\(certificate.subject)) is not trusted by this device." }
+}
 public struct CertificateDetails: Codable, Equatable, Identifiable, Sendable {
     public var id: String { sha256 }
     public var subject: String, sha256: String

@@ -4,7 +4,7 @@ import XCTest
 final class AdvancedFeatureTests: XCTestCase {
     func testNestedDefaultsOverrideAndDisabledHeadersSuppressParents() throws {
         var root = RequestDefaults(); root.headers = [Field("X-Mode", "root"), Field("X-Remove", "root")]; root.variables = [Field("host", "root")]; root.auth.kind = .bearer; root.auth.token = "root-token"; root.scriptsEnabled = true; root.preScript = "root();"
-        var parent = RequestFolder(name: "Parent"); parent.defaults.variables = [Field("host", "folder")]; parent.defaults.preScript = "disabled();"
+        var parent = RequestFolder(name: "Parent"); parent.defaults.variables = [Field("host", "folder")]; parent.defaults.preScript = "disabled();"; parent.defaults.scriptsEnabled = false
         var child = RequestFolder(name: "Child", parentID: parent.id); child.defaults.headers = [Field("x-mode", "child")]; child.defaults.scriptsEnabled = true; child.defaults.preScript = "child();"
         var request = APIRequest(url: "https://{{host}}"); request.folderID = child.id; request.auth.kind = .inherit; request.headers = [Field("X-Remove", "", enabled: false)]; request.variables = [Field("host", "request.test")]
         var collection = RequestCollection(name: "API", requests: [request]); collection.defaults = root; collection.folders = [parent, child]
@@ -139,12 +139,13 @@ final class AdvancedFeatureTests: XCTestCase {
 
     func testSyncRetainsDefinitionsAndNeverTransfersAdvancedCredentials() throws {
         var folder = RequestFolder(name: "Private"); folder.defaults.auth.kind = .aws; var aws = AWSAuth(); aws.accessKey = "access-private"; aws.secretKey = "secret-private"; folder.defaults.auth.aws = aws; folder.defaults.scriptsEnabled = true
-        var request = APIRequest(url: "https://example.test"); request.folderID = folder.id; request.auth.kind = .oauth2; var oauth = OAuthConfiguration(); oauth.clientSecret = "client-private"; oauth.accessToken = "token-private"; oauth.refreshToken = "refresh-private"; request.auth.oauth = oauth
+        var request = APIRequest(url: "https://example.test"); request.folderID = folder.id; request.auth.kind = .oauth2; var oauth = OAuthConfiguration(); oauth.clientSecret = "client-private"; oauth.accessToken = "token-private"; oauth.refreshToken = "refresh-private"; request.auth.oauth = oauth; request.scriptsEnabled = false; request.postScript = "pm.test('x', () => {});"
         var collection = RequestCollection(name: "Shared", requests: [request]); collection.folders = [folder]
         let workspace = Workspace(collections: [collection]); var state = WorkspaceSyncState(); try state.capture(workspace)
         let encoded = String(decoding: try JSONEncoder().encode(state), as: UTF8.self)
         for secret in ["access-private", "secret-private", "client-private", "token-private", "refresh-private"] { XCTAssertFalse(encoded.contains(secret)); for record in state.records { XCTAssertFalse(String(decoding: record.payload ?? Data(), as: UTF8.self).contains(secret)) } }
         let fresh = try state.workspace(local: Workspace()); XCTAssertEqual(fresh.collections.first?.folders?.first?.name, "Private"); XCTAssertEqual(fresh.collections.first?.folders?.first?.defaults.auth.aws?.secretKey, ""); XCTAssertEqual(fresh.collections.first?.requests.first?.auth.oauth?.accessToken, "")
+        XCTAssertEqual(fresh.collections.first?.folders?.first?.defaults.scriptsEnabled, true); XCTAssertEqual(fresh.collections.first?.requests.first?.scriptsEnabled, false)
         let own = try state.workspace(local: workspace); XCTAssertEqual(own.collections.first?.requests.first?.auth.oauth?.accessToken, "token-private"); XCTAssertEqual(own.collections.first?.folders?.first?.defaults.scriptsEnabled, true)
     }
 
@@ -158,6 +159,13 @@ final class AdvancedFeatureTests: XCTestCase {
     }
 
     func testFormCodeExportAndCookieAndSSEEdgeCases() throws {
+        var json = APIRequest(method: "POST", url: "https://example.test/items?q=1"); json.bodyKind = .json; json.body = ##"{"name":"it's \"#{1}\" $x \\ ok","price":5}"##
+        json.headers = [Field("Content-Type", "application/json"), Field("X-Trace", "abc")]
+        for language in CodeLanguage.allCases {
+            let code = try CodeGenerator.generate(json, variables: [:], language: language)
+            XCTAssertFalse(code.contains(Data(json.body.utf8).base64EncodedString()), language.rawValue)
+            XCTAssertTrue(code.contains("X-Trace") && code.contains("example.test/items?q=1") && code.contains("price"), language.rawValue)
+        }
         var request = APIRequest(method: "POST", url: "https://example.test"); request.bodyKind = .form
         request.form = [Field("password", "private-form"), Field("public", "visible")]
         let code = try CodeGenerator.generate(request, variables: [:], language: .swift)

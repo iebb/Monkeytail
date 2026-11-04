@@ -122,6 +122,11 @@ struct EnvironmentView: View {
                             store.workspace.environments.removeAll { $0.id == editingID }; editingID = store.workspace.environments.first?.id
                         }.font(.footnote).padding(.top, 16)
                     }
+                    Divider().padding(.vertical, 8)
+                    Text("Globals").font(.headline)
+                    Text("Available in every environment. Collection, environment, and request variables with the same name take precedence. Scripts can change them with pm.globals.set.")
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    FieldEditor(fields: Binding(get: { store.workspace.globals ?? [] }, set: { store.workspace.globals = $0 }), name: "Global")
                     Text("Exports include values.").font(.caption).foregroundStyle(.secondary)
                 }.padding(12)
             }.background(Palette.canvas).sheetTitle("Environments")

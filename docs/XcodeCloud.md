@@ -2,7 +2,7 @@
 
 - Apple Developer organization: Kitta Ltd (Kitta Co)
 - Team: `7P8CLHDH5G`
-- App: Monkeytail, version 1.4
+- App: Monkeytail, version 1.6
 - Bundle ID: `co.kitta.monkeytail`
 - Repository: [iebb/Monkeytail](https://github.com/iebb/Monkeytail), private
 - Branch: `main`; project: `Monkeytail.xcodeproj`; shared scheme: `Monkeytail`

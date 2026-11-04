@@ -19,7 +19,7 @@ import MonkeytailCore
     private var generation = UUID()
     func clear() { events = [] }
     func disconnect() { generation = UUID(); task?.cancel(); task = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; session?.invalidateAndCancel(); session = nil; connected = false; connecting = false }
-    func connect(_ model: APIRequest, variables: [String: String], proxy: ProxySettings, tls: TLSConfiguration? = nil, cookies: CookieJar? = nil) {
+    func connect(_ model: APIRequest, variables: [String: String], proxy: ProxySettings, tls: TLSConfiguration? = nil, cookies: CookieJar? = nil, trusted: [TrustedCertificate] = []) {
         disconnect(); error = nil; connecting = true; lastEventID = nil
         let current = generation
         task = Task { [self] in
@@ -43,7 +43,7 @@ import MonkeytailCore
                     if websocket, var url = URLComponents(url: request.url!, resolvingAgainstBaseURL: false) { url.scheme = url.scheme == "https" ? "wss" : "ws"; request.url = url.url }
                     let configuration = try HTTPClient.configuration(proxy: proxy, timeout: model.timeout)
                     configuration.timeoutIntervalForResource = 86400
-                    let delegate = LiveTLSDelegate(identity: tls, original: request, followRedirects: model.followRedirects) { [weak self] in Task { @MainActor [weak self] in guard self?.generation == current else { return }; self?.connected = true; self?.connecting = false } }
+                    let delegate = LiveTLSDelegate(identity: tls, trusted: trusted, original: request, followRedirects: model.followRedirects) { [weak self] in Task { @MainActor [weak self] in guard self?.generation == current else { return }; self?.connected = true; self?.connecting = false } }
                     let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil); self.session = session
                     if websocket {
                         let socket = session.webSocketTask(with: request); socket.maximumMessageSize = 1024 * 1024; self.socket = socket; socket.resume()
@@ -106,10 +106,11 @@ import MonkeytailCore
 }
 private final class LiveTLSDelegate: NSObject, URLSessionTaskDelegate, URLSessionWebSocketDelegate, @unchecked Sendable {
     let identity: TLSConfiguration?
+    let trusted: [TrustedCertificate]
     let original: URLRequest
     let followRedirects: Bool
     let opened: @Sendable () -> Void
-    init(identity: TLSConfiguration?, original: URLRequest, followRedirects: Bool, opened: @escaping @Sendable () -> Void) { self.identity = identity; self.original = original; self.followRedirects = followRedirects; self.opened = opened }
+    init(identity: TLSConfiguration?, trusted: [TrustedCertificate] = [], original: URLRequest, followRedirects: Bool, opened: @escaping @Sendable () -> Void) { self.identity = identity; self.trusted = trusted; self.original = original; self.followRedirects = followRedirects; self.opened = opened }
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         guard followRedirects, request.url?.scheme == original.url?.scheme, request.url?.host == original.url?.host, request.url?.port == original.url?.port else { completionHandler(nil); return }
         completionHandler(request)
@@ -119,6 +120,8 @@ private final class LiveTLSDelegate: NSObject, URLSessionTaskDelegate, URLSessio
         let space = challenge.protectionSpace
         if space.authenticationMethod == NSURLAuthenticationMethodClientCertificate, let identity, space.host.lowercased() == identity.host, space.port == identity.port {
             completionHandler(.useCredential, URLCredential(identity: identity.identity, certificates: identity.certificates, persistence: .forSession))
+        } else if let credential = TrustedCertificate.evaluate(space, trusted: trusted).credential {
+            completionHandler(.useCredential, credential)
         } else { completionHandler(.performDefaultHandling, nil) }
     }
 }

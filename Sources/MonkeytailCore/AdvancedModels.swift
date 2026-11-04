@@ -9,11 +9,30 @@ public struct AWSAuth: Codable, Equatable, Sendable {
     public var accessKey = "", secretKey = "", sessionToken = "", region = "us-east-1", service = "execute-api"
     public init() {}
 }
-public enum OAuthGrant: String, Codable, CaseIterable, Sendable { case pkce = "Authorization code + PKCE", clientCredentials = "Client credentials" }
+public enum OAuth1Signature: String, Codable, CaseIterable, Sendable { case hmacSHA1 = "HMAC-SHA1", hmacSHA256 = "HMAC-SHA256", plaintext = "PLAINTEXT" }
+public struct OAuth1Auth: Codable, Equatable, Sendable {
+    public var consumerKey = "", consumerSecret = "", token = "", tokenSecret = "", realm = ""
+    public var signatureMethod: OAuth1Signature = .hmacSHA1
+    public init() {}
+}
+public enum JWTAlgorithm: String, Codable, CaseIterable, Sendable { case hs256 = "HS256", hs384 = "HS384", hs512 = "HS512", rs256 = "RS256", rs384 = "RS384", rs512 = "RS512", ps256 = "PS256", ps384 = "PS384", ps512 = "PS512", es256 = "ES256", es384 = "ES384", es512 = "ES512" }
+/// Postman-compatible JWT Bearer: a token signed locally on every send.
+public struct JWTAuth: Codable, Equatable, Sendable {
+    public var algorithm: JWTAlgorithm = .hs256
+    public var secret = "", secretIsBase64 = false
+    /// PEM private key for RS, PS and ES algorithms.
+    public var privateKey = ""
+    public var payload = "{}", header = "{}"
+    public var inQuery = false, headerPrefix = "Bearer", queryKey = "token"
+    public init() {}
+}
+public enum OAuthGrant: String, Codable, CaseIterable, Sendable { case pkce = "Authorization code + PKCE", clientCredentials = "Client credentials", password = "Password credentials" }
 public struct OAuthConfiguration: Codable, Equatable, Sendable {
     public var grant: OAuthGrant = .pkce
     public var authorizationURL = "", tokenURL = "", clientID = "", clientSecret = "", scope = ""
     public var callbackURL = "monkeytail://oauth", accessToken = "", refreshToken = ""
+    /// Resource-owner credentials for the password grant.
+    public var username: String?, password: String?
     public var expiresAt: Date?
     public init() {}
 }
@@ -41,7 +60,9 @@ public struct RequestDefaults: Codable, Equatable, Sendable {
     public var headers: [Field] = [], variables: [Field] = []
     public var auth = RequestAuth()
     public var preScript = "", postScript = ""
-    public var scriptsEnabled = false
+    public var scriptsEnabled = true
+    /// Markdown documentation for a collection or folder.
+    public var description: String?
     public init() {}
 }
 public struct RequestFolder: Codable, Identifiable, Equatable, Sendable {
@@ -56,7 +77,8 @@ public struct ResolvedRequest: Sendable {
     public var variables: [String: String]
 }
 public enum RequestInheritance {
-    public static func resolve(_ request: APIRequest, collection: RequestCollection?, environment: [String: String]) throws -> ResolvedRequest {
+    /// Precedence, lowest first: globals, collection and folder variables, environment, request variables.
+    public static func resolve(_ request: APIRequest, collection: RequestCollection?, environment: [String: String], globals: [String: String] = [:]) throws -> ResolvedRequest {
         var levels: [RequestDefaults] = []
         if let defaults = collection?.defaults { levels.append(defaults) }
         var ancestors: [RequestFolder] = [], visited = Set<UUID>(), current = request.folderID
@@ -66,7 +88,7 @@ public enum RequestInheritance {
             ancestors.append(folder); current = folder.parentID
         }
         levels += ancestors.reversed().map(\.defaults)
-        var result = request, variables: [String: String] = [:], headers: [Field] = [], inheritedAuth = RequestAuth()
+        var result = request, variables = globals, headers: [Field] = [], inheritedAuth = RequestAuth()
         for level in levels {
             for field in level.variables where field.enabled { variables[field.name] = field.value }
             merge(level.headers, into: &headers)
@@ -78,8 +100,8 @@ public enum RequestInheritance {
         if request.auth.kind == .inherit { result.auth = inheritedAuth }
         let before = levels.filter(\.scriptsEnabled).map(\.preScript).filter { !$0.isEmpty }
         let after = levels.filter(\.scriptsEnabled).map(\.postScript).filter { !$0.isEmpty }
-        result.preScript = (before + (request.scriptsEnabled ? [request.preScript] : [])).joined(separator: "\n")
-        result.postScript = (after + (request.scriptsEnabled ? [request.postScript] : [])).joined(separator: "\n")
+        result.preScript = (before + (request.scriptsEnabled ? [request.preScript] : [])).filter { !$0.isEmpty }.joined(separator: "\n")
+        result.postScript = (after + (request.scriptsEnabled ? [request.postScript] : [])).filter { !$0.isEmpty }.joined(separator: "\n")
         result.scriptsEnabled = request.scriptsEnabled || levels.contains(where: \.scriptsEnabled)
         return ResolvedRequest(request: result, variables: variables)
     }
@@ -102,6 +124,20 @@ public struct ResponseAssertion: Codable, Identifiable, Equatable, Sendable {
 public struct AssertionResult: Identifiable, Equatable, Sendable {
     public var id: UUID, name: String, passed: Bool, message: String
 }
+/// A saved response stored with its request, like Postman examples.
+public struct ResponseExample: Codable, Identifiable, Equatable, Sendable {
+    public static let maximumBodyBytes = 2 * 1024 * 1024, maximumCount = 20
+    public var id = UUID()
+    public var name: String
+    public var status = 200
+    public var headers: [Field] = []
+    public var body = ""
+    public init(name: String, status: Int = 200, headers: [Field] = [], body: String = "") { self.name = name; self.status = status; self.headers = headers; self.body = body }
+    public init(name: String, response: APIResponse) throws {
+        guard let text = String(data: response.body, encoding: .utf8), response.body.count <= Self.maximumBodyBytes else { throw ClientError("Examples require a UTF-8 response up to 2 MB.") }
+        self.init(name: name, status: response.status, headers: response.headers.filter { !["content-length", "transfer-encoding", "content-encoding", "connection"].contains($0.name.lowercased()) }, body: text)
+    }
+}
 public struct MockResponse: Codable, Equatable, Sendable {
     public var enabled = false
     public var status = 200, delayMilliseconds = 0
@@ -109,6 +145,7 @@ public struct MockResponse: Codable, Equatable, Sendable {
     public var body = "{\"mock\":true}"
     public var simulatedError: String?
     public init() {}
+    public init(example: ResponseExample) { status = example.status; headers = example.headers; body = example.body; enabled = true }
     public func response(url: String) async throws -> APIResponse {
         guard (100...599).contains(status), (0...30000).contains(delayMilliseconds), body.utf8.count <= 2 * 1024 * 1024 else { throw ClientError("Invalid mock status, delay, or body size.") }
         try await Task.sleep(for: .milliseconds(delayMilliseconds))

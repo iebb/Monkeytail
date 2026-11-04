@@ -12,11 +12,12 @@ struct FolderRows: View {
     var visited: Set<UUID> = []
     var edit: (UUID?) -> Void
     var add: (UUID?) -> Void
+    var run: (UUID?) -> Void
     private var collection: RequestCollection? { store.workspace.collections.first { $0.id == collectionID } }
     var body: some View {
         ForEach((collection?.folders ?? []).filter { $0.parentID == parentID && !visited.contains($0.id) }) { folder in
             DisclosureGroup {
-                AnyView(FolderRows(store: store, collectionID: collectionID, parentID: folder.id, visited: visited.union([folder.id]), edit: edit, add: add))
+                AnyView(FolderRows(store: store, collectionID: collectionID, parentID: folder.id, visited: visited.union([folder.id]), edit: edit, add: add, run: run))
                 ForEach((collection?.requests ?? []).filter { $0.folderID == folder.id }) { request in RequestSidebarRow(store: store, request: request, collectionID: collectionID) }
             } label: {
                 HStack {
@@ -25,6 +26,7 @@ struct FolderRows: View {
                     Menu {
                         Button("Add request") { store.addRequest(to: collectionID); if let id = store.selectedRequestID, var request = store.request(id) { request.folderID = folder.id; request.auth.kind = .inherit; store.update(request) } }
                         Button("New subfolder") { add(folder.id) }
+                        Button("Run folder") { run(folder.id) }
                         Button("Folder settings") { edit(folder.id) }
                         Button("Delete folder", role: .destructive) { delete(folder.id) }
                     } label: { Image(systemName: "ellipsis").frame(width: 32, height: 32) }.borderlessMenu().buttonStyle(.plain)
@@ -107,8 +109,16 @@ struct FolderSettingsView: View {
                     Text("Variables").font(.headline); FieldEditor(fields: defaults.variables, name: "Variable")
                     AuthEditor(auth: defaults.auth, proxy: store.workspace.proxy, allowInheritance: folderID != nil)
                     Toggle("Run inherited scripts", isOn: defaults.scriptsEnabled)
+                    if let c, folderID == nil, store.workspace.collections[c].requests.contains(where: { !$0.scriptsEnabled && !($0.preScript.isEmpty && $0.postScript.isEmpty) }) || (store.workspace.collections[c].folders ?? []).contains(where: { !$0.defaults.scriptsEnabled && !($0.defaults.preScript.isEmpty && $0.defaults.postScript.isEmpty) }) {
+                        Button("Run scripts in every request and folder") {
+                            for r in store.workspace.collections[c].requests.indices { store.workspace.collections[c].requests[r].scriptsEnabled = true }
+                            for f in (store.workspace.collections[c].folders ?? []).indices { store.workspace.collections[c].folders![f].defaults.scriptsEnabled = true }
+                            store.workspace.collections[c].defaults = defaults.wrappedValue; store.workspace.collections[c].defaults?.scriptsEnabled = true
+                        }.font(.subheadline)
+                    }
                     CodeEditor(text: defaults.preScript, label: "Before child requests", minimumHeight: 150)
                     CodeEditor(text: defaults.postScript, label: "After child responses", minimumHeight: 150)
+                    Text("Documentation").font(.headline); DocsEditor(text: defaults.description)
                 }.padding(12)
             }.background(Palette.canvas).sheetTitle(folderID == nil ? "Collection settings" : "Folder settings")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }

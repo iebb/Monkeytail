@@ -30,6 +30,10 @@ public enum OAuthFlow {
             guard !config.refreshToken.isEmpty else { throw ClientError("No refresh token is available.") }
             fields["grant_type"] = "refresh_token"; fields["refresh_token"] = config.refreshToken
         } else if config.grant == .clientCredentials { fields["grant_type"] = "client_credentials"; fields["scope"] = config.scope }
+        else if config.grant == .password {
+            guard let username = config.username, !username.isEmpty else { throw ClientError("Enter the username for the password grant.") }
+            fields["grant_type"] = "password"; fields["username"] = username; fields["password"] = config.password ?? ""; fields["scope"] = config.scope
+        }
         else {
             guard let code, let verifier else { throw ClientError("Complete API authorization first.") }
             fields["grant_type"] = "authorization_code"; fields["code"] = code; fields["code_verifier"] = verifier; fields["redirect_uri"] = config.callbackURL

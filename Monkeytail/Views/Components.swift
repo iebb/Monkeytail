@@ -13,11 +13,62 @@ import MonkeytailCore
 private struct InputDismissalKey: EnvironmentKey {
     static let defaultValue = 0
 }
+struct VariableHintContext { var values: [String: String] = [:]; var secrets: Set<String> = [] }
+private struct VariableHintsKey: EnvironmentKey {
+    static let defaultValue = VariableHintContext()
+}
 
 extension EnvironmentValues {
     var inputDismissal: Int {
         get { self[InputDismissalKey.self] }
         set { self[InputDismissalKey.self] = newValue }
+    }
+    var variableHints: VariableHintContext {
+        get { self[VariableHintsKey.self] }
+        set { self[VariableHintsKey.self] = newValue }
+    }
+}
+
+/// Postman-style variable help: completes a trailing `{{` and shows what each `{{name}}` resolves to.
+struct VariableAssist: View {
+    @Binding var text: String
+    var showsReferences = true
+    var insets = EdgeInsets()
+    @Environment(\.variableHints) private var hints
+    var body: some View {
+        if let partial = VariableHints.pendingName(in: text) {
+            let names = VariableHints.suggestions(for: partial, variables: hints.values)
+            if !names.isEmpty {
+                chips {
+                    ForEach(names, id: \.self) { name in
+                        Button { text = VariableHints.complete(text, with: name) } label: {
+                            Text(name).padding(.horizontal, 8).padding(.vertical, 4).background(Palette.mint.opacity(0.15), in: Capsule()).foregroundStyle(Palette.mint)
+                        }.buttonStyle(.plain).accessibilityLabel("Insert variable \(name)")
+                    }
+                }
+            }
+        } else if showsReferences {
+            let references = VariableHints.references(in: text, variables: hints.values)
+            if !references.isEmpty {
+                chips {
+                    ForEach(references, id: \.name) { reference in
+                        let value = summary(reference), color = reference.isResolved ? Palette.mint : Palette.warning
+                        HStack(spacing: 4) { Text(reference.name).foregroundStyle(color); Text(value).foregroundStyle(.secondary).lineLimit(1) }
+                            .padding(.horizontal, 8).padding(.vertical, 4).background(color.opacity(0.12), in: Capsule())
+                            .accessibilityElement(children: .combine).accessibilityLabel("\(reference.name): \(value)")
+                    }
+                }
+            }
+        }
+    }
+    private func summary(_ reference: VariableHints.Reference) -> String {
+        if reference.isDynamic { return reference.isResolved ? "generated each send" : "unknown dynamic variable" }
+        guard let value = reference.value else { return "unresolved" }
+        if hints.secrets.contains(reference.name) { return "••••••" }
+        return value.isEmpty ? "empty" : value.count > 60 ? String(value.prefix(60)) + "…" : value
+    }
+    private func chips<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 6) { content() } }.font(.system(.caption, design: .monospaced)).padding(insets)
     }
 }
 
@@ -139,38 +190,54 @@ struct FieldEditor: View {
     @Binding var fields: [Field]
     var name = "Header"
     @Environment(\.dynamicTypeSize) private var dynamicType
+    @State private var bulk = false
+    @State private var bulkText = ""
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text("Name").frame(maxWidth: .infinity, alignment: .leading)
-                Text("Value").frame(maxWidth: .infinity, alignment: .leading)
-            }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 44).padding(.vertical, 7)
+                if bulk { Text("One name:value per line. Prefix // to disable.").frame(maxWidth: .infinity, alignment: .leading) }
+                else {
+                    Text("Name").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Value").frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Button(bulk ? "Key-value edit" : "Bulk edit") {
+                    if !bulk { bulkText = FieldBulkText.encode(fields) }
+                    bulk.toggle()
+                }.buttonStyle(.plain).foregroundStyle(Palette.mint).accessibilityIdentifier("\(name) bulk edit")
+            }.font(.caption).foregroundStyle(.secondary).padding(.leading, 44).padding(.trailing, 12).padding(.vertical, 7)
                 .background(Palette.canvas.opacity(0.7))
             Divider()
-            ForEach($fields) { $field in
-                HStack(alignment: .center, spacing: 0) {
-                    Button { field.enabled.toggle() } label: {
-                        Image(systemName: field.enabled ? "checkmark.square.fill" : "square").foregroundStyle(field.enabled ? Palette.mint : Color.secondary).frame(width: 44, height: WorkspaceMetrics.controlHeight)
-                    }.buttonStyle(.plain).accessibilityLabel(field.enabled ? "Disable \(field.name)" : "Enable \(field.name)")
-                    let layout = dynamicType.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0)) : AnyLayout(HStackLayout(spacing: 8))
-                    layout {
-                        TextField("\(name) name", text: $field.name).dismissibleInput().frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight).accessibilityLabel("\(name) name")
-                        Group {
-                            if field.isSecret { SecureField("Value", text: $field.value) }
-                            else { TextField("Value", text: $field.value) }
-                        }.dismissibleInput().frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight).accessibilityLabel("\(name) value")
-                    }.opacity(field.enabled ? 1 : 0.5)
-                        .font(.system(.footnote, design: .monospaced))
-                    Menu {
-                        Button(field.isSecret ? "Mark ordinary" : "Mark sensitive") { field.secret = !field.isSecret }
-                        Button("Remove field", role: .destructive) { fields.removeAll { $0.id == field.id } }
-                    } label: { Image(systemName: field.isSecret ? "lock" : "ellipsis").foregroundStyle(.secondary).frame(width: 44, height: WorkspaceMetrics.controlHeight) }
-                        .borderlessMenu().buttonStyle(.plain).accessibilityLabel("Options for \(field.name)")
+            if bulk {
+                TextEditor(text: Binding(get: { bulkText }, set: { bulkText = $0; fields = FieldBulkText.decode($0, existing: fields) }))
+                    .dismissibleInput().font(.system(.footnote, design: .monospaced)).scrollContentBackground(.hidden)
+                    .frame(minHeight: 140).padding(8).accessibilityLabel("\(name) bulk text")
+            } else {
+                ForEach($fields) { $field in
+                    HStack(alignment: .center, spacing: 0) {
+                        Button { field.enabled.toggle() } label: {
+                            Image(systemName: field.enabled ? "checkmark.square.fill" : "square").foregroundStyle(field.enabled ? Palette.mint : Color.secondary).frame(width: 44, height: WorkspaceMetrics.controlHeight)
+                        }.buttonStyle(.plain).accessibilityLabel(field.enabled ? "Disable \(field.name)" : "Enable \(field.name)")
+                        let layout = dynamicType.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0)) : AnyLayout(HStackLayout(spacing: 8))
+                        layout {
+                            TextField("\(name) name", text: $field.name).dismissibleInput().frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight).accessibilityLabel("\(name) name")
+                            Group {
+                                if field.isSecret { SecureField("Value", text: $field.value) }
+                                else { TextField("Value", text: $field.value) }
+                            }.dismissibleInput().frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight).accessibilityLabel("\(name) value")
+                        }.opacity(field.enabled ? 1 : 0.5)
+                            .font(.system(.footnote, design: .monospaced))
+                        Menu {
+                            Button(field.isSecret ? "Mark ordinary" : "Mark sensitive") { field.secret = !field.isSecret }
+                            Button("Remove field", role: .destructive) { fields.removeAll { $0.id == field.id } }
+                        } label: { Image(systemName: field.isSecret ? "lock" : "ellipsis").foregroundStyle(.secondary).frame(width: 44, height: WorkspaceMetrics.controlHeight) }
+                            .borderlessMenu().buttonStyle(.plain).accessibilityLabel("Options for \(field.name)")
+                    }
+                    VariableAssist(text: $field.value, showsReferences: false, insets: EdgeInsets(top: 0, leading: 44, bottom: 6, trailing: 12))
+                    Divider().padding(.leading, 44)
                 }
-                Divider().padding(.leading, 44)
+                Button { fields.append(Field()) } label: { Label("Add \(name.lowercased())", systemImage: "plus").font(.subheadline).frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight, alignment: .leading).padding(.horizontal, 12) }
+                    .buttonStyle(.plain).foregroundStyle(Palette.mint)
             }
-            Button { fields.append(Field()) } label: { Label("Add \(name.lowercased())", systemImage: "plus").font(.subheadline).frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight, alignment: .leading).padding(.horizontal, 12) }
-                .buttonStyle(.plain).foregroundStyle(Palette.mint)
         }
         .textFieldStyle(.plain).noCapitalization().autocorrectionDisabled()
         .background(Palette.surface).clipShape(RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
@@ -191,6 +258,30 @@ struct CodeEditor: View {
             .frame(minHeight: minimumHeight).background(Palette.surface, in: RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
             .overlay(RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius).strokeBorder(Palette.border))
             .accessibilityLabel(label).accessibilityIdentifier(label)
+    }
+}
+
+/// Markdown documentation with an inline-formatting preview.
+struct DocsEditor: View {
+    @Binding var text: String?
+    @State private var preview = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker("Documentation mode", selection: $preview) { Text("Edit").tag(false); Text("Preview").tag(true) }.pickerStyle(.segmented).frame(maxWidth: 220)
+            if preview {
+                Group {
+                    if let text, !text.isEmpty { Text(Self.render(text)).textSelection(.enabled) }
+                    else { Text("No documentation yet.").foregroundStyle(.secondary) }
+                }.font(.callout).frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading).padding(12)
+                    .background(Palette.surface, in: RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
+                    .overlay(RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius).strokeBorder(Palette.border))
+            } else {
+                CodeEditor(text: Binding(get: { text ?? "" }, set: { text = $0.isEmpty ? nil : $0 }), label: "Documentation", minimumHeight: 200)
+            }
+        }
+    }
+    static func render(_ markdown: String) -> AttributedString {
+        (try? AttributedString(markdown: markdown, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(markdown)
     }
 }
 
