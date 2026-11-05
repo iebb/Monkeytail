@@ -214,6 +214,12 @@ jobs:
         with:
           name: developer-id-macOS
           path: ${{ runner.temp }}/release
+      - name: Explain skipped release
+        if: steps.app.outcome != 'success'
+        run: |
+          message="No GitHub release: the macOS build produced no notarized Developer ID app. Add a Developer ID Application identity to SIGNING_CERTIFICATE_P12 (see docs/Release.md), or check the macOS archive log if notarization failed."
+          echo "::warning title=GitHub release skipped::$message"
+          printf '### GitHub release skipped\n\n%s\n' "$message" >> "$GITHUB_STEP_SUMMARY"
       - name: Publish macOS app
         if: steps.app.outcome == 'success'
         env:

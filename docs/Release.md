@@ -37,7 +37,7 @@ After the archives, `TestFlight` jobs wait for Apple to process each uploaded bu
 
 Pushes also publish the Mac app on [GitHub Releases](https://github.com/iebb/Monkeytail/releases). The macOS leg exports the archive with Developer ID signing, notarizes it with the App Store Connect API key, staples the ticket, and keeps `Monkeytail-<version>-<build>-macOS.zip`. The `GitHub release` job then creates the release `v<version>-<build>` at the built commit, using the commit message as notes. Re-runs replace the zip on an existing release.
 
-Only the Account Holder can create a Developer ID Application certificate, and the Admin API key cannot use the cloud-managed one, so the identity must be in `SIGNING_CERTIFICATE_P12`. Without it the step logs a warning and no release is made.
+Only the Account Holder can create a Developer ID Application certificate, and the Admin API key cannot use the cloud-managed one, so the identity must be in `SIGNING_CERTIFICATE_P12`. Without it no release is made, and the `GitHub release` job shows a "GitHub release skipped" warning and a note in the run summary.
 
 ## Xcode Cloud history
 

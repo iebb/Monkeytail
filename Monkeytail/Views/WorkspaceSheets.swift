@@ -292,24 +292,80 @@ private struct LicenseSheet: View {
 struct HistoryView: View {
     @Bindable var store: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
+    @State private var filter = ""
+    @FocusState private var filterFocused: Bool
+    #if os(macOS)
+    @State private var selection: HistoryEntry.ID?
+    @State private var order = [KeyPathComparator(\HistoryEntry.date, order: .reverse)]
+    #endif
+    private var entries: [HistoryEntry] {
+        let query = filter.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return store.history }
+        return store.history.filter { $0.request.name.localizedCaseInsensitiveContains(query) || $0.request.url.localizedCaseInsensitiveContains(query) || $0.request.method.localizedCaseInsensitiveContains(query) || $0.status.map { String($0).hasPrefix(query) } == true }
+    }
     var body: some View {
         NavigationStack {
-            Group {
+            VStack(spacing: 0) {
+                if !store.history.isEmpty { SearchField(placeholder: "Filter history", text: $filter, focused: $filterFocused).padding(10) }
                 if store.history.isEmpty { EmptyPanel(title: "No history") }
-                else {
-                    List(store.history) { entry in
-                        Button { store.restore(entry); dismiss() } label: {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack { MethodBadge(method: entry.request.method); Text(entry.request.name).font(.subheadline.weight(.medium)); Spacer(); if let status = entry.status { StatusBadge(status: status, showsLabel: false) } else { Text("Error").font(.system(.caption, design: .monospaced)).foregroundStyle(.red) } }
-                                Text(entry.request.url).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1)
-                                Text(entry.date, style: .relative).font(.caption2).foregroundStyle(.secondary)
-                                if let error = entry.error { Text(error).font(.caption).foregroundStyle(.red).lineLimit(2) }
-                            }.padding(.vertical, 6)
-                        }.buttonStyle(.plain)
-                    }
-                }
+                else if entries.isEmpty { EmptyPanel(title: "No matching requests") }
+                else { list }
             }.background(Palette.canvas).sheetTitle("Request history")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-        }.macSheetFrame()
+        }.macSheetFrame(minWidth: 900, minHeight: 440)
     }
+
+    #if os(macOS)
+    private var list: some View {
+        Table(entries.sorted(using: order), selection: $selection, sortOrder: $order) {
+            TableColumn("Method", value: \.request.method) { MethodBadge(method: $0.request.method) }.width(min: 56, ideal: 60, max: 76)
+            TableColumn("Name", value: \.request.name) { Text($0.request.name).lineLimit(1) }.width(min: 100, ideal: 140)
+            TableColumn("Host") { Text(verbatim: Self.host($0.request.url)).lineLimit(1).truncationMode(.middle) }.width(min: 80, ideal: 120)
+            TableColumn("Path") { Text(verbatim: Self.path($0.request.url)).font(.system(.callout, design: .monospaced)).lineLimit(1).truncationMode(.middle) }.width(min: 120, ideal: 180)
+            TableColumn("Status", value: \.sortStatus) { entry in
+                if let status = entry.status { Text(verbatim: String(status)).monospacedDigit().foregroundStyle(status < 400 ? Color.primary : Palette.warning) }
+                else { Text("Failed").foregroundStyle(Palette.error).help(entry.error ?? "") }
+            }.width(min: 48, ideal: 56, max: 70)
+            TableColumn("Duration", value: \.duration) { entry in Text(entry.duration >= 1 ? "\(entry.duration, specifier: "%.2f") s" : "\(entry.duration * 1000, specifier: "%.0f") ms").monospacedDigit() }.width(min: 60, ideal: 70, max: 90)
+            TableColumn("Time", value: \.date) { Text($0.date.formatted(.dateTime.month(.abbreviated).day().hour().minute())).monospacedDigit().foregroundStyle(.secondary).lineLimit(1) }.width(min: 100, ideal: 130)
+        }
+        .contextMenu(forSelectionType: HistoryEntry.ID.self) { ids in
+            if let id = ids.first, let entry = store.history.first(where: { $0.id == id }) { Button("Restore request") { store.restore(entry); dismiss() } }
+        } primaryAction: { ids in
+            if let id = ids.first, let entry = store.history.first(where: { $0.id == id }) { store.restore(entry); dismiss() }
+        }
+        .accessibilityIdentifier("History table")
+    }
+    private static func host(_ url: String) -> String { split(url).host }
+    private static func path(_ url: String) -> String { split(url).path }
+    /// Splits a URL into host and path; a leading `{{variable}}` such as `{{base_url}}` stands in for the host.
+    private static func split(_ url: String) -> (host: String, path: String) {
+        if let components = URLComponents(string: url), let host = components.host {
+            return (host, (components.percentEncodedPath.isEmpty ? "/" : components.percentEncodedPath) + (components.percentEncodedQuery.map { "?" + $0 } ?? ""))
+        }
+        if url.hasPrefix("{{"), let end = url.range(of: "}}") {
+            let rest = url[end.upperBound...]
+            return (String(url[..<end.upperBound]), rest.isEmpty ? "/" : String(rest))
+        }
+        return ("", url)
+    }
+    #else
+    private var list: some View {
+        List(entries) { entry in
+            Button { store.restore(entry); dismiss() } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack { MethodBadge(method: entry.request.method); Text(entry.request.name).font(.subheadline.weight(.medium)); Spacer(); if let status = entry.status { StatusBadge(status: status, showsLabel: false) } else { Text("Error").font(.system(.caption, design: .monospaced)).foregroundStyle(Palette.error) } }
+                    Text(entry.request.url).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1)
+                    Text(entry.date, style: .relative).font(.caption2).foregroundStyle(.secondary)
+                    if let error = entry.error { Text(error).font(.caption).foregroundStyle(Palette.error).lineLimit(2) }
+                }.padding(.vertical, 6)
+            }.buttonStyle(.plain)
+        }.listStyle(.plain).scrollContentBackground(.hidden)
+    }
+    #endif
+}
+
+private extension HistoryEntry {
+    /// Failed requests sort after every status code.
+    var sortStatus: Int { status ?? 1000 }
 }
