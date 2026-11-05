@@ -50,7 +50,7 @@ extension WorkspaceStore {
         let plan = runPlan(collectionID: collectionID, folderID: folderID).filter { configuration.requestIDs.contains($0.id) }
         guard !plan.isEmpty else { issue = String(localized: "Select at least one HTTP or GraphQL request to run."); return }
         let iterations = max(1, min(RunnerData.maximumRows, configuration.iterations))
-        let environmentID = workspace.selectedEnvironmentID
+        let environmentID = selectedEnvironmentID
         let run = CollectionRun(collectionID: collectionID, folderID: folderID,
                                 report: RunnerReport(name: runName(collectionID: collectionID, folderID: folderID), environment: environment?.name, iterations: iterations),
                                 expectedCount: plan.count * iterations)

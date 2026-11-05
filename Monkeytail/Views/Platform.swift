@@ -1,4 +1,9 @@
 import SwiftUI
+#if os(visionOS)
+import MonkeytailSystemCore
+#else
+import MonkeytailCore
+#endif
 #if os(macOS)
 import AppKit
 #else
@@ -20,11 +25,35 @@ enum SidebarMetrics {
     static let rowHeight: CGFloat = 28
     static let horizontalInset: CGFloat = 16
     static let requestRowHeight: CGFloat = 28
+    static let treeRowHeight: CGFloat = 26
+    static let treeInset: CGFloat = 0
+    static let indent: CGFloat = 12
+    static let methodWidth: CGFloat = 30
+    static let methodSize: CGFloat = 10
+    static let actionWidth: CGFloat = 22
+    /// One size for every tree row, as in Postman.
+    static var nameFont: Font { .app(size: 13) }
     #else
     static let rowHeight: CGFloat = 44
     static let horizontalInset: CGFloat = 16
     static let requestRowHeight: CGFloat = 44
+    static let treeRowHeight: CGFloat = 40
+    static let treeInset: CGFloat = 4
+    static let indent: CGFloat = 14
+    static let methodWidth: CGFloat = 36
+    static let methodSize: CGFloat = 11
+    static let actionWidth: CGFloat = 36
+    static var nameFont: Font { .subheadline }
     #endif
+    /// Postman's short method labels, so names line up.
+    static func methodLabel(_ request: APIRequest) -> String {
+        switch request.transport {
+        case .websocket: return "WS"
+        case .sse: return "SSE"
+        case .graphql: return "GQL"
+        default: return ["DELETE": "DEL", "OPTIONS": "OPT"][request.method] ?? request.method
+        }
+    }
 }
 
 extension View {

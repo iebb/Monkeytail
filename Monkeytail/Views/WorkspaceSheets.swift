@@ -62,9 +62,9 @@ struct TransferView: View {
                             Text("Browser profiles restore in Monkeytail. Postman and Insomnia don’t apply them.").font(.caption).foregroundStyle(.secondary)
                         }
                         Button {
-                            do { document = CollectionDocument(data: try CollectionCodec.encode(store.workspace, format: format)); exporting = true }
+                            do { document = CollectionDocument(data: try CollectionCodec.encode(store.activeWorkspaceDocument, format: format)); exporting = true }
                             catch { self.error = error.localizedDescription }
-                        } label: { Label("Export workspace", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity).padding(.vertical, 5) }.buttonStyle(.borderedProminent)
+                        } label: { Label("Export \(store.name(of: store.activeWorkspace))", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity).padding(.vertical, 5) }.buttonStyle(.borderedProminent)
                     }
                     if let error { Label(error, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red) }
                 }.padding(12)
@@ -142,11 +142,12 @@ struct EnvironmentView: View {
                     HStack {
                         Picker("Environment", selection: $editingID) {
                             Text("Choose environment").tag(UUID?.none)
-                            ForEach(store.workspace.environments) { Text($0.name).tag(Optional($0.id)) }
+                            ForEach(store.environments) { Text($0.name).tag(Optional($0.id)) }
                         }
                         Spacer()
                         Button {
-                            let environment = APIEnvironment(name: "New environment", variables: [Field("base_url", "https://api.example.com")])
+                            var environment = APIEnvironment(name: String(localized: "New environment"), variables: [Field("base_url", "https://api.example.com")])
+                            environment.workspaceID = store.activeWorkspace.id == Workspace.defaultWorkspaceID ? nil : store.activeWorkspace.id
                             store.workspace.environments.append(environment); editingID = environment.id
                         } label: { Label("New", systemImage: "plus") }
                     }
@@ -155,24 +156,24 @@ struct EnvironmentView: View {
                         FieldEditor(fields: $store.workspace.environments[index].variables, name: "Variable")
                         Text("Use {{name}} in requests.").font(.caption).foregroundStyle(.secondary)
                         Button {
-                            store.workspace.selectedEnvironmentID = editingID
-                        } label: { Label(store.workspace.selectedEnvironmentID == editingID ? "Active environment" : "Use this environment", systemImage: store.workspace.selectedEnvironmentID == editingID ? "checkmark.circle.fill" : "circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
-                            .disabled(store.workspace.selectedEnvironmentID == editingID)
+                            store.selectedEnvironmentID = editingID
+                        } label: { Label(store.selectedEnvironmentID == editingID ? "Active environment" : "Use this environment", systemImage: store.selectedEnvironmentID == editingID ? "checkmark.circle.fill" : "circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+                            .disabled(store.selectedEnvironmentID == editingID)
                         Button("Delete environment", role: .destructive) {
-                            if store.workspace.selectedEnvironmentID == editingID { store.workspace.selectedEnvironmentID = nil }
-                            store.workspace.environments.removeAll { $0.id == editingID }; editingID = store.workspace.environments.first?.id
+                            if store.selectedEnvironmentID == editingID { store.selectedEnvironmentID = nil }
+                            store.workspace.environments.removeAll { $0.id == editingID }; editingID = store.environments.first?.id
                         }.font(.footnote).padding(.top, 16)
                     }
                     Divider().padding(.vertical, 8)
                     Text("Globals").font(.headline)
                     Text("Available in every environment. Collection, environment, and request variables with the same name take precedence. Scripts can change them with pm.globals.set.")
                         .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    FieldEditor(fields: Binding(get: { store.workspace.globals ?? [] }, set: { store.workspace.globals = $0 }), name: "Global")
+                    FieldEditor(fields: Binding(get: { store.globals }, set: { store.globals = $0 }), name: "Global")
                     Text("Exports include values.").font(.caption).foregroundStyle(.secondary)
                 }.padding(12)
             }.background(Palette.canvas).sheetTitle("Environments")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-                .onAppear { editingID = store.workspace.selectedEnvironmentID ?? store.workspace.environments.first?.id }
+                .onAppear { editingID = store.selectedEnvironmentID ?? store.environments.first?.id }
         }.macSheetFrame()
     }
 }

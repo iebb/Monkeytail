@@ -8,8 +8,11 @@ import MonkeytailCore
 
 @MainActor @Observable
 final class WorkspaceStore {
-    var workspace: Workspace { didSet { pruneTabs(); workspaceChanged(); scheduleSave() } }
-    var selectedRequestID: UUID? { didSet { if let id = selectedRequestID { openTab(id) }; saveTabs() } }
+    var workspace: Workspace { didSet { pruneTabs(); keepActiveWorkspace(); workspaceChanged(); scheduleSave() } }
+    var selectedRequestID: UUID? { didSet { if let id = selectedRequestID { openTab(id); follow(id) }; saveTabs() } }
+    /// The workspace shown in the sidebar on this device. Collections, environments and globals are scoped to it.
+    private(set) var activeWorkspaceID = Workspace.defaultWorkspaceID { didSet { if persistsActiveWorkspace { UserDefaults.standard.set(activeWorkspaceID.uuidString, forKey: "activeWorkspaceID") } } }
+    private var persistsActiveWorkspace = false
     /// Open request tabs, in order; restored on the next launch.
     private(set) var openRequestIDs: [UUID] = [] { didSet { saveTabs() } }
     static let maximumTabs = 20
@@ -101,6 +104,10 @@ final class WorkspaceStore {
             }
         }
         if testing, let url = ProcessInfo.processInfo.environment["MONKEYTAIL_TEST_URL"] { workspace.collections[0].requests[0].url = url }
+        if directory == nil, !testing {
+            activeWorkspaceID = workspace.workspaceID(UserDefaults.standard.string(forKey: "activeWorkspaceID").flatMap(UUID.init(uuidString:)))
+            persistsActiveWorkspace = true
+        }
         selectedRequestID = workspace.collections.first?.requests.first?.id
         if !testing { restoreTabs() }
         if !testing {
@@ -117,7 +124,75 @@ final class WorkspaceStore {
     }
 
     var selectedRequest: APIRequest? { request(selectedRequestID) }
-    var environment: APIEnvironment? { workspace.environments.first { $0.id == workspace.selectedEnvironmentID } }
+    var environment: APIEnvironment? { workspace.environments.first { $0.id == selectedEnvironmentID } }
+    var collections: [RequestCollection] { workspace.collections(in: activeWorkspaceID) }
+    var environments: [APIEnvironment] { workspace.environments(in: activeWorkspaceID) }
+    var globals: [Field] {
+        get { workspace.globals(in: activeWorkspaceID) }
+        set { workspace.setGlobals(newValue, in: activeWorkspaceID) }
+    }
+    var selectedEnvironmentID: UUID? {
+        get { workspace.selectedEnvironmentID(in: activeWorkspaceID) }
+        set { workspace.selectEnvironment(newValue, in: activeWorkspaceID) }
+    }
+    var activeWorkspace: WorkspaceInfo { workspace.workspaceList.first { $0.id == activeWorkspaceID } ?? workspace.workspaceList[0] }
+    func name(of space: WorkspaceInfo) -> String { space.name.isEmpty ? String(localized: "My workspace") : space.name }
+    /// The value stored on collections and environments: nil for the default workspace.
+    private var activeWorkspaceTag: UUID? { activeWorkspaceID == Workspace.defaultWorkspaceID ? nil : activeWorkspaceID }
+
+    func switchWorkspace(to id: UUID) {
+        let id = workspace.workspaceID(id)
+        guard id != activeWorkspaceID else { return }
+        activeWorkspaceID = id
+        let ids = Set(collections.flatMap(\.requests).map(\.id))
+        if let selected = selectedRequestID, ids.contains(selected) { return }
+        selectedRequestID = openRequestIDs.last(where: ids.contains) ?? collections.first?.requests.first?.id
+    }
+    func addWorkspace(named name: String) {
+        let space = WorkspaceInfo(name: name)
+        workspace.workspaces = (workspace.workspaces ?? []) + [space]
+        switchWorkspace(to: space.id)
+    }
+    func renameWorkspace(_ id: UUID, to name: String) {
+        if let index = workspace.workspaces?.firstIndex(where: { $0.id == id }) { workspace.workspaces![index].name = name }
+        else if id == Workspace.defaultWorkspaceID { workspace.workspaces = [WorkspaceInfo(id: id, name: name)] + (workspace.workspaces ?? []) }
+    }
+    /// Deletes a workspace with its collections and environments. The default workspace stays.
+    func deleteWorkspace(_ id: UUID) {
+        guard id != Workspace.defaultWorkspaceID else { return }
+        if id == activeWorkspaceID { switchWorkspace(to: Workspace.defaultWorkspaceID) }
+        workspace.removeWorkspace(id)
+    }
+    func moveCollection(_ id: UUID, to space: UUID) {
+        guard let index = workspace.collections.firstIndex(where: { $0.id == id }) else { return }
+        workspace.collections[index].workspaceID = space == Workspace.defaultWorkspaceID ? nil : space
+        if space != activeWorkspaceID { keepSelectionInWorkspace() }
+    }
+    /// The active workspace as a standalone document, for export.
+    var activeWorkspaceDocument: Workspace {
+        var document = Workspace(collections: collections.map { var c = $0; c.workspaceID = nil; return c }, environments: environments.map { var e = $0; e.workspaceID = nil; return e })
+        document.globals = globals.isEmpty ? nil : globals
+        document.selectedEnvironmentID = selectedEnvironmentID
+        document.proxy = workspace.proxy
+        return document
+    }
+    /// Opening a request from another workspace (history, search, tabs) switches to it.
+    private func follow(_ id: UUID) {
+        guard request(id) != nil else { return }
+        let owner = workspace.workspaceID(ofRequest: id)
+        if owner != activeWorkspaceID { activeWorkspaceID = owner }
+    }
+    /// A sync or delete can remove the active workspace; fall back to the default.
+    private func keepActiveWorkspace() {
+        let id = workspace.workspaceID(activeWorkspaceID)
+        if id != activeWorkspaceID { activeWorkspaceID = id; keepSelectionInWorkspace() }
+    }
+    /// Keeps the selection inside the active workspace after a move, delete or switch.
+    func keepSelectionInWorkspace() {
+        let ids = Set(collections.flatMap(\.requests).map(\.id))
+        if let selected = selectedRequestID, ids.contains(selected) { return }
+        selectedRequestID = openRequestIDs.last(where: ids.contains) ?? collections.first?.requests.first?.id
+    }
     var variables: [String: String] { environment?.values ?? [:] }
     var requestCount: Int { workspace.collections.reduce(0) { $0 + $1.requests.count } }
 
@@ -139,8 +214,8 @@ final class WorkspaceStore {
         Binding(get: { self.request(id) ?? APIRequest() }, set: { self.update($0) })
     }
     func addRequest(to collectionID: UUID? = nil) {
-        if workspace.collections.isEmpty { workspace.collections.append(RequestCollection(name: String(localized: "My collection"))) }
-        let index = workspace.collections.firstIndex { $0.id == collectionID } ?? 0
+        if collections.isEmpty { var collection = RequestCollection(name: String(localized: "My collection")); collection.workspaceID = activeWorkspaceTag; workspace.collections.append(collection) }
+        guard let index = workspace.collections.firstIndex(where: { $0.id == collectionID }) ?? workspace.collections.firstIndex(where: { $0.id == collections.first?.id }) else { return }
         let request = APIRequest()
         workspace.collections[index].requests.append(request); selectedRequestID = request.id
     }
@@ -184,7 +259,7 @@ final class WorkspaceStore {
     func delete(_ id: UUID) {
         for index in workspace.collections.indices { workspace.collections[index].requests.removeAll { $0.id == id } }
         responses[id] = nil; errors[id] = nil
-        if selectedRequestID == id { selectedRequestID = workspace.collections.first?.requests.first?.id }
+        if selectedRequestID == id { selectedRequestID = collections.first?.requests.first?.id }
     }
     func restore(_ entry: HistoryEntry) {
         var request = entry.request
@@ -196,7 +271,8 @@ final class WorkspaceStore {
             } }
         }
         guard workspaceAttachmentBytes + attachmentBytes(request) <= 40 * 1024 * 1024 else { issue = String(localized: "Workspace attachments exceed 40 MB."); return }
-        let destination = workspace.collections.firstIndex { $0.requests.contains { $0.id == request.id } } ?? 0
+        if collections.isEmpty { var collection = RequestCollection(name: String(localized: "History")); collection.workspaceID = activeWorkspaceTag; workspace.collections.append(collection) }
+        let destination = workspace.collections.firstIndex { $0.requests.contains { $0.id == request.id } } ?? workspace.collections.firstIndex { $0.id == collections.first?.id } ?? 0
         if !workspace.collections.indices.contains(destination) || !(workspace.collections[destination].folders ?? []).contains(where: { $0.id == request.folderID }) { request.folderID = nil }
         request.id = UUID(); request.name += String(localized: " · replay")
         if workspace.collections.isEmpty { workspace.collections.append(RequestCollection(name: String(localized: "History"))) }
@@ -207,7 +283,7 @@ final class WorkspaceStore {
         let command = text.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
         if CurlCodec.isCommand(command) {
             let result = try CurlCodec.decode(text)
-            let collection = RequestCollection(name: String(localized: "Imported cURL"), requests: [result.request])
+            var collection = RequestCollection(name: String(localized: "Imported cURL"), requests: [result.request]); collection.workspaceID = activeWorkspaceTag
             workspace.collections.append(collection); selectedRequestID = result.request.id
             if let proxy = result.proxy { workspace.proxy = proxy }
             notice = ([String(localized: "Imported 1 request.")] + result.warnings).joined(separator: "\n\n")
@@ -229,7 +305,7 @@ final class WorkspaceStore {
         let originalSelected = incoming.selectedEnvironmentID
         var importedSelection: UUID?
         for c in incoming.collections.indices {
-            incoming.collections[c].id = UUID()
+            incoming.collections[c].id = UUID(); incoming.collections[c].workspaceID = activeWorkspaceTag
             let folderIDs = Dictionary((incoming.collections[c].folders ?? []).map { ($0.id, UUID()) }, uniquingKeysWith: { first, _ in first })
             incoming.collections[c].folders = incoming.collections[c].folders.map { $0.map { folder in
                 var folder = folder; folder.id = folderIDs[folder.id]!; folder.parentID = folder.parentID.flatMap { folderIDs[$0] }; return folder
@@ -241,16 +317,16 @@ final class WorkspaceStore {
         }
         for e in incoming.environments.indices {
             let old = incoming.environments[e].id
-            incoming.environments[e].id = UUID()
+            incoming.environments[e].id = UUID(); incoming.environments[e].workspaceID = activeWorkspaceTag
             if old == originalSelected { importedSelection = incoming.environments[e].id }
         }
         workspace.collections += incoming.collections
         workspace.environments += incoming.environments
         if let globals = incoming.globals, !globals.isEmpty {
-            workspace.globals = (workspace.globals ?? []).filter { field in !globals.contains { $0.name == field.name } } + globals
+            self.globals = self.globals.filter { field in !globals.contains { $0.name == field.name } } + globals
         }
         if result.includesSettings { workspace.proxy = incoming.proxy }
-        if let selected = importedSelection ?? incoming.environments.first?.id { workspace.selectedEnvironmentID = selected }
+        if let selected = importedSelection ?? incoming.environments.first?.id { selectedEnvironmentID = selected }
         selectedRequestID = incoming.collections.first?.requests.first?.id ?? selectedRequestID
         let count = incoming.collections.reduce(0) { $0 + $1.requests.count }
         let globalCount = incoming.globals?.count ?? 0, environments = incoming.environments.count
@@ -261,7 +337,7 @@ final class WorkspaceStore {
     func send() {
         guard let saved = selectedRequest, runningID == nil, collectionRun?.running != true, saved.transport != .websocket, saved.transport != .sse else { return }
         runningID = saved.id; errors[saved.id] = nil; untrustedCertificates[saved.id] = nil
-        let environmentID = workspace.selectedEnvironmentID
+        let environmentID = selectedEnvironmentID
         let proxy = workspace.proxy
         sendTask = Task {
             defer { runningID = nil; sendTask = nil }
@@ -328,7 +404,7 @@ final class WorkspaceStore {
             persistAuth(request.auth, for: saved)
         }
         if request.scriptsEnabled && !request.preScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            context.globals = workspace.globalValues; context.collectionVariables = collectionValues(of: saved.id)
+            context.globals = workspace.globalValues(in: workspace.workspaceID(ofRequest: saved.id)); context.collectionVariables = collectionValues(of: saved.id)
             if request.cookieJarEnabled == true, network.issue == nil, let url = (try? RequestBuilder.resolve(request.url, variables: variables)).flatMap(URL.init(string:)) { context.cookies = network.jar(environmentID).cookies(for: url) }
             let result = try await ScriptRunner().run(request.preScript, request: request, variables: variables, context: context)
             request.method = result.request.method; request.url = result.request.url
@@ -338,7 +414,7 @@ final class WorkspaceStore {
             variables = result.variables; logs += result.logs.map { ScriptLog($0.level, $0.message) }
             execution.directive = result.directive
             applyScriptVariables(variables, original: initialVariables, to: environmentID)
-            let changedGlobals = applyGlobals(result.globals, original: context.globals).union(applyCollectionVariables(result.collectionVariables, original: context.collectionVariables, request: saved.id))
+            let changedGlobals = applyGlobals(result.globals, original: context.globals, request: saved.id).union(applyCollectionVariables(result.collectionVariables, original: context.collectionVariables, request: saved.id))
             if !changedGlobals.isEmpty {
                 // Global and collection edits apply to this send unless a higher scope defines the same name.
                 let refreshed = try effective(saved, scope: scope).variables
@@ -380,7 +456,7 @@ final class WorkspaceStore {
         logs += assertionResults.map { ScriptLog($0.passed ? "pass" : "fail", $0.name + ": " + $0.message) }
         if request.scriptsEnabled && !request.postScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             do {
-                context.globals = workspace.globalValues; context.collectionVariables = collectionValues(of: saved.id)
+                context.globals = workspace.globalValues(in: workspace.workspaceID(ofRequest: saved.id)); context.collectionVariables = collectionValues(of: saved.id)
                 if let url = built.url {
                     var visible = CookieJar()
                     if cookiesEnabled { visible.cookies = response.sessionCookies ?? jar?.cookies ?? [] } else { visible.capture(headers: response.headers, url: url) }
@@ -389,7 +465,7 @@ final class WorkspaceStore {
                 let result = try await ScriptRunner().run(request.postScript, request: request, response: response, variables: variables, context: context)
                 logs += result.logs.map { ScriptLog($0.level, $0.message) }
                 applyScriptVariables(result.variables, original: variables, to: environmentID)
-                applyGlobals(result.globals, original: context.globals)
+                applyGlobals(result.globals, original: context.globals, request: saved.id)
                 applyCollectionVariables(result.collectionVariables, original: context.collectionVariables, request: saved.id)
                 variables = result.variables.merging(result.locals ?? [:]) { _, local in local }
                 execution.directive = result.directive ?? execution.directive
@@ -406,19 +482,20 @@ final class WorkspaceStore {
     }
     func effective(_ request: APIRequest, scope: [String: String] = [:]) throws -> ResolvedRequest {
         try RequestInheritance.resolve(request, collection: workspace.collections.first { $0.requests.contains { $0.id == request.id } },
-                                       environment: variables.merging(scope) { _, overlay in overlay }, globals: workspace.globalValues)
+                                       environment: variables.merging(scope) { _, overlay in overlay }, globals: workspace.globalValues(in: workspace.workspaceID(ofRequest: request.id)))
     }
     /// Values that `{{variables}}` resolve to for this request, and which names are sensitive.
     func variableHints(for request: APIRequest) -> VariableHintContext {
         let collection = workspace.collections.first { $0.requests.contains { $0.id == request.id } }
-        let fields = (workspace.globals ?? []) + (environment?.variables ?? []) + (collection?.defaults?.variables ?? []) + (collection?.folders ?? []).flatMap(\.defaults.variables) + (request.variables ?? [])
+        let fields = workspace.globals(in: workspace.workspaceID(ofRequest: request.id)) + (environment?.variables ?? []) + (collection?.defaults?.variables ?? []) + (collection?.folders ?? []).flatMap(\.defaults.variables) + (request.variables ?? [])
         return VariableHintContext(values: (try? effective(request).variables) ?? variables, secrets: Set(fields.filter(\.isSecret).map(\.name)))
     }
     /// Applies script edits to globals and returns the changed names.
-    @discardableResult private func applyGlobals(_ values: [String: String]?, original: [String: String]) -> Set<String> {
-        var fields = workspace.globals ?? []
+    @discardableResult private func applyGlobals(_ values: [String: String]?, original: [String: String], request requestID: UUID) -> Set<String> {
+        let space = workspace.workspaceID(ofRequest: requestID)
+        var fields = workspace.globals(in: space)
         let changed = Self.apply(values, original: original, to: &fields)
-        if !changed.isEmpty { workspace.globals = fields }
+        if !changed.isEmpty { workspace.setGlobals(fields, in: space) }
         return changed
     }
     private func collectionValues(of requestID: UUID) -> [String: String] {

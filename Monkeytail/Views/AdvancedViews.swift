@@ -150,7 +150,7 @@ struct GraphQLEditor: View {
                 var resolved = try store.effective(original); resolved.request.method = "POST"; resolved.request.transport = .graphql; resolved.request.bodyKind = .none; resolved.request.requestSchema = nil
                 var graph = GraphQLRequest(); graph.query = GraphQLSchema.introspection; resolved.request.graphql = graph
                 var built = try RequestBuilder.build(resolved.request, variables: resolved.variables)
-                if resolved.request.cookieJarEnabled == true, let url = built.url { let value = store.network.jar(store.workspace.selectedEnvironmentID).header(for: url); if !value.isEmpty { built.setValue(value, forHTTPHeaderField: "Cookie") } }
+                if resolved.request.cookieJarEnabled == true, let url = built.url { let value = store.network.jar(store.selectedEnvironmentID).header(for: url); if !value.isEmpty { built.setValue(value, forHTTPHeaderField: "Cookie") } }
                 let response = try await HTTPClient(followRedirects: resolved.request.followRedirects).send(built, proxy: store.workspace.proxy, impersonation: resolved.request.impersonation, tls: store.network.identity(for: built.url))
                 guard (200...299).contains(response.status) else { throw ClientError(String(localized: "Schema request returned HTTP \(response.status).")) }
                 fields = try await Task.detached { try GraphQLSchema.fields(response.body) }.value
@@ -211,7 +211,7 @@ struct GraphQLEditor: View {
             let raw = try RequestBuilder.resolve(resolved.request.url, variables: resolved.variables).replacingOccurrences(of: "wss://", with: "https://").replacingOccurrences(of: "ws://", with: "http://")
             let url = URL(string: raw), enabled = resolved.request.cookieJarEnabled == true
             if enabled, let issue = store.network.issue { throw ClientError(issue) }
-            live.connect(resolved.request, variables: resolved.variables, proxy: store.workspace.proxy, tls: try store.network.identity(for: url), cookies: enabled ? store.network.jar(store.workspace.selectedEnvironmentID) : nil, trusted: store.network.trustedCertificates)
+            live.connect(resolved.request, variables: resolved.variables, proxy: store.workspace.proxy, tls: try store.network.identity(for: url), cookies: enabled ? store.network.jar(store.selectedEnvironmentID) : nil, trusted: store.network.trustedCertificates)
         } catch { live.error = error.localizedDescription }
     }
 }

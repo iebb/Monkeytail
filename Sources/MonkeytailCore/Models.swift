@@ -77,6 +77,8 @@ public struct RequestCollection: Codable, Identifiable, Equatable, Sendable {
     public var requests: [APIRequest]
     public var folders: [RequestFolder]?
     public var defaults: RequestDefaults?
+    /// The workspace this collection belongs to; nil is the default workspace.
+    public var workspaceID: UUID?
     public init(name: String, requests: [APIRequest] = []) { self.name = name; self.requests = requests }
 }
 
@@ -84,6 +86,8 @@ public struct APIEnvironment: Codable, Identifiable, Equatable, Sendable {
     public var id = UUID()
     public var name: String
     public var variables: [Field]
+    /// The workspace this environment belongs to; nil is the default workspace.
+    public var workspaceID: UUID?
     public init(name: String, variables: [Field] = []) { self.name = name; self.variables = variables }
     public var values: [String: String] {
         variables.filter { $0.enabled && !$0.name.isEmpty }.reduce(into: [:]) { $0[$1.name] = $1.value }
@@ -144,6 +148,10 @@ public struct Workspace: Codable, Equatable, Sendable {
     /// Postman-style globals: available in every environment at the lowest precedence.
     public var globals: [Field]?
     public var proxy = ProxySettings()
+    /// Workspaces besides the default one, and the default's name once renamed. Collections and environments refer to them by ID.
+    public var workspaces: [WorkspaceInfo]?
+    /// This device's environment choice for each workspace other than the default, keyed by workspace ID.
+    public var selectedEnvironmentIDs: [String: UUID]?
     public init(collections: [RequestCollection] = [], environments: [APIEnvironment] = []) {
         self.collections = collections; self.environments = environments
     }
@@ -161,6 +169,60 @@ public struct Workspace: Codable, Equatable, Sendable {
         var workspace = Workspace(collections: [RequestCollection(name: "Getting started", requests: [echo, create, health])], environments: [environment])
         workspace.selectedEnvironmentID = environment.id
         return workspace
+    }
+}
+
+/// A Postman-style workspace: its own collections, environments and globals.
+public struct WorkspaceInfo: Codable, Identifiable, Equatable, Sendable {
+    public var id = UUID()
+    public var name: String
+    /// Globals for this workspace. The default workspace keeps its globals in `Workspace.globals`.
+    public var globals: [Field]?
+    public init(id: UUID = UUID(), name: String, globals: [Field]? = nil) { self.id = id; self.name = name; self.globals = globals }
+}
+
+extension Workspace {
+    /// Holds everything saved before workspaces existed. Its name is empty until renamed.
+    public static let defaultWorkspaceID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    /// Every workspace, default first.
+    public var workspaceList: [WorkspaceInfo] {
+        let stored = workspaces ?? []
+        return [stored.first { $0.id == Self.defaultWorkspaceID } ?? WorkspaceInfo(id: Self.defaultWorkspaceID, name: "")] + stored.filter { $0.id != Self.defaultWorkspaceID }
+    }
+    /// The owning workspace; items whose workspace no longer exists fall back to the default.
+    public func workspaceID(_ id: UUID?) -> UUID {
+        guard let id, id != Self.defaultWorkspaceID, workspaces?.contains(where: { $0.id == id }) == true else { return Self.defaultWorkspaceID }
+        return id
+    }
+    public func workspaceID(ofRequest id: UUID?) -> UUID { workspaceID(collections.first { $0.requests.contains { $0.id == id } }?.workspaceID) }
+    public func collections(in workspace: UUID) -> [RequestCollection] { collections.filter { workspaceID($0.workspaceID) == workspace } }
+    public func environments(in workspace: UUID) -> [APIEnvironment] { environments.filter { workspaceID($0.workspaceID) == workspace } }
+    public func globals(in workspace: UUID) -> [Field] {
+        workspace == Self.defaultWorkspaceID ? globals ?? [] : workspaces?.first { $0.id == workspace }?.globals ?? []
+    }
+    public func globalValues(in workspace: UUID) -> [String: String] {
+        globals(in: workspace).filter { $0.enabled && !$0.name.isEmpty }.reduce(into: [:]) { $0[$1.name] = $1.value }
+    }
+    public mutating func setGlobals(_ fields: [Field], in workspace: UUID) {
+        if workspace == Self.defaultWorkspaceID { globals = fields.isEmpty && globals == nil ? nil : fields }
+        else if let index = workspaces?.firstIndex(where: { $0.id == workspace }) { workspaces![index].globals = fields.isEmpty ? nil : fields }
+    }
+    public func selectedEnvironmentID(in workspace: UUID) -> UUID? {
+        let id = workspace == Self.defaultWorkspaceID ? selectedEnvironmentID : selectedEnvironmentIDs?[workspace.uuidString]
+        return environments(in: workspace).contains { $0.id == id } ? id : nil
+    }
+    public mutating func selectEnvironment(_ id: UUID?, in workspace: UUID) {
+        if workspace == Self.defaultWorkspaceID { selectedEnvironmentID = id }
+        else { var map = selectedEnvironmentIDs ?? [:]; map[workspace.uuidString] = id; selectedEnvironmentIDs = map }
+    }
+    /// Removes a workspace with its collections and environments. The default workspace can only be emptied.
+    public mutating func removeWorkspace(_ id: UUID) {
+        guard id != Self.defaultWorkspaceID else { return }
+        let owner = self
+        collections.removeAll { owner.workspaceID($0.workspaceID) == id }
+        environments.removeAll { owner.workspaceID($0.workspaceID) == id }
+        workspaces?.removeAll { $0.id == id }
+        selectedEnvironmentIDs?[id.uuidString] = nil
     }
 }
 

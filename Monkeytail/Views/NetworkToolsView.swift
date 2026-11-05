@@ -21,10 +21,10 @@ struct NetworkToolsView: View {
         NavigationStack {
             Form {
                 Section("Cookies · \(store.environment?.name ?? String(localized: "Default"))") {
-                    ForEach(store.network.jar(store.workspace.selectedEnvironmentID).cookies) { item in
+                    ForEach(store.network.jar(store.selectedEnvironmentID).cookies) { item in
                         VStack(alignment: .leading, spacing: 5) {
                             Text(item.name + " · " + item.domain + item.path).font(.system(.caption, design: .monospaced))
-                            SecureField("Value", text: Binding(get: { store.network.jar(store.workspace.selectedEnvironmentID).cookies.first { $0.id == item.id }?.value ?? "" }, set: { value in mutateJar { if let index = $0.cookies.firstIndex(where: { $0.id == item.id }) { $0.cookies[index].value = value } } }))
+                            SecureField("Value", text: Binding(get: { store.network.jar(store.selectedEnvironmentID).cookies.first { $0.id == item.id }?.value ?? "" }, set: { value in mutateJar { if let index = $0.cookies.firstIndex(where: { $0.id == item.id }) { $0.cookies[index].value = value } } }))
                             HStack { if item.secure { Text(verbatim: "Secure") }; if item.httpOnly { Text(verbatim: "HttpOnly") }; if let expires = item.expires { Text(expires, format: .dateTime) }; Spacer(); Button("Edit") { cookie = item; originalCookieID = item.id; addingCookie = true }; Button("Remove", role: .destructive) { mutateJar { $0.cookies.removeAll { $0.id == item.id } } } }.font(.caption)
                         }
                     }
@@ -39,15 +39,15 @@ struct NetworkToolsView: View {
                         Button("Save cookie") {
                             do {
                                 let valid = try cookie.validated()
-                                var jar = store.network.jar(store.workspace.selectedEnvironmentID)
+                                var jar = store.network.jar(store.selectedEnvironmentID)
                                 jar.cookies.removeAll { $0.id == originalCookieID || $0.id == valid.id }; jar.cookies.append(valid)
-                                try store.network.setJar(jar, environment: store.workspace.selectedEnvironmentID)
+                                try store.network.setJar(jar, environment: store.selectedEnvironmentID)
                                 addingCookie = false; error = nil
                             } catch { self.error = error.localizedDescription }
                         }
                         Button("Cancel") { addingCookie = false }
                     }
-                    Button("Clear cookies", role: .destructive) { mutateJar { $0.cookies = [] } }.disabled(store.network.jar(store.workspace.selectedEnvironmentID).cookies.isEmpty)
+                    Button("Clear cookies", role: .destructive) { mutateJar { $0.cookies = [] } }.disabled(store.network.jar(store.selectedEnvironmentID).cookies.isEmpty)
                 }
                 Section("Client certificates · System TLS") {
                     ForEach(store.network.identities) { item in
@@ -97,7 +97,7 @@ struct NetworkToolsView: View {
         }.frame(idealWidth: 650, idealHeight: 650).macSheetFrame(minWidth: 560, minHeight: 480)
     }
     private func mutateJar(_ body: (inout CookieJar) -> Void) {
-        var jar = store.network.jar(store.workspace.selectedEnvironmentID); body(&jar)
-        do { try store.network.setJar(jar, environment: store.workspace.selectedEnvironmentID) } catch { self.error = error.localizedDescription }
+        var jar = store.network.jar(store.selectedEnvironmentID); body(&jar)
+        do { try store.network.setJar(jar, environment: store.selectedEnvironmentID) } catch { self.error = error.localizedDescription }
     }
 }

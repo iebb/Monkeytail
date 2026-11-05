@@ -70,6 +70,7 @@ public enum SecretPolicy {
         }
         for e in copy.environments.indices { copy.environments[e].variables = clean(copy.environments[e].variables, scope: "environment.\(copy.environments[e].id)") }
         copy.globals = copy.globals.map { clean($0, scope: "globals") }
+        copy.workspaces = copy.workspaces.map { $0.map { space in var space = space; space.globals = space.globals.map { clean($0, scope: "workspace.\(space.id).globals") }; return space } }
         if credentials {
         secrets["proxy.password"] = copy.proxy.password; secrets["proxy.username"] = copy.proxy.username; copy.proxy.password = ""; copy.proxy.username = ""
         }
@@ -133,6 +134,7 @@ public enum SecretPolicy {
         }
         for e in copy.environments.indices { copy.environments[e].variables = restoreFields(copy.environments[e].variables, scope: "environment.\(copy.environments[e].id)") }
         copy.globals = copy.globals.map { restoreFields($0, scope: "globals") }
+        copy.workspaces = copy.workspaces.map { $0.map { space in var space = space; space.globals = space.globals.map { restoreFields($0, scope: "workspace.\(space.id).globals") }; return space } }
         copy.proxy.password = secrets["proxy.password"] ?? copy.proxy.password
         copy.proxy.username = secrets["proxy.username"] ?? copy.proxy.username
         return copy
@@ -193,7 +195,8 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
     public var device = UUID()
     public var records: [Record] = []
     public init() {}
-    private struct Collection: Codable { var id: UUID; var name: String; var requests: [UUID]; var position: Int; var folders: [RequestFolder]?; var defaults: RequestDefaults? }
+    private struct Collection: Codable { var id: UUID; var name: String; var requests: [UUID]; var position: Int; var folders: [RequestFolder]?; var defaults: RequestDefaults?; var workspaceID: UUID? }
+    private struct Space: Codable { var workspace: WorkspaceInfo; var position: Int }
     private struct Request: Codable { var collection: UUID; var request: APIRequest; var position: Int }
     private struct Environment: Codable { var environment: APIEnvironment; var position: Int }
 
@@ -203,11 +206,12 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         var current: [String: Data] = [:]
         for (index, collection) in workspace.collections.enumerated() {
-            current["collection.\(collection.id)"] = try encoder.encode(Collection(id: collection.id, name: collection.name, requests: collection.requests.map(\.id), position: index, folders: collection.folders, defaults: collection.defaults))
+            current["collection.\(collection.id)"] = try encoder.encode(Collection(id: collection.id, name: collection.name, requests: collection.requests.map(\.id), position: index, folders: collection.folders, defaults: collection.defaults, workspaceID: collection.workspaceID))
             for (position, request) in collection.requests.enumerated() { current["request.\(request.id)"] = try encoder.encode(Request(collection: collection.id, request: request, position: position)) }
         }
         for (position, environment) in workspace.environments.enumerated() { current["environment.\(environment.id)"] = try encoder.encode(Environment(environment: environment, position: position)) }
         if let globals = workspace.globals { current["globals"] = try encoder.encode(globals) }
+        for (position, space) in (workspace.workspaces ?? []).enumerated() { current["workspace.\(space.id)"] = try encoder.encode(Space(workspace: space, position: position)) }
         let previous = Dictionary(records.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first })
         for key in Set(current.keys).union(previous.keys) where current[key] != previous[key]?.payload {
             let date = max(now, (previous[key]?.changed ?? .distantPast).addingTimeInterval(0.001))
@@ -228,26 +232,32 @@ public struct WorkspaceSyncState: Codable, Equatable, Sendable {
     public func workspace(local: Workspace, includeCredentials: Bool = false) throws -> Workspace {
         let decoder = JSONDecoder()
         var collections: [Collection] = [], requests: [Request] = [], environments: [Environment] = []
-        var globals: [Field]?
+        var globals: [Field]?, spaces: [Space] = []
         for record in records {
             guard let data = record.payload else { continue }
             if record.key.hasPrefix("collection.") { collections.append(try decoder.decode(Collection.self, from: data)) }
             if record.key.hasPrefix("request.") { requests.append(try decoder.decode(Request.self, from: data)) }
             if record.key.hasPrefix("environment.") { environments.append(try decoder.decode(Environment.self, from: data)) }
             if record.key == "globals" { globals = try decoder.decode([Field].self, from: data) }
+            if record.key.hasPrefix("workspace.") { spaces.append(try decoder.decode(Space.self, from: data)) }
         }
         collections.sort { $0.position == $1.position ? $0.id.uuidString < $1.id.uuidString : $0.position < $1.position }
         environments.sort { $0.position == $1.position ? $0.environment.id.uuidString < $1.environment.id.uuidString : $0.position < $1.position }
         var result = local
         result.collections = collections.map { item in
             var collection = RequestCollection(name: item.name)
-            collection.id = item.id; collection.folders = item.folders; collection.defaults = item.defaults
+            collection.id = item.id; collection.folders = item.folders; collection.defaults = item.defaults; collection.workspaceID = item.workspaceID
             collection.requests = requests.filter { $0.collection == item.id }.sorted { $0.position == $1.position ? $0.request.id.uuidString < $1.request.id.uuidString : $0.position < $1.position }.map(\.request)
             return collection
         }
         result.environments = environments.map(\.environment)
         result.globals = records.contains { $0.key == "globals" } ? globals : local.globals
-        if !result.environments.contains(where: { $0.id == result.selectedEnvironmentID }) { result.selectedEnvironmentID = result.environments.first?.id }
+        if records.contains(where: { $0.key.hasPrefix("workspace.") }) {
+            spaces.sort { $0.position == $1.position ? $0.workspace.id.uuidString < $1.workspace.id.uuidString : $0.position < $1.position }
+            result.workspaces = spaces.isEmpty ? nil : spaces.map(\.workspace)
+        }
+        let defaultID = Workspace.defaultWorkspaceID
+        if result.selectedEnvironmentID(in: defaultID) == nil { result.selectedEnvironmentID = result.environments(in: defaultID).first?.id }
         var secrets: [String: String] = [:]
         _ = SecretPolicy.strip(local, secrets: &secrets, files: false, credentials: !includeCredentials)
         return SecretPolicy.restore(result, secrets: secrets, local: local, credentials: !includeCredentials)

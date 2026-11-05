@@ -33,7 +33,7 @@ struct MonkeytailApp: App {
             .defaultSize(width: 1280, height: 800)
             .commands {
                 CommandGroup(replacing: .newItem) {
-                    Button("New request") { store.addRequest(to: UUID(uuidString: UserDefaults.standard.string(forKey: "activeCollectionID") ?? "")) }.keyboardShortcut("n", modifiers: .command)
+                    Button("New request") { store.addRequest(to: store.collections.first { $0.requests.contains { $0.id == store.selectedRequestID } }?.id) }.keyboardShortcut("n", modifiers: .command)
                     Button("Send request") { if store.runningID != nil { store.cancel() } else { store.send() } }.keyboardShortcut(.return, modifiers: .command)
                 }
                 CommandMenu("Workspace") {

@@ -2,6 +2,8 @@
 
 # Monkeytail
 
+**English** · [Español](README.es.md) · [Français](README.fr.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-Hans.md)
+
 **A native request debugger for iPhone, iPad, Mac, and visionOS, with a compact Apple Watch companion.** Import a command, edit your request, and inspect the response. Built in SwiftUI with a compact iPhone editor and an adaptive desktop workspace.
 
 Free. No in-app purchases. No account. No data collected by Kitta Co.
@@ -54,6 +56,8 @@ The starter collection uses httpbin.org. Requests are only sent when you tap **S
 - Light/dark appearances, Dynamic Type, VoiceOver labels, hardware keyboard Send shortcut (⌘↵), and adaptive portrait/landscape layouts.
 
 ## Device layouts
+
+The sidebar works like Postman: a workspace switcher at the top, then every collection in that workspace as a tree of nested folders and requests. Each workspace has its own collections, environments and globals, and existing data lives in **My workspace**. Move requests and folders with **Move to** or by dragging them, and add a folder from **+** or any collection, folder or request menu. The interface is available in English, Spanish, French, Japanese, Korean and Simplified Chinese and follows the device language.
 
 Colours follow the design system by default. **Settings → Theme & fonts** offers six presets (Monkeytail, Navy, Ocean, Ember, Grape, Graphite), a System/Light/Dark appearance, and per-role light and dark colours for the accent, canvas, surface, warning, danger, info, other methods and error. You can also choose separate interface and code fonts from those installed on the device. Themes are stored on the device and apply to every window immediately.
 
@@ -158,6 +162,6 @@ Protocol references: [Apple proxy configuration](https://developer.apple.com/doc
 
 ## License
 
-Copyright © 2026 Kitta Ltd. Released under the [BSD 3-Clause License](LICENSE). The public product, support, and privacy pages are hosted at [docs.kitta.co](https://docs.kitta.co/monkeytail/).
+Released under the [BSD 3-Clause License](LICENSE). The public product, support, and privacy pages are hosted at [docs.kitta.co](https://docs.kitta.co/monkeytail/).
 
 Third-party components keep their own licenses; their notices are included in Settings → Licenses. See [vendor provenance](Vendor/README.md) for the pinned binaries and regeneration procedure.

@@ -13,6 +13,7 @@
 		0762BE1DDBCB88EDF6C3692E /* AdvancedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D7768D6D4D2997FE0F06E48 /* AdvancedViews.swift */; };
 		0872A1984048AAF702B4A558 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = C943681490E40EBA8B13274A /* Platform.swift */; };
 		09B06E3AEDFB97083219802B /* WatchTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 839F101E5E8622429522DB8C /* WatchTransferView.swift */; };
+		0CB8FDF9039F4419D8449210 /* SidebarTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0610D9A5EEC42F067B156CE5 /* SidebarTree.swift */; };
 		0D472E3A10F4CFB1034FBAD3 /* UploadEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249960996981BDF096E52556 /* UploadEditor.swift */; };
 		0DA20CF436DF86A871697E40 /* MonkeytailWatchCore in Frameworks */ = {isa = PBXBuildFile; productRef = 71428C667757EE69738EA1CF /* MonkeytailWatchCore */; };
 		10581EAEE18449219345570F /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = F292057CE60FE52926AEEE6C /* Components.swift */; };
@@ -43,6 +44,8 @@
 		4C1E92712548551603B6991C /* RunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4C43A582F9574E651A8338B /* RunnerView.swift */; };
 		4E35F1AD7527543CB5AA3F95 /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */; };
 		4E456ED815B6BC8EC4A63FA6 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = C943681490E40EBA8B13274A /* Platform.swift */; };
+		4E5A45F1B856A7BF5003B142 /* SidebarTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0610D9A5EEC42F067B156CE5 /* SidebarTree.swift */; };
+		50AAEF37FFE48B33188F43EA /* SidebarTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0610D9A5EEC42F067B156CE5 /* SidebarTree.swift */; };
 		53597B40463A0CB7A729F31F /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = E16BA4A29B7F3F12F7607307 /* Localizable.xcstrings */; };
 		53CD78E20B4076992FD434ED /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60AD8046087F275AA9C748A1 /* Theme.swift */; };
 		5606CBF79A621158A2C76B66 /* ResponseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33FB421789C053BD9B6160C /* ResponseView.swift */; };
@@ -55,6 +58,7 @@
 		69D052B9239793EDE0C57E87 /* AuthEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6645A70EECA48443C6147147 /* AuthEditor.swift */; };
 		6B3FAC71F4F081CE9931B7E4 /* SecretVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5071325300ABE069E1D857EB /* SecretVault.swift */; };
 		6CDEFF46F13FEB0CE82A7DAA /* AdvancedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D7768D6D4D2997FE0F06E48 /* AdvancedViews.swift */; };
+		760BA8AA050E074C518B2B08 /* SidebarMoves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47E84377731BF3DDF5F5D6FF /* SidebarMoves.swift */; };
 		76ED1AD83C210C43F3069230 /* MockServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFED1C08E0D8C6B660B122BA /* MockServer.swift */; };
 		7890B65F25D349DE45119B5C /* RemoteImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3D0CA007118F0F11C366D4 /* RemoteImportView.swift */; };
 		7CDE29859B6995FB4416CA8B /* WorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F4743BD555372710532E45 /* WorkspaceView.swift */; };
@@ -66,6 +70,7 @@
 		85B112AAEBD23CF78053F4B3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9BCBBAD4A09C3F785FE137E1 /* PrivacyInfo.xcprivacy */; };
 		869A8BCF89942CE8685D177A /* WatchCompanionLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2920EF0510A6EB40DAF9B30 /* WatchCompanionLink.swift */; };
 		86CFB3812664A5B01BAB02B3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC1589A5DDA4486EEF998717 /* Assets.xcassets */; };
+		86D81BC95544327D387D0C99 /* SidebarMoves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47E84377731BF3DDF5F5D6FF /* SidebarMoves.swift */; };
 		87745FD78D3CA0918D1E8CDC /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = F292057CE60FE52926AEEE6C /* Components.swift */; };
 		89A6C4FC11F8DFE2B7831765 /* OAuthAuthorizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C3396862DE443E05DF2C1A0 /* OAuthAuthorizer.swift */; };
 		8AD38A955ADF252EE1B0F165 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6D6AA96A24C03FFE99338769 /* PrivacyInfo.xcprivacy */; };
@@ -108,6 +113,7 @@
 		CF465596F51FF15632C5C303 /* MonkeytailCompanion in Frameworks */ = {isa = PBXBuildFile; productRef = F367258919989AA969843A0E /* MonkeytailCompanion */; };
 		D0E733098CCAEDD6F3E22CB1 /* FolderViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18BFFDA0E72F9144E8A3271B /* FolderViews.swift */; };
 		D26721A5DA7B8386C36568BB /* VisionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57001A2DE3558A7FD9FE0D86 /* VisionUITests.swift */; };
+		D3FC964386D873C236ED72A5 /* SidebarMoves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47E84377731BF3DDF5F5D6FF /* SidebarMoves.swift */; };
 		D67B5EE7BDC10CB12B9B8697 /* ResponseMediaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B9ABF580715316AB6CE849C /* ResponseMediaView.swift */; };
 		D75281272C5F71EA07C34D76 /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */; };
 		DA1D0A4E535590FE5D393D80 /* MockServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFED1C08E0D8C6B660B122BA /* MockServer.swift */; };
@@ -199,6 +205,7 @@
 /* Begin PBXFileReference section */
 		022F944F583B9E9D0FB599DE /* MonkeytailUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonkeytailUITests.swift; sourceTree = "<group>"; };
 		037CB02638F44F9B733BAEBE /* MonkeytailSystemCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MonkeytailSystemCore; path = Packages/MonkeytailSystemCore; sourceTree = SOURCE_ROOT; };
+		0610D9A5EEC42F067B156CE5 /* SidebarTree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarTree.swift; sourceTree = "<group>"; };
 		16EFFF5235E00D7F72FD0262 /* MonkeytailWatchUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MonkeytailWatchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		18BFFDA0E72F9144E8A3271B /* FolderViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderViews.swift; sourceTree = "<group>"; };
 		1B0C89FDF984E7C8B7630705 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -215,6 +222,7 @@
 		3B1CF71F174CE0582C02A22F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		43F4946C7001470F7B790EA4 /* MonkeytailMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MonkeytailMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		463A01A05A7172E0B33A9F67 /* Monkeytail.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Monkeytail.entitlements; sourceTree = "<group>"; };
+		47E84377731BF3DDF5F5D6FF /* SidebarMoves.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarMoves.swift; sourceTree = "<group>"; };
 		48EA97FA58A38FBDAF4E6BAA /* MonkeytailTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonkeytailTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		48F4743BD555372710532E45 /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
 		5071325300ABE069E1D857EB /* SecretVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVault.swift; sourceTree = "<group>"; };
@@ -355,6 +363,7 @@
 				E4726B75DE984647B6815AC2 /* ScriptLibraries.swift */,
 				32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */,
 				5071325300ABE069E1D857EB /* SecretVault.swift */,
+				47E84377731BF3DDF5F5D6FF /* SidebarMoves.swift */,
 				BCD31297689DC03303592345 /* SnapshotStorage.swift */,
 				A2920EF0510A6EB40DAF9B30 /* WatchCompanionLink.swift */,
 				E0742AB66F82B8FC3E1F6328 /* WorkspacePersistence.swift */,
@@ -402,6 +411,7 @@
 				33BDE8E4782E6E455DEC06F8 /* ResponseTools.swift */,
 				E33FB421789C053BD9B6160C /* ResponseView.swift */,
 				F4C43A582F9574E651A8338B /* RunnerView.swift */,
+				0610D9A5EEC42F067B156CE5 /* SidebarTree.swift */,
 				60AD8046087F275AA9C748A1 /* Theme.swift */,
 				249960996981BDF096E52556 /* UploadEditor.swift */,
 				839F101E5E8622429522DB8C /* WatchTransferView.swift */,
@@ -813,6 +823,8 @@
 				387AE10EE4D796E9E86E23A8 /* ScriptLibraries.swift in Sources */,
 				ED6374C5E836DF6786D07653 /* ScriptRunner.swift in Sources */,
 				A29AAED733E7048AC71EDE55 /* SecretVault.swift in Sources */,
+				760BA8AA050E074C518B2B08 /* SidebarMoves.swift in Sources */,
+				4E5A45F1B856A7BF5003B142 /* SidebarTree.swift in Sources */,
 				3E8CF00C0CA68E401394426E /* SnapshotStorage.swift in Sources */,
 				5C60F532FE6A9DE1E09A8851 /* Theme.swift in Sources */,
 				7E0286B0A78CD4711078049C /* UploadEditor.swift in Sources */,
@@ -860,6 +872,8 @@
 				EE8564489D70A1A0C4643D76 /* ScriptLibraries.swift in Sources */,
 				AEB1D618108F579B691EA828 /* ScriptRunner.swift in Sources */,
 				6B3FAC71F4F081CE9931B7E4 /* SecretVault.swift in Sources */,
+				D3FC964386D873C236ED72A5 /* SidebarMoves.swift in Sources */,
+				0CB8FDF9039F4419D8449210 /* SidebarTree.swift in Sources */,
 				8E1C23D209850904962331F9 /* SnapshotStorage.swift in Sources */,
 				8D77D37B49C080DB08135F1E /* Theme.swift in Sources */,
 				CAB5525D615711937F64CD7D /* UploadEditor.swift in Sources */,
@@ -924,6 +938,8 @@
 				4392515BFB54C6BB825DD40C /* ScriptLibraries.swift in Sources */,
 				F2E87233DCDDD482B7069F63 /* ScriptRunner.swift in Sources */,
 				EB4D698A404F06C73078A07A /* SecretVault.swift in Sources */,
+				86D81BC95544327D387D0C99 /* SidebarMoves.swift in Sources */,
+				50AAEF37FFE48B33188F43EA /* SidebarTree.swift in Sources */,
 				18FE5A33F60D1CEAB6115373 /* SnapshotStorage.swift in Sources */,
 				53CD78E20B4076992FD434ED /* Theme.swift in Sources */,
 				0D472E3A10F4CFB1034FBAD3 /* UploadEditor.swift in Sources */,
