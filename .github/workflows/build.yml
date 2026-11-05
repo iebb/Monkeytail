@@ -51,7 +51,8 @@ jobs:
           key_path="$RUNNER_TEMP/AuthKey.p8"
           printf '%s' "$ASC_KEY_P8" > "$key_path"
           echo "ASC_KEY_PATH=$key_path" >> "$GITHUB_ENV"
-          echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+          # Offset past earlier manual uploads (up to 1003); Mac builds must exceed every previous Mac build.
+          echo "BUILD_NUMBER=$(( $(git rev-list --count HEAD) + 1000 ))" >> "$GITHUB_ENV"
           if [[ -n "$SIGNING_CERTIFICATE_P12" ]]; then
             keychain="$RUNNER_TEMP/signing.keychain-db"
             keychain_password=$(uuidgen)
