@@ -115,7 +115,7 @@ struct ResponseView: View {
                 #endif
             Divider()
             if !compactSearch { PillTabs(tabs: ["Body", "Headers", "Console", "Tests", "Diagnostics"], selection: $tab) }
-            if tab == "Tests" { TestResultsView(results: store.testResults[requestID] ?? []) } else if tab == "Diagnostics" { DiagnosticsView(response: response) } else if tab == "Headers" {
+            if tab == "Tests" { TestResultsView(results: store.testResults[requestID] ?? [], logs: response.logs) } else if tab == "Diagnostics" { DiagnosticsView(response: response) } else if tab == "Headers" {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(response.headers) { header in
@@ -140,15 +140,20 @@ struct ResponseView: View {
                 if response.logs.isEmpty { EmptyPanel(title: "No logs") }
                 else {
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 8) {
+                        // One compact line per entry, like a terminal log.
+                        LazyVStack(alignment: .leading, spacing: 0) {
                             ForEach(response.logs) { log in
-                                HStack(alignment: .top, spacing: 10) {
-                                    Image(systemName: log.level == "pass" ? "checkmark.circle.fill" : ["fail", "error"].contains(log.level) ? "xmark.circle.fill" : "chevron.right")
-                                        .foregroundStyle(["fail", "error"].contains(log.level) ? Palette.error : Palette.mint)
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    Image(systemName: log.level == "pass" ? "checkmark.circle.fill" : ["fail", "error"].contains(log.level) ? "xmark.circle.fill" : log.level == "warn" ? "exclamationmark.triangle.fill" : "chevron.right")
+                                        .font(.caption).foregroundStyle(["fail", "error"].contains(log.level) ? Palette.error : log.level == "warn" ? Palette.warning : log.level == "pass" ? Palette.mint : Color.secondary)
+                                        .frame(width: 14).accessibilityLabel(Text(verbatim: log.level))
                                     Text(log.message).font(.system(.footnote, design: .monospaced)).textSelection(.enabled)
-                                }.frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
+                                        .foregroundStyle(["fail", "error"].contains(log.level) ? Palette.error : Color.primary)
+                                }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 12).padding(.vertical, 6)
+                                Rectangle().fill(Palette.border).frame(height: 1)
                             }
-                        }.padding(12)
+                        }.background(Palette.surface, in: RoundedRectangle(cornerRadius: 8)).clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Palette.border)).padding(12)
                     }
                 }
             } else {

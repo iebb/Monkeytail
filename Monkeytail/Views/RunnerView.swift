@@ -174,8 +174,9 @@ struct CollectionRunnerView: View {
             }
             Text("Reports include sent URLs, statuses, timings, and test names, not response bodies.").font(.caption).foregroundStyle(.secondary)
             LazyVStack(spacing: 0) {
+                let iterated = Set(report.results.map(\.iteration)).count > 1
                 ForEach(report.results.filter { !failedOnly || !$0.passed }) { result in
-                    row(result)
+                    row(result, iterated: iterated)
                     Divider()
                 }
             }.background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
@@ -191,20 +192,25 @@ struct CollectionRunnerView: View {
         }.accessibilityElement(children: .combine)
     }
 
-    private func row(_ result: RunnerResult) -> some View {
+    private func row(_ result: RunnerResult, iterated: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Button { expanded = expanded == result.id ? nil : result.id } label: {
                 HStack(spacing: 8) {
                     Image(systemName: result.skipped ? "forward.circle" : result.passed ? "checkmark.circle.fill" : "xmark.octagon.fill")
                         .foregroundStyle(result.skipped ? Color.secondary : result.passed ? Palette.mint : Palette.danger)
-                    Text("#\(result.iteration)").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                    if iterated { Text("#\(result.iteration)").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
                     MethodBadge(method: result.method)
                     Text(result.name).font(.subheadline).lineLimit(1)
                     Spacer(minLength: 0)
-                    if !result.tests.isEmpty { Text("\(result.tests.filter(\.passed).count)/\(result.tests.count)").font(.caption).foregroundStyle(.secondary) }
-                    if let status = result.status { StatusBadge(status: status, showsLabel: false) }
-                    else { Text(result.skipped ? "Skipped" : "Error").font(.system(.caption, design: .monospaced)).foregroundStyle(result.skipped ? Color.secondary : Palette.error) }
-                    Text("\(Int(result.duration * 1000)) ms").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
+                    // Fixed-width columns keep tests, status and time aligned from row to row.
+                    Group {
+                        if !result.tests.isEmpty { Text(verbatim: "\(result.tests.filter(\.passed).count)/\(result.tests.count)").foregroundStyle(result.tests.allSatisfy(\.passed) ? Color.secondary : Palette.danger) }
+                    }.font(.system(.caption, design: .monospaced)).frame(width: 44, alignment: .trailing)
+                    Group {
+                        if let status = result.status { StatusBadge(status: status, showsLabel: false) }
+                        else { Text(result.skipped ? "Skipped" : "Error").font(.system(.caption, design: .monospaced)).foregroundStyle(result.skipped ? Color.secondary : Palette.error) }
+                    }.frame(width: 56)
+                    Text("\(Int(result.duration * 1000)) ms").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).frame(width: 64, alignment: .trailing)
                 }.frame(minHeight: 40).contentShape(Rectangle())
             }.buttonStyle(.plain)
             if expanded == result.id {

@@ -35,18 +35,47 @@ struct TestsEditor: View {
         }.fieldStyle().noCapitalization().autocorrectionDisabled()
     }
 }
+/// Visual checks and script `pm.test` results together, failures first, under a pass/fail summary.
 struct TestResultsView: View {
     let results: [AssertionResult]
+    var logs: [ScriptLog] = []
+    private struct Item: Identifiable { let id: UUID; let name: String; let passed: Bool; let detail: String? }
+    private var items: [Item] {
+        // Visual checks are also logged as "name: message"; leave those out of the script results.
+        let checks = Set(results.map { $0.name + ": " + $0.message })
+        let scripts = logs.filter { ["pass", "fail"].contains($0.level) && !checks.contains($0.message) }
+        let all = results.map { Item(id: $0.id, name: $0.name, passed: $0.passed, detail: $0.message) } + scripts.map { Item(id: $0.id, name: $0.message, passed: $0.level == "pass", detail: nil) }
+        return all.filter { !$0.passed } + all.filter(\.passed)
+    }
     var body: some View {
-        List {
-            if results.isEmpty { Text("Add checks in Request → Tests.").foregroundStyle(.secondary) }
-            ForEach(results) { result in
-                VStack(alignment: .leading, spacing: 6) {
-                    Label(result.name, systemImage: result.passed ? "checkmark.circle.fill" : "xmark.circle.fill").foregroundStyle(result.passed ? Palette.mint : Palette.error)
-                    Text(result.message).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
-                }.padding(.vertical, 4)
-            }
-        }.scrollContentBackground(.hidden).accessibilityIdentifier("Response test results")
+        let items = items, failed = items.filter { !$0.passed }.count
+        if items.isEmpty { EmptyPanel(title: "No tests", message: "Add checks in Request → Tests, or call pm.test in a script.", symbol: "checkmark.seal") }
+        else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 14) {
+                        Label { Text("\(items.count - failed) passed") } icon: { Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.mint) }
+                        if failed > 0 { Label { Text("\(failed) failed") } icon: { Image(systemName: "xmark.circle.fill").foregroundStyle(Palette.error) } }
+                        Spacer()
+                    }.font(.subheadline.weight(.semibold))
+                    VStack(spacing: 0) {
+                        ForEach(items) { item in
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                Image(systemName: item.passed ? "checkmark.circle.fill" : "xmark.circle.fill").font(.caption).foregroundStyle(item.passed ? Palette.mint : Palette.error)
+                                    .accessibilityLabel(item.passed ? Text("Passed") : Text("Failed"))
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(verbatim: item.name).font(.subheadline).foregroundStyle(item.passed ? Color.primary : Palette.error)
+                                    if let detail = item.detail, !detail.isEmpty { Text(verbatim: detail).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
+                                }.textSelection(.enabled)
+                                Spacer(minLength: 0)
+                            }.padding(.horizontal, 12).padding(.vertical, 8).accessibilityElement(children: .combine)
+                            if item.id != items.last?.id { Rectangle().fill(Palette.border).frame(height: 1) }
+                        }
+                    }.background(Palette.surface, in: RoundedRectangle(cornerRadius: 8)).clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Palette.border))
+                }.padding(12).macReadableWidth(760)
+            }.accessibilityIdentifier("Response test results")
+        }
     }
 }
 struct MockEditor: View {

@@ -629,6 +629,40 @@
         }
       }
     },
+    "%lld failed" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld fallidas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld échoués"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 件失敗"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld개 실패"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 项失败"
+          }
+        }
+      }
+    },
     "%lld fields" : {
       "localizations" : {
         "en" : {
@@ -913,6 +947,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已选择 %lld 个工作区（共 %lld 个）"
+          }
+        }
+      }
+    },
+    "%lld passed" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld superadas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld réussis"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 件成功"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld개 통과"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 项通过"
           }
         }
       }
@@ -1627,6 +1695,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "添加为可编辑脚本"
+          }
+        }
+      }
+    },
+    "Add checks in Request → Tests, or call pm.test in a script." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade comprobaciones en Solicitud → Pruebas o llama a pm.test en un script."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutez des vérifications dans Requête → Tests, ou appelez pm.test dans un script."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リクエスト → テストでチェックを追加するか、スクリプトで pm.test を呼び出します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "요청 → 테스트에서 검사를 추가하거나 스크립트에서 pm.test를 호출하세요."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在“请求 → 测试”中添加检查，或在脚本中调用 pm.test。"
           }
         }
       }
@@ -14422,6 +14524,40 @@
         }
       }
     },
+    "No tests" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin pruebas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun test"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "テストなし"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "테스트 없음"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无测试"
+          }
+        }
+      }
+    },
     "No workspaces found in this account." : {
       "localizations" : {
         "es" : {
@@ -15371,6 +15507,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "上级"
+          }
+        }
+      }
+    },
+    "Passed" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Superada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réussi"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "成功"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "통과"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通过"
           }
         }
       }
