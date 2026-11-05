@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support — Monkeytail</title>
+<meta name="description" content="Help with Monkeytail: importing from Postman and Insomnia, sync, scripts, proxies and reporting problems.">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="stylesheet" href="/assets/page.css">
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="/"><img src="/assets/icon.png" alt="">Monkeytail</a>
+    <a href="/privacy/">Privacy</a>
+    <a href="https://github.com/iebb/Monkeytail">GitHub</a>
+  </nav>
+  <main>
+    <h1>Support</h1>
+    <p class="updated">Questions, bugs or feature ideas: we'd like to hear them.</p>
+    <p><a class="button" href="mailto:support@ieb.app?subject=Monkeytail%20support">Email support@ieb.app</a></p>
+    <p>You can also <a href="https://github.com/iebb/Monkeytail/issues">open an issue on GitHub</a>.</p>
+
+    <h2>Send your first request</h2>
+    <p>Pick a request in the sidebar, or press <strong>+</strong> to add one. Enter a URL, choose a method, and press <strong>Send</strong> (⌘↵ on a keyboard). Use the tabs to edit parameters, headers, body, authentication and scripts. The response shows the status, time, headers and body; choose <strong>Pretty</strong> or <strong>Tree</strong> for JSON.</p>
+
+    <h2>Move from Postman or Insomnia</h2>
+    <p>Open <strong>Import</strong> from the sidebar and choose files or a whole folder. Monkeytail reads Postman collections, environments, globals and data dumps; Insomnia v4 and v5 exports; Bruno, Hoppscotch, Thunder Client, HAR, <code>.http</code> files, OpenAPI/Swagger and cURL. Imports are added to the current workspace.</p>
+    <p>To pull straight from the cloud, choose <strong>Import from Postman, Insomnia, Hoppscotch or GitHub</strong> and sign in to that service. The session is used for that import only and is never saved. For a private GitHub repository, use a read-only fine-grained token.</p>
+    <p>Scripts keep working through a Postman-compatible <code>pm</code> API. See the <a href="https://github.com/iebb/Monkeytail/blob/main/docs/Scripting.md">scripting guide</a> for what's supported. Some features of other apps, such as gRPC, cloud monitors and team workspaces, aren't available.</p>
+
+    <h2>Workspaces and folders</h2>
+    <p>Each workspace has its own collections, environments and globals; switch workspaces at the top of the sidebar. Collections hold nested folders, which can share authentication, headers, variables and scripts with the requests inside them. Drag requests and folders to move them, or use <strong>Move to</strong> in their menu.</p>
+
+    <h2>iCloud sync</h2>
+    <p>Sync is on by default and uses your own iCloud Drive, with no Monkeytail account. Credentials sync too unless you turn off <strong>Include credentials</strong> in Settings. Edits to different requests merge; for the same request, the latest edit wins. If you switch Apple accounts on a device, turn <strong>iCloud sync</strong> off and on again.</p>
+
+    <h2>Proxies, certificates and local servers</h2>
+    <p>In Settings, choose system networking or a custom HTTP, HTTPS or SOCKS5 proxy. Monkeytail never falls back to a direct connection if your proxy fails. Certificate checks stay on: to inspect HTTPS through a debugging proxy, install and trust its certificate on the device. To reach servers on your local network from iPhone or iPad, allow local network access when asked, or later in Settings → Privacy &amp; Security.</p>
+
+    <h2>OAuth</h2>
+    <p>Register <code>monkeytail://oauth</code> as the redirect URL with your OAuth provider. Monkeytail supports authorization code with PKCE, client credentials and token refresh.</p>
+
+    <h2>Apple Watch</h2>
+    <p>On iPhone, star a request, open <strong>Apple Watch</strong> from the actions menu, and tap the favourite to copy it. Copy it again after you change the request or environment. The Watch sends requests itself, so the server must be reachable from the Watch.</p>
+
+    <h2>Language and appearance</h2>
+    <p>Monkeytail is available in English, Spanish, French, Japanese, Korean and Simplified Chinese, and follows your device language by default. Choose another language, a theme, your own colours and fonts in <strong>Settings → Appearance</strong>.</p>
+
+    <h2>Report a problem</h2>
+    <p>Email <a href="mailto:support@ieb.app">support@ieb.app</a> or open a GitHub issue with the app version, your device and system version, what you expected, and a small example. Remove tokens, passwords, private headers and personal details first. The app never uploads diagnostics on its own.</p>
+  </main>
+</div>
+<footer>
+  <div class="wrap">
+    <span>Monkeytail · BSD 3-Clause License</span>
+    <a href="/">Home</a>
+    <a href="/privacy/">Privacy</a>
+    <a href="https://github.com/iebb/Monkeytail">Source</a>
+  </div>
+</footer>
+</body>
+</html>

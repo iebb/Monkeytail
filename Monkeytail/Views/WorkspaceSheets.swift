@@ -240,8 +240,8 @@ struct SettingsView: View {
                 Section {
                     LabeledContent("Monkeytail", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3")
                     HStack(spacing: 20) {
-                        Link("Privacy", destination: URL(string: "https://docs.kitta.co/monkeytail/privacy/")!)
-                        Link("Support", destination: URL(string: "https://docs.kitta.co/monkeytail/support/")!)
+                        Link("Privacy", destination: URL(string: "https://monk.ieb.app/privacy/")!)
+                        Link("Support", destination: URL(string: "https://monk.ieb.app/support/")!)
                         Spacer(minLength: 0)
                     }
                     #if os(macOS)

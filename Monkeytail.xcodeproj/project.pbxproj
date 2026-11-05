@@ -1045,7 +1045,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1088,7 +1088,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				PRODUCT_MODULE_NAME = MonkeytailMac;
 				PRODUCT_NAME = Monkeytail;
@@ -1114,7 +1114,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				PRODUCT_MODULE_NAME = MonkeytailMac;
 				PRODUCT_NAME = Monkeytail;
@@ -1140,7 +1140,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				SDKROOT = xros;
 				TARGETED_DEVICE_FAMILY = 7;
@@ -1400,7 +1400,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				SDKROOT = xros;
 				TARGETED_DEVICE_FAMILY = 7;
@@ -1454,7 +1454,7 @@
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = co.kitta.monkeytail;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail.watchkitapp;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -1492,7 +1492,7 @@
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = co.kitta.monkeytail;
 				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail.watchkitapp;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -1523,7 +1523,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.kitta.monkeytail;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

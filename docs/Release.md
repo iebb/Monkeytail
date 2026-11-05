@@ -2,7 +2,7 @@
 
 - Apple Developer organization: Kitta Ltd (Kitta Co)
 - Team: `7P8CLHDH5G`
-- App: Monkeytail, version 1.6.3
+- App: Monkeytail, version 1.7.0
 - Bundle ID: `co.kitta.monkeytail`
 - Repository: [iebb/Monkeytail](https://github.com/iebb/Monkeytail), public, BSD 3-Clause
 - Branch: `main`; project: `Monkeytail.xcodeproj`; shared scheme: `Monkeytail`
@@ -52,7 +52,7 @@ Earlier releases were archived and tested in Xcode Cloud. Its hooks validated re
 
 ## Publication
 
-Public URLs: [product](https://docs.kitta.co/monkeytail/), [privacy](https://docs.kitta.co/monkeytail/privacy/), [support](https://docs.kitta.co/monkeytail/support/).
+Public URLs: [website](https://monk.ieb.app/), [privacy](https://monk.ieb.app/privacy/), [support](https://monk.ieb.app/support/). They are published from `site/` to GitHub Pages by `.github/workflows/pages.yml`.
 
 The app includes no telemetry, advertising, tracking, account service, or Kitta-operated backend. iCloud Drive sync is on by default, uses the existing Apple session, and stores data only in the user’s own iCloud container. Its App Store privacy answer is Data Not Collected. Requests go to user-selected servers and proxies. System requests use Apple's networking stack; browser profiles bundle curl-impersonate and BoringSSL. The developer classifies the app's standard HTTPS/TLS use as exempt encryption and has directed that `ITSAppUsesNonExemptEncryption` remain `false`. This declares no non-exempt encryption; it does not claim that HTTPS is unencrypted or disable certificate verification. See [Apple's definition of the declaration](https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption).
 

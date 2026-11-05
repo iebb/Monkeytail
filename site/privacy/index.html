@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy policy — Monkeytail</title>
+<meta name="description" content="Monkeytail collects no data. No analytics, tracking, account or developer backend.">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="stylesheet" href="/assets/page.css">
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="/"><img src="/assets/icon.png" alt="">Monkeytail</a>
+    <a href="/support/">Support</a>
+    <a href="https://github.com/iebb/Monkeytail">GitHub</a>
+  </nav>
+  <main>
+    <h1>Privacy policy</h1>
+    <p class="updated">Last updated November 5, 2026</p>
+
+    <p class="summary"><strong>Monkeytail collects no data.</strong> The app has no analytics, advertising, tracking, telemetry, account system or developer-operated backend. We never receive your requests, responses, collections or credentials.</p>
+
+    <h2>About the app</h2>
+    <p>Monkeytail is an open-source API client for iPhone, iPad, Mac and Apple Vision Pro, with an Apple Watch companion. Its source code is public at <a href="https://github.com/iebb/Monkeytail">github.com/iebb/Monkeytail</a>, so you can check everything on this page yourself.</p>
+
+    <h2>On your device</h2>
+    <p>Workspaces, collections, requests, environments, globals, scripts, proxy settings and request history are stored in the app's own storage, protected by platform file protection and, on the Mac, the app sandbox. Credentials are stored in those files, or in the system Keychain if you turn on <strong>Use Keychain</strong> in Settings (off by default). Response bodies stay in memory unless you save a snapshot or export them. Device backups follow your Apple settings.</p>
+
+    <h2>iCloud sync</h2>
+    <p>iCloud sync is on by default. It stores workspaces, collections, environments, globals and scripts in your own iCloud Drive and shares them between your devices using your existing Apple account. No Monkeytail account is involved, and we cannot access this data.</p>
+    <p><strong>Include credentials</strong> is also on by default, so authentication and other sensitive fields sync too. Turn it off in Settings to keep credentials on each device, or turn off <strong>iCloud sync</strong> to keep everything local. Cookies, client certificates, uploaded files, saved snapshots and request history never sync. Turning sync off stops transfers but doesn't delete files already in iCloud; manage those in Apple's iCloud storage settings.</p>
+
+    <h2>Connections you choose</h2>
+    <p>When you send a request, Monkeytail connects directly to the server and any proxy you chose. They receive what is needed to handle the request, including its headers, body, credentials and your network address, and their own privacy practices apply. Importing a collection never sends a request on its own.</p>
+
+    <h2>Importing from other services</h2>
+    <p>If you choose to import from Postman, Insomnia, Hoppscotch or GitHub, Monkeytail signs in to that service directly from your device, the same way its own app does. Your sign-in and session are sent only to that service, used only for that import, and discarded afterwards. They are never stored and never sent to us.</p>
+
+    <h2>Authentication, cookies and certificates</h2>
+    <p>OAuth opens your chosen provider in a private browser session; that provider may ask you to sign in. Tokens are stored with your workspace. Cookie jars and client certificates stay on your device, in files or the Keychain, and are never synced or sent to us. Offline mocks run on the device, and the optional mock server only listens on the device's own loopback address.</p>
+
+    <h2>Apple Watch</h2>
+    <p>Favourite requests are copied from your iPhone to your Apple Watch with Apple's WatchConnectivity. The <strong>Include credentials &amp; body</strong> option controls what is copied. The Watch sends requests directly to your servers, and responses stay in memory.</p>
+
+    <h2>Files and scripts</h2>
+    <p>Monkeytail reads only the files and photos you pick for import or upload, and writes only the files you export. Exports can include saved credentials. Scripts run locally in an isolated JavaScript context; their only network access is <code>pm.sendRequest</code>, which goes to the servers the script names, through your selected proxy. Each request has a <strong>Run scripts</strong> switch to turn scripts off.</p>
+
+    <h2>Your choices</h2>
+    <p>You can edit or delete any workspace data, clear history, turn off sync or credential sync, or delete the app to remove its local data. Exported files and backups stay under your control.</p>
+
+    <h2>Contact</h2>
+    <p>If you email <a href="mailto:support@ieb.app">support@ieb.app</a>, we receive what you send and use it only to reply. Please don't include passwords, tokens or private request contents.</p>
+
+    <h2>Changes</h2>
+    <p>We will update this page if Monkeytail's data practices change. The date at the top shows the latest revision.</p>
+  </main>
+</div>
+<footer>
+  <div class="wrap">
+    <span>Monkeytail · BSD 3-Clause License</span>
+    <a href="/">Home</a>
+    <a href="/support/">Support</a>
+    <a href="https://github.com/iebb/Monkeytail">Source</a>
+  </div>
+</footer>
+</body>
+</html>
