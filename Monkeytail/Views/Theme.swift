@@ -87,8 +87,18 @@ struct ThemeSettings: Codable, Equatable {
     static let shared = ThemeStore()
     private static let key = "theme"
     var settings: ThemeSettings { didSet { if settings != oldValue { save() } } }
+    /// The interface language, or nil to follow the system. Text in views switches at once; the rest on the next launch.
+    var language: String? {
+        didSet {
+            guard language != oldValue else { return }
+            let defaults = UserDefaults.standard
+            if let language { defaults.set(language, forKey: "appLanguage"); defaults.set([language], forKey: "AppleLanguages") }
+            else { defaults.removeObject(forKey: "appLanguage"); defaults.removeObject(forKey: "AppleLanguages") }
+        }
+    }
     private init(defaults: UserDefaults = .standard) {
         settings = defaults.data(forKey: Self.key).flatMap { try? JSONDecoder().decode(ThemeSettings.self, from: $0) } ?? ThemeSettings()
+        language = defaults.string(forKey: "appLanguage").flatMap { code in AppLanguage.supported.contains { $0.code == code } ? code : nil }
     }
     private func save() { UserDefaults.standard.set(try? JSONEncoder().encode(settings), forKey: Self.key) }
 }
@@ -264,16 +274,112 @@ enum Palette {
     }
 }
 
+/// Languages Monkeytail ships, each named in its own language.
+enum AppLanguage {
+    static let supported: [(code: String, name: String)] = [("en", "English"), ("es", "Español"), ("fr", "Français"), ("ja", "日本語"), ("ko", "한국어"), ("zh-Hans", "简体中文")]
+}
+
 private struct ThemedModifier: ViewModifier {
     private var theme = ThemeStore.shared
     func body(content: Content) -> some View {
         content.tint(Palette.mint).preferredColorScheme(theme.settings.appearance.scheme)
+            .environment(\.locale, theme.language.map(Locale.init(identifier:)) ?? .autoupdatingCurrent)
     }
 }
 
 extension View {
-    /// Applies the user's accent, appearance and fonts to a window.
+    /// Applies the user's accent, appearance, fonts and language to a window.
     func themed() -> some View { modifier(ThemedModifier()) }
+}
+
+/// A preset drawn as a tiny workspace: sidebar with method colours, a pane, and the Send button.
+struct ThemePresetCard: View {
+    let preset: ThemePreset
+    let selected: Bool
+    var customised = false
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 4) {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach([ThemeToken.accent, .warning, .info, .danger], id: \.self) { token in
+                        HStack(spacing: 3) {
+                            Capsule().fill(color(token)).frame(width: 9, height: 4)
+                            Capsule().fill(Color.primary.opacity(0.18)).frame(width: 18, height: 4)
+                        }
+                    }
+                }.padding(.leading, 7)
+                RoundedRectangle(cornerRadius: 5).fill(color(.surface))
+                    .overlay(alignment: .topLeading) { Capsule().fill(Color.primary.opacity(0.14)).frame(width: 26, height: 4).padding(6) }
+                    .overlay(alignment: .bottomTrailing) { Capsule().fill(color(.accent)).frame(width: 18, height: 7).padding(5) }
+                    .padding([.vertical, .trailing], 5)
+            }
+                .frame(height: 62).frame(maxWidth: .infinity)
+                .background(color(.canvas), in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(selected ? Palette.mint : Palette.border, lineWidth: selected ? 2 : 1))
+            HStack(spacing: 3) {
+                Text(verbatim: preset.name)
+                if selected && customised { Text("· Custom").foregroundStyle(.secondary) }
+            }.font(.caption.weight(selected ? .semibold : .regular)).lineLimit(1)
+        }.contentShape(Rectangle())
+            .accessibilityElement(children: .ignore).accessibilityLabel(Text(verbatim: preset.name))
+            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+    private func color(_ token: ThemeToken) -> Color {
+        let pair = preset.colors[token] ?? ThemePreset.monkeytail.colors[token]!
+        let rgb = Theme.rgb(scheme == .dark ? pair.dark : pair.light) ?? (0, 0, 0)
+        return Color(red: rgb.0, green: rgb.1, blue: rgb.2)
+    }
+}
+
+/// Preset cards; choosing one clears custom colours.
+struct ThemeGallery: View {
+    @Bindable private var theme = ThemeStore.shared
+    var body: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
+            ForEach(ThemePreset.all) { preset in
+                Button { theme.settings.preset = preset.id; theme.settings.colors = [:] } label: {
+                    ThemePresetCard(preset: preset, selected: theme.settings.preset == preset.id, customised: !theme.settings.colors.isEmpty)
+                }.buttonStyle(.plain)
+            }
+        }.padding(.vertical, 6)
+    }
+}
+
+/// System, Light and Dark as three tiles.
+struct AppearancePicker: View {
+    @Bindable private var theme = ThemeStore.shared
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(ThemeAppearance.allCases) { option in
+                let selected = theme.settings.appearance == option
+                Button { theme.settings.appearance = option } label: {
+                    VStack(spacing: 5) {
+                        Image(systemName: option.symbol).font(.body).frame(height: 22)
+                        Text(option.title).font(.caption.weight(selected ? .semibold : .regular))
+                    }.frame(maxWidth: .infinity).padding(.vertical, 8)
+                        .foregroundStyle(selected ? Palette.mint : Color.secondary)
+                        .background(selected ? Palette.mint.opacity(0.10) : Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                        .contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }.padding(.vertical, 2).accessibilityElement(children: .contain).accessibilityLabel("Appearance")
+    }
+}
+
+extension ThemeAppearance {
+    var symbol: String { switch self { case .system: "circle.lefthalf.filled"; case .light: "sun.max"; case .dark: "moon" } }
+}
+
+struct LanguagePicker: View {
+    @Bindable private var theme = ThemeStore.shared
+    var body: some View {
+        Picker(selection: $theme.language) {
+            Text("Follow system").tag(String?.none)
+            Divider()
+            ForEach(AppLanguage.supported, id: \.code) { Text(verbatim: $0.name).tag(String?.some($0.code)) }
+        } label: { Label("Language", systemImage: "globe") }
+    }
 }
 
 struct ThemeSettingsView: View {
@@ -283,23 +389,20 @@ struct ThemeSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Appearance", selection: $theme.settings.appearance) {
-                    ForEach(ThemeAppearance.allCases) { Text($0.title).tag($0) }
-                }.pickerStyle(.segmented)
-                Picker("Theme", selection: Binding(get: { theme.settings.preset }, set: { theme.settings.preset = $0; theme.settings.colors = [:] })) {
-                    ForEach(ThemePreset.all) { Text(verbatim: $0.name).tag($0.id) }
-                }
+                ThemeGallery()
+                AppearancePicker()
             } header: { Text("Theme") }
             Section {
-                HStack {
-                    Spacer()
-                    Text("Light").frame(width: 52)
-                    Text("Dark").frame(width: 52)
-                }.font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
                 ForEach(ThemeToken.allCases) { token in
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(token.title)
+                            HStack(spacing: 6) {
+                                Text(token.title)
+                                if theme.settings.colors[token] != nil {
+                                    Button { theme.settings.colors[token] = nil } label: { Image(systemName: "arrow.uturn.backward.circle.fill").foregroundStyle(.secondary) }
+                                        .buttonStyle(.plain).help("Reset").accessibilityLabel(Text("Reset \(Text(token.title))"))
+                                }
+                            }
                             Text(token.detail).font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 8)
@@ -308,24 +411,26 @@ struct ThemeSettingsView: View {
                     }
                 }
                 if !theme.settings.colors.isEmpty {
-                    Button("Reset colours", role: .destructive) { theme.settings.colors = [:] }
+                    Button("Reset all colours", role: .destructive) { theme.settings.colors = [:] }
                 }
-            } header: { Text("Colours") } footer: { Text("Changes apply to every window straight away.") }
+            } header: {
+                HStack {
+                    Text("Colours")
+                    Spacer()
+                    Text("Light").lineLimit(1).minimumScaleFactor(0.7).frame(width: 52)
+                    Text("Dark").lineLimit(1).minimumScaleFactor(0.7).frame(width: 52)
+                }
+            } footer: { Text("Override any colour of the chosen theme. Changes apply to every window straight away.") }
             Section {
                 fontPicker("Interface font", selection: $theme.settings.interfaceFont, families: interfaceFamilies)
                 fontPicker("Code font", selection: $theme.settings.codeFont, families: codeFamilies)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Your next request starts here").font(.headline)
-                    HStack(spacing: 8) {
-                        MethodBadge(method: "GET"); MethodBadge(method: "POST"); MethodBadge(method: "PUT"); MethodBadge(method: "DELETE")
-                        StatusBadge(status: 200, showsLabel: false); StatusBadge(status: 404, showsLabel: false)
-                    }
-                    Text(verbatim: "{ \"id\": 42, \"name\": \"Monkeytail\" }").font(.system(.footnote, design: .monospaced))
-                }.padding(.vertical, 4)
                 if theme.settings.interfaceFont != nil || theme.settings.codeFont != nil {
                     Button("Use system fonts") { theme.settings.interfaceFont = nil; theme.settings.codeFont = nil }
                 }
             } header: { Text("Fonts") }
+            Section {
+                preview
+            } header: { Text("Preview") }
         }.formStyle(.grouped)
             .navigationTitle("Theme & fonts").inlineTitle()
             .task {
@@ -333,6 +438,28 @@ struct ThemeSettingsView: View {
                 interfaceFamilies = Theme.families(monospacedOnly: false)
                 codeFamilies = Theme.families(monospacedOnly: true)
             }
+    }
+
+    private var preview: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Your next request starts here").font(.headline)
+            HStack(spacing: 8) {
+                Text(verbatim: "POST").font(.system(.footnote, design: .monospaced, weight: .semibold)).foregroundStyle(Palette.method("POST"))
+                Text(verbatim: "https://api.example.com/v1/items").font(.system(.footnote, design: .monospaced)).lineLimit(1)
+                Spacer(minLength: 0)
+                Label("Send", systemImage: "arrow.up").font(.subheadline.weight(.semibold)).padding(.horizontal, 12).padding(.vertical, 6)
+                    .foregroundStyle(Palette.surface).background(Palette.mint, in: RoundedRectangle(cornerRadius: 7))
+            }.padding(8).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8)).overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Palette.border))
+            HStack(spacing: 6) {
+                MethodBadge(method: "GET"); MethodBadge(method: "PUT"); MethodBadge(method: "DELETE"); MethodBadge(method: "OPTIONS")
+                Spacer(minLength: 0)
+                StatusBadge(status: 200, showsLabel: false); StatusBadge(status: 404, showsLabel: false)
+            }
+            Text(verbatim: "{ \"id\": 42, \"name\": \"Monkeytail\" }").font(.system(.footnote, design: .monospaced))
+            Text("Request failed").font(.caption).foregroundStyle(Palette.error)
+        }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.canvas, in: RoundedRectangle(cornerRadius: 10))
+            .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
     }
 
     private func colorPicker(_ token: ThemeToken, dark: Bool) -> some View {

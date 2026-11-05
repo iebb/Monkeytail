@@ -188,7 +188,39 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Proxy", selection: $store.workspace.proxy.kind) { ForEach(ProxyKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                    ThemeGallery()
+                    AppearancePicker()
+                    NavigationLink { ThemeSettingsView() } label: {
+                        LabeledContent { Text(fontSummary) } label: { Label("Theme & fonts", systemImage: "paintpalette") }
+                    }
+                    LanguagePicker()
+                } header: { Text("Appearance") } footer: { Text("Some text changes language after you reopen Monkeytail.") }
+                Section {
+                    Toggle(isOn: Binding(get: { store.syncEnabled }, set: { store.setSyncEnabled($0) })) { Label("iCloud sync", systemImage: "icloud") }
+                    if store.syncEnabled {
+                        Toggle(isOn: Binding(get: { store.syncCredentials }, set: { store.setSyncCredentials($0) })) { Label("Include credentials", systemImage: "key") }
+                        HStack {
+                            Text(store.syncStatus).font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Sync now") { Task { await store.synchronize() } }.disabled(store.syncing)
+                        }
+                    }
+                    Toggle(isOn: Binding(get: { store.useKeychain }, set: { store.setUseKeychain($0) })) { Label("Use Keychain", systemImage: "lock") }
+                        .help("When off, credentials are stored with the local workspace.")
+                    Toggle(isOn: Binding(get: { store.hideCredentials }, set: { store.setHideCredentials($0) })) { Label("Hide in client code", systemImage: "eye.slash") }
+                    DisclosureGroup {
+                        LabeledContent("Storage", value: store.syncEnabled ? String(localized: "Local + iCloud") : String(localized: "Local"))
+                        LabeledContent("History", value: String(localized: "50 requests"))
+                        LabeledContent("Response", value: "20 MB")
+                        LabeledContent("Scripts", value: String(localized: "3 seconds"))
+                        LabeledContent("Snapshots", value: "50 / 60 MB")
+                        LabeledContent("TLS certificates", value: String(localized: "Verified"))
+                        Button("Clear request history", role: .destructive) { store.clearHistory() }
+                            .disabled(store.history.isEmpty)
+                    } label: { Label("Storage & limits", systemImage: "internaldrive") }
+                } header: { Text("Workspace") }
+                Section {
+                    Picker(selection: $store.workspace.proxy.kind) { ForEach(ProxyKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } } label: { Label("Proxy", systemImage: "network") }
                     if store.workspace.proxy.kind != .system {
                         TextField("Hostname or IP address", text: $store.workspace.proxy.host).urlInput()
                         TextField("Port", text: $store.workspace.proxy.port).numberInput()
@@ -196,40 +228,6 @@ struct SettingsView: View {
                         SecureField("Password (optional)", text: $store.workspace.proxy.password)
                     }
                 } header: { Text("Connection") }
-                Section {
-                    Toggle("iCloud sync", isOn: Binding(get: { store.syncEnabled }, set: { store.setSyncEnabled($0) }))
-                    if store.syncEnabled {
-                        Toggle("Include credentials", isOn: Binding(get: { store.syncCredentials }, set: { store.setSyncCredentials($0) }))
-                        HStack {
-                            Text(store.syncStatus).font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Button("Sync now") { Task { await store.synchronize() } }.disabled(store.syncing)
-                        }
-                    }
-                    Toggle("Use Keychain", isOn: Binding(get: { store.useKeychain }, set: { store.setUseKeychain($0) }))
-                        .help("When off, credentials are stored with the local workspace.")
-                    Toggle("Hide in client code", isOn: Binding(get: { store.hideCredentials }, set: { store.setHideCredentials($0) }))
-                    DisclosureGroup("Storage & limits") {
-                        LabeledContent("Storage", value: store.syncEnabled ? "Local + iCloud" : "Local")
-                        LabeledContent("History", value: "50 requests")
-                        LabeledContent("Response", value: "20 MB")
-                        LabeledContent("Scripts", value: "3 seconds")
-                        LabeledContent("Snapshots", value: "50 / 60 MB")
-                        LabeledContent("TLS certificates", value: "Verified")
-                        Button("Clear request history", role: .destructive) { store.clearHistory() }
-                            .disabled(store.history.isEmpty)
-                    }
-                } header: { Text("Workspace") }
-                Section {
-                    NavigationLink { ThemeSettingsView() } label: { Label("Theme & fonts", systemImage: "paintpalette") }
-                    LabeledContent("Language") {
-                        #if os(macOS)
-                        Text(Locale.current.localizedString(forIdentifier: Bundle.main.preferredLocalizations.first ?? "en") ?? "English")
-                        #else
-                        Button { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } label: { Text(Locale.current.localizedString(forIdentifier: Bundle.main.preferredLocalizations.first ?? "en") ?? "English") }
-                        #endif
-                    }
-                } header: { Text("Appearance") } footer: { Text("Monkeytail follows your device language. Change it in System Settings.") }
                 Section {
                     LabeledContent("Monkeytail", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3")
                     HStack(spacing: 20) {
@@ -253,10 +251,15 @@ struct SettingsView: View {
                 #endif
         }
         #if os(macOS)
-        .frame(width: 520, height: 560)
+        .frame(width: 560, height: 640)
         .sheet(isPresented: $showingLicenses) { LicenseSheet() }
         #endif
         .tint(Palette.mint)
+    }
+
+    private var fontSummary: String {
+        let theme = ThemeStore.shared.settings
+        return [theme.interfaceFont, theme.codeFont].compactMap { $0 }.joined(separator: " · ")
     }
 }
 

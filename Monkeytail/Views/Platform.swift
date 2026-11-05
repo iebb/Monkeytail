@@ -38,7 +38,7 @@ enum SidebarMetrics {
     static let horizontalInset: CGFloat = 16
     static let requestRowHeight: CGFloat = 44
     static let treeRowHeight: CGFloat = 40
-    static let treeInset: CGFloat = 4
+    static let treeInset: CGFloat = 8
     static let indent: CGFloat = 14
     static let methodWidth: CGFloat = 36
     static let methodSize: CGFloat = 11
