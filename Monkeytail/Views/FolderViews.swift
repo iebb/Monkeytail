@@ -51,7 +51,7 @@ struct RequestSidebarRow: View {
         Button { store.selectedRequestID = request.id } label: {
             HStack(spacing: 10) {
                 Text(request.transport == .websocket ? "WS" : request.transport == .sse ? "SSE" : request.method)
-                    .font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(Palette.method(request.method))
+                    .font(.app(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(Palette.method(request.method))
                     #if os(macOS)
                     .frame(width: 42, alignment: .leading)
                     #else
@@ -72,7 +72,7 @@ struct RequestSidebarRow: View {
                     Button("Collection root") { var value = request; value.folderID = nil; store.update(value) }
                     ForEach(store.workspace.collections.first { $0.id == collectionID }?.folders ?? []) { folder in Button(folder.name) { var value = request; value.folderID = folder.id; store.update(value) } }
                 }
-                Button("Delete request", systemImage: "trash", role: .destructive) { store.delete(request.id) }
+                Button("Delete request", systemImage: "trash", role: .destructive) { store.delete(request.id); store.keepSelection(in: collectionID) }
             }
     }
 }

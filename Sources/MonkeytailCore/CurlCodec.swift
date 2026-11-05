@@ -89,7 +89,7 @@ public enum CurlCodec {
                     guard request.fileBody == nil, data.isEmpty, request.multipart == nil else { throw ClientError("Import one body mode at a time.") }
                     request.bodyKind = .file; request.fileBody = RequestFile(filename: String(body.dropFirst()), mimeType: option == "--json" ? "application/json" : "application/octet-stream")
                     if option == "--json", !request.headers.contains(where: { $0.name.lowercased() == "accept" }) { request.headers.append(Field("Accept", "application/json")) }
-                    warnings.append("Choose the imported body file on this device before sending.")
+                    warnings.append(String(localized: "Choose the imported body file on this device before sending.", bundle: .module))
                     break
                 }
                 guard request.fileBody == nil, request.multipart == nil else { throw ClientError("Import one body mode at a time.") }
@@ -113,7 +113,7 @@ public enum CurlCodec {
                         else { throw ClientError("Unsupported multipart attribute: \(attribute)") }
                     }
                     part.file = file; part.value = ""
-                    warnings.append("Choose the imported multipart file on this device before sending.")
+                    warnings.append(String(localized: "Choose the imported multipart file on this device before sending.", bundle: .module))
                 } else if option != "--form-string", part.value.contains(";") { throw ClientError("Multipart text attributes are unsupported; use --form-string for a literal semicolon.") } else if option != "--form-string", part.value.hasPrefix("<") { throw ClientError("Use @file for multipart attachments or --form-string for literal text.") }
                 request.bodyKind = .multipart
                 if request.multipart == nil { request.multipart = [] }
@@ -154,7 +154,7 @@ public enum CurlCodec {
             case "--compressed", "-s", "-S", "-sS", "--silent", "--show-error", "--globoff", "-g": break
             case "--digest": digest = true
             case "--basic": digest = false
-            case "-k", "--insecure": warnings.append("TLS certificate verification remains enabled. Install and trust your development CA in iOS Settings when needed.")
+            case "-k", "--insecure": warnings.append(String(localized: "TLS certificate verification remains enabled. Install and trust your development CA in iOS Settings when needed.", bundle: .module))
             default:
                 if option.hasPrefix("-") { throw ClientError("Unsupported cURL option: \(option). Remove it before importing.") }
                 try setURL(word)

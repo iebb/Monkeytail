@@ -47,7 +47,7 @@ struct CollectionRunnerView: View {
                     Picker("Runner view", selection: $tab) { Text("Configure").tag("Configure"); Text("Results").tag("Results") }
                         .pickerStyle(.segmented).labelsHidden()
                     if tab == "Configure" { configuration } else { results }
-                    if let error { Label(error, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red) }
+                    if let error { Label(error, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(Palette.error) }
                 }.padding(12)
             }.background(Palette.canvas).sheetTitle("Run \(store.runName(collectionID: collectionID, folderID: folderID))")
                 .toolbar {
@@ -67,7 +67,7 @@ struct CollectionRunnerView: View {
                         let granted = url.startAccessingSecurityScopedResource()
                         defer { if granted { url.stopAccessingSecurityScopedResource() } }
                         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                        guard size <= RunnerData.maximumBytes else { throw ClientError("Data files must be smaller than 10 MB.") }
+                        guard size <= RunnerData.maximumBytes else { throw ClientError(String(localized: "Data files must be smaller than 10 MB.")) }
                         data = try RunnerData.parse(Data(contentsOf: url), filename: url.lastPathComponent)
                         dataName = url.lastPathComponent; iterations = data.count; error = nil
                     } catch { self.error = error.localizedDescription }
@@ -120,7 +120,7 @@ struct CollectionRunnerView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Data file").font(.subheadline.weight(.medium))
                     if let dataName {
-                        Text("\(dataName) · \(data.count) \(data.count == 1 ? "row" : "rows") · \(columns)").font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text("\(dataName) · \(data.count) rows · \(columns)").font(.caption).foregroundStyle(.secondary).lineLimit(2)
                     } else {
                         Text("CSV with a header row, or a JSON array of objects. Each row supplies {{column}} values for one iteration.").font(.caption).foregroundStyle(.secondary)
                     }
@@ -130,8 +130,13 @@ struct CollectionRunnerView: View {
                 Button { importing = true } label: { Label("Choose", systemImage: "doc") }.buttonStyle(.bordered)
             }
         }.font(.subheadline).padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
-        Text("Requests run in sidebar order with \(store.environment.map { "the “\($0.name)” environment" } ?? "no environment"). Variables set by scripts carry to later requests and are saved to the active environment. Scripts can use pm.iterationData, pm.info, and pm.execution.setNextRequest(name) or setNextRequest(null) to end an iteration. When iterations exceed data rows, the last row repeats.")
+        Text("\(environmentNote) Variables set by scripts carry to later requests and are saved to the active environment. Scripts can use pm.iterationData, pm.info, and pm.execution.setNextRequest(name) or setNextRequest(null) to end an iteration. When iterations exceed data rows, the last row repeats.")
             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var environmentNote: Text {
+        if let environment = store.environment { return Text("Requests run in sidebar order with the “\(environment.name)” environment.") }
+        return Text("Requests run in sidebar order with no environment.")
     }
 
     private var columns: String {
@@ -147,7 +152,7 @@ struct CollectionRunnerView: View {
                     summary("Requests", "\(report.sentCount)")
                     summary("Failed", "\(report.failedCount)", tint: report.failedCount > 0 ? Palette.danger : nil)
                     summary("Tests", "\(report.testCount - report.failedTestCount)/\(report.testCount)")
-                    summary("Time", String(format: "%.2f s", report.totalDuration))
+                    summary("Time", String(localized: "\(report.totalDuration.formatted(.number.precision(.fractionLength(2)))) s"))
                     Spacer(minLength: 0)
                 }
                 if run.running {
@@ -180,7 +185,7 @@ struct CollectionRunnerView: View {
         }
     }
 
-    private func summary(_ title: String, _ value: String, tint: Color? = nil) -> some View {
+    private func summary(_ title: LocalizedStringKey, _ value: String, tint: Color? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value).font(.system(.title3, design: .monospaced, weight: .semibold)).foregroundStyle(tint ?? .primary)
             Text(title).font(.caption).foregroundStyle(.secondary)
@@ -199,7 +204,7 @@ struct CollectionRunnerView: View {
                     Spacer(minLength: 0)
                     if !result.tests.isEmpty { Text("\(result.tests.filter(\.passed).count)/\(result.tests.count)").font(.caption).foregroundStyle(.secondary) }
                     if let status = result.status { StatusBadge(status: status, showsLabel: false) }
-                    else { Text(result.skipped ? "Skipped" : "Error").font(.system(.caption, design: .monospaced)).foregroundStyle(result.skipped ? Color.secondary : .red) }
+                    else { Text(result.skipped ? "Skipped" : "Error").font(.system(.caption, design: .monospaced)).foregroundStyle(result.skipped ? Color.secondary : Palette.error) }
                     Text("\(Int(result.duration * 1000)) ms").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
                 }.frame(minHeight: 40).contentShape(Rectangle())
             }.buttonStyle(.plain)

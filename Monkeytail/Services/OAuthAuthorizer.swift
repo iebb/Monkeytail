@@ -18,10 +18,10 @@ import UIKit
         let verifier = try OAuthFlow.random(), state = try OAuthFlow.random(), url = try OAuthFlow.authorizationURL(config, state: state, verifier: verifier)
         let callback: URL = try await withCheckedThrowingContinuation { continuation in
             let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "monkeytail") { callback, error in
-                if let callback { continuation.resume(returning: callback) } else { continuation.resume(throwing: error ?? ClientError("API authorization was cancelled.")) }
+                if let callback { continuation.resume(returning: callback) } else { continuation.resume(throwing: error ?? ClientError(String(localized: "API authorization was cancelled."))) }
             }
             session.presentationContextProvider = self; session.prefersEphemeralWebBrowserSession = true; self.session = session
-            if !session.start() { self.session = nil; continuation.resume(throwing: ClientError("Could not open API authorization.")) }
+            if !session.start() { self.session = nil; continuation.resume(throwing: ClientError(String(localized: "Could not open API authorization."))) }
         }
         defer { session = nil }
         let code = try OAuthFlow.code(from: callback, config: config, state: state)

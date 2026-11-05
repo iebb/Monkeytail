@@ -100,7 +100,7 @@ public enum ResponseDiff {
         for key in Set(old.keys).union(new.keys).sorted() where old[key] != new[key] { changes.append(ResponseChange(path: "Header: " + key, before: old[key], after: new[key])) }
         guard before.body != after.body else { return changes }
         guard max(before.body.count, after.body.count) <= 2 * 1024 * 1024 else {
-            changes.append(ResponseChange(path: "Body (JSON diff limited to 2 MB)", before: "\(before.body.count) bytes", after: "\(after.body.count) bytes")); return changes
+            changes.append(ResponseChange(path: String(localized: "Body (JSON diff limited to 2 MB)", bundle: .module), before: String(localized: "\(before.body.count) bytes", bundle: .module), after: String(localized: "\(after.body.count) bytes", bundle: .module))); return changes
         }
         func render(_ value: Any) -> String {
             let data = (try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed, .sortedKeys, .withoutEscapingSlashes])) ?? Data()
@@ -124,7 +124,7 @@ public enum ResponseDiff {
         } else {
             let common = min(before.body.count, after.body.count)
             let offset = (0..<common).first { before.body[$0] != after.body[$0] } ?? common
-            changes.append(ResponseChange(path: "Body: first difference at byte \(offset)", before: "\(before.body.count) bytes", after: "\(after.body.count) bytes"))
+            changes.append(ResponseChange(path: String(localized: "Body: first difference at byte \(offset)", bundle: .module), before: String(localized: "\(before.body.count) bytes", bundle: .module), after: String(localized: "\(after.body.count) bytes", bundle: .module)))
         }
         return changes
     }

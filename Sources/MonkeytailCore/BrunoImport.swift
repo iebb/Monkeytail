@@ -37,7 +37,7 @@ enum BrunoImport {
                 fields += secrets.filter { !$0.isEmpty && !fields.map(\.name).contains($0) }.sorted().map { Field($0, "") }
                 for index in fields.indices where secrets.contains(fields[index].name) { fields[index].secret = true }
                 environments.append(APIEnvironment(name: (filename as NSString).deletingPathExtension, variables: fields))
-                if !secrets.isEmpty { warnings.append("Bruno secret values are stored outside the collection. Enter them in the imported environments.") }
+                if !secrets.isEmpty { warnings.append(String(localized: "Bruno secret values are stored outside the collection. Enter them in the imported environments.", bundle: .module)) }
                 continue
             }
             let item = self.item(blocks, fallbackName: (filename as NSString).deletingPathExtension)
@@ -77,7 +77,7 @@ enum BrunoImport {
         var warnings = warnings
         let collection = workspace.collections.first
         if collection?.requests.contains(where: { !$0.preScript.isEmpty || !$0.postScript.isEmpty }) == true || collection?.folders?.contains(where: { !$0.defaults.preScript.isEmpty || !$0.defaults.postScript.isEmpty }) == true {
-            warnings.append("Imported scripts run when you send. Bruno’s bru, req, res, test and expect are available; assertions were converted to tests.")
+            warnings.append(String(localized: "Imported scripts run when you send. Bruno’s bru, req, res, test and expect are available; assertions were converted to tests.", bundle: .module))
         }
         return CollectionImport(workspace: workspace, warnings: InterchangeImport.unique(warnings))
     }
@@ -106,7 +106,7 @@ enum BrunoImport {
             default: skipped += 1
             }
         }
-        if skipped > 0 { warnings.append("Skipped \(skipped) gRPC or script \(skipped == 1 ? "item" : "items"). Monkeytail imports HTTP, GraphQL and WebSocket requests.") }
+        if skipped > 0 { warnings.append(skipped == 1 ? String(localized: "Skipped 1 gRPC or script item. Monkeytail imports HTTP, GraphQL and WebSocket requests.", bundle: .module) : String(localized: "Skipped \(skipped) gRPC or script items. Monkeytail imports HTTP, GraphQL and WebSocket requests.", bundle: .module)) }
     }
 
     private static func request(_ item: [String: Any], warnings: inout [String]) -> APIRequest {
@@ -134,11 +134,11 @@ enum BrunoImport {
                 let paths = part["value"] as? [String] ?? [CollectionCodec.string(part["value"])]
                 return paths.map { MultipartPart(name: name, enabled: enabled, file: RequestFile(filename: ($0 as NSString).lastPathComponent, mimeType: (part["contentType"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "application/octet-stream")) }
             }
-            if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append("Choose imported attachment files on this device before sending.") }
+            if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append(String(localized: "Choose imported attachment files on this device before sending.", bundle: .module)) }
         case "file":
             let files = body["file"] as? [[String: Any]] ?? [], chosen = files.first { $0["selected"] as? Bool ?? true } ?? files.first
             request.bodyKind = .file; request.fileBody = RequestFile(filename: (CollectionCodec.string(chosen?["filePath"]) as NSString).lastPathComponent, mimeType: (chosen?["contentType"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "application/octet-stream")
-            warnings.append("Choose the imported body file on this device before sending.")
+            warnings.append(String(localized: "Choose the imported body file on this device before sending.", bundle: .module))
         case "graphql":
             let graph = body["graphql"] as? [String: Any] ?? [:]
             var graphql = GraphQLRequest(); graphql.query = CollectionCodec.string(graph["query"]); graphql.variables = CollectionCodec.string(graph["variables"]).isEmpty ? "{}" : CollectionCodec.string(graph["variables"])
@@ -208,7 +208,7 @@ enum BrunoImport {
         case "bearer", "basic", "digest", "apikey", "awsv4", "oauth1", "oauth2":
             var values = source[mode] as? [String: Any] ?? [:]; values["type"] = mode
             auth = CollectionCodec.decodeAuth(values, postman: false, warnings: &warnings)
-        default: warnings.append("Bruno authentication ‘\(mode)’ is unsupported. Configure it manually.")
+        default: warnings.append(String(localized: "Bruno authentication ‘\(mode)’ is unsupported. Configure it manually.", bundle: .module))
         }
         return auth
     }

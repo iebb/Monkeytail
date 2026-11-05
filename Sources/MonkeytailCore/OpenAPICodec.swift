@@ -86,7 +86,7 @@ public enum OpenAPICodec {
                     case "header": request.headers.append(Field(name, value, enabled: parameter["required"] as? Bool ?? false || sample != nil))
                     case "body": request.bodyKind = .json; request.body = text(try exampleValue(parameter["schema"])); request.requestSchema = try schemaText(parameter["schema"])
                     case "formData": request.bodyKind = .form; request.form.append(Field(name, value))
-                    default: warnings.append("Parameter location \(location) requires manual setup.")
+                    default: warnings.append(String(localized: "Parameter location \(location) requires manual setup.", bundle: .module))
                     }
                 }
                 request.url = "{{base_url}}" + urlPath
@@ -100,7 +100,7 @@ public enum OpenAPICodec {
                     } else if let mime = content.keys.sorted().first {
                         request.bodyKind = mime.contains("multipart") ? .multipart : mime.contains("x-www-form-urlencoded") ? .form : .text
                         request.headers.append(Field("Content-Type", mime))
-                        warnings.append("\(name): configure \(mime) body fields before sending.")
+                        warnings.append(String(localized: "\(name): configure \(mime) body fields before sending.", bundle: .module))
                     }
                 }
                 if let responses = operation["responses"] as? [String: Any], let responseKey = responses.keys.sorted().first(where: { $0.hasPrefix("2") }) {
@@ -118,7 +118,7 @@ public enum OpenAPICodec {
                         let flows = security["flows"] as? [String: [String: Any]] ?? [:], flow = flows["authorizationCode"] ?? flows["clientCredentials"] ?? security
                         config.grant = flows["clientCredentials"] != nil && flows["authorizationCode"] == nil ? .clientCredentials : .pkce
                         config.authorizationURL = text(flow["authorizationUrl"]); config.tokenURL = text(flow["tokenUrl"]); request.auth.oauth = config
-                    default: warnings.append("\(name): configure authentication manually.")
+                    default: warnings.append(String(localized: "\(name): configure authentication manually.", bundle: .module))
                     }
                 }
                 if let tag = (operation["tags"] as? [String])?.first {

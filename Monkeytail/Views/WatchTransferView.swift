@@ -29,11 +29,11 @@ struct WatchTransferView: View {
                     }.onDelete { offsets in let ids = offsets.map { link.requests[$0].id }; for id in ids { do { try link.remove(id) } catch { result = error.localizedDescription } } }
                     Button("Sync") { do {
                         let favourites = Set(store.workspace.collections.flatMap(\.requests).filter { $0.favorite == true }.map(\.id))
-                        try link.transfer(favoriteIDs: favourites); result = "Queued for Watch."
+                        try link.transfer(favoriteIDs: favourites); result = String(localized: "Queued for Watch.")
                     } catch { result = error.localizedDescription } }
                 }
                 if let result { Text(result).font(.caption) }
-                if let issue = link.issue { Text(issue).font(.caption).foregroundStyle(.red) }
+                if let issue = link.issue { Text(issue).font(.caption).foregroundStyle(Palette.error) }
             }.navigationTitle("Apple Watch").inlineTitle().toolbar { Button("Done") { dismiss() } }
         }
     }
@@ -41,11 +41,11 @@ struct WatchTransferView: View {
         do {
             let effective = try store.effective(request)
             let url = try RequestBuilder.build(effective.request, variables: effective.variables).url
-            guard try store.network.identity(for: url) == nil else { throw ClientError("Use iPhone for client certificate requests.") }
+            guard try store.network.identity(for: url) == nil else { throw ClientError(String(localized: "Use iPhone for client certificate requests.")) }
             let collection = store.workspace.collections.first { $0.requests.contains { $0.id == request.id } }
             let fields = (store.environment?.variables ?? []) + (collection?.defaults?.variables ?? []) + (collection?.folders ?? []).flatMap { $0.defaults.variables }
             let payload = try WatchCompanionLink.prepare(effective.request, variables: effective.variables, proxy: store.workspace.proxy, includePrivateData: store.watchIncludesCredentials, secretVariableNames: Set(fields.filter(\.isCredential).map(\.name)))
-            try link.add(payload); result = "Queued for Watch."
+            try link.add(payload); result = String(localized: "Queued for Watch.")
         } catch { result = error.localizedDescription }
     }
 }

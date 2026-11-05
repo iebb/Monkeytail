@@ -34,7 +34,7 @@ public enum CollectionCodec {
             return CollectionImport(workspace: Workspace(environments: [APIEnvironment(name: root["name"] as? String ?? "Imported environment", variables: fields(values))]))
         }
         if let resources = root["resources"] as? [[String: Any]] { return try InsomniaImport.decode(root, resources: resources) }
-        throw ClientError(InterchangeImport.unsupportedMessage)
+        throw ClientError(verbatim: InterchangeImport.unsupportedMessage)
     }
 
     public static func encode(_ workspace: Workspace, format: ExportFormat) throws -> Data {
@@ -137,11 +137,11 @@ public enum CollectionCodec {
                             }
                             return [MultipartPart(name: string(field["key"]), value: string(field["value"]), enabled: !(field["disabled"] as? Bool ?? false))]
                         }
-                        warnings.append("Choose imported attachment files on this device before sending.")
+                        warnings.append(String(localized: "Choose imported attachment files on this device before sending.", bundle: .module))
                     case "file":
                         request.bodyKind = .file
                         request.fileBody = RequestFile(filename: string((body["file"] as? [String: Any])?["src"]))
-                        warnings.append("Choose the imported body file on this device before sending.")
+                        warnings.append(String(localized: "Choose the imported body file on this device before sending.", bundle: .module))
                     case "graphql":
                         request.bodyKind = .json
                         request.transport = .graphql
@@ -172,7 +172,7 @@ public enum CollectionCodec {
         try walk(root["item"] as? [[String: Any]] ?? [], path: "", inheritedAuth: root["auth"] as? [String: Any], inheritedEvents: [], parent: nil)
         let name = (root["info"] as? [String: Any])?["name"] as? String ?? "Postman collection"
         let variables = fields(root["variable"] as? [[String: Any]] ?? [])
-        if requests.contains(where: { !$0.preScript.isEmpty || !$0.postScript.isEmpty }) || !(root["event"] as? [Any] ?? []).isEmpty || folders.contains(where: { !$0.defaults.preScript.isEmpty || !$0.defaults.postScript.isEmpty }) { warnings.append("Imported scripts run when you send. Review them in each Scripts tab; turn off Run scripts to skip them.") }
+        if requests.contains(where: { !$0.preScript.isEmpty || !$0.postScript.isEmpty }) || !(root["event"] as? [Any] ?? []).isEmpty || folders.contains(where: { !$0.defaults.preScript.isEmpty || !$0.defaults.postScript.isEmpty }) { warnings.append(String(localized: "Imported scripts run when you send. Review them in each Scripts tab; turn off Run scripts to skip them.", bundle: .module)) }
         var collection = RequestCollection(name: name, requests: requests)
         collection.folders = folders; collection.defaults = decodeDefaults(root, warnings: &warnings, inherit: false)
         if let text = description((root["info"] as? [String: Any])?["description"]) { collection.defaults?.description = text }
@@ -198,17 +198,17 @@ public enum CollectionCodec {
             auth.kind = .oauth1; var oauth1 = OAuth1Auth(); oauth1.consumerKey = string(values["consumerKey"]); oauth1.consumerSecret = string(values["consumerSecret"])
             oauth1.token = string(values["token"] ?? values["tokenKey"] ?? values["accessToken"]); oauth1.tokenSecret = string(values["tokenSecret"] ?? values["accessTokenSecret"]); oauth1.realm = string(values["realm"])
             let method = string(values["signatureMethod"])
-            if let signature = OAuth1Signature(rawValue: method.isEmpty ? "HMAC-SHA1" : method.uppercased()) { oauth1.signatureMethod = signature } else { warnings.append("OAuth 1.0 signature method ‘\(method)’ is unsupported; HMAC-SHA1 is used instead.") }
+            if let signature = OAuth1Signature(rawValue: method.isEmpty ? "HMAC-SHA1" : method.uppercased()) { oauth1.signatureMethod = signature } else { warnings.append(String(localized: "OAuth 1.0 signature method ‘\(method)’ is unsupported; HMAC-SHA1 is used instead.", bundle: .module)) }
             auth.oauth1 = oauth1
         case "jwt":
             auth.kind = .jwt; var jwt = JWTAuth(); let algorithm = string(values["algorithm"]).uppercased()
-            if let value = JWTAlgorithm(rawValue: algorithm.isEmpty ? "HS256" : algorithm) { jwt.algorithm = value } else { warnings.append("JWT algorithm ‘\(algorithm)’ is unsupported; HS256 is used instead.") }
+            if let value = JWTAlgorithm(rawValue: algorithm.isEmpty ? "HS256" : algorithm) { jwt.algorithm = value } else { warnings.append(String(localized: "JWT algorithm ‘\(algorithm)’ is unsupported; HS256 is used instead.", bundle: .module)) }
             jwt.secret = string(values["secret"]); jwt.secretIsBase64 = string(values["isSecretBase64Encoded"]) == "true"; jwt.privateKey = string(values["privateKey"])
             jwt.payload = values["payload"] == nil ? "{}" : string(values["payload"]); jwt.header = values["header"] == nil ? "{}" : string(values["header"])
             jwt.inQuery = string(values["addTokenTo"]) == "queryParam"; jwt.headerPrefix = values["headerPrefix"] == nil ? "Bearer" : string(values["headerPrefix"])
             jwt.queryKey = string(values["queryParamKey"]).isEmpty ? "token" : string(values["queryParamKey"]); auth.jwt = jwt
         case "noauth", "none", "": break
-        default: warnings.append("Authentication type ‘\(type)’ is unsupported. Configure an Authorization header manually.")
+        default: warnings.append(String(localized: "Authentication type ‘\(type)’ is unsupported. Configure an Authorization header manually.", bundle: .module))
         }
         return auth
     }

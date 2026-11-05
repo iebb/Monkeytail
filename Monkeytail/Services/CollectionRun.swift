@@ -40,15 +40,15 @@ extension WorkspaceStore {
 
     func runName(collectionID: UUID, folderID: UUID?) -> String {
         let collection = workspace.collections.first { $0.id == collectionID }
-        return collection?.folders?.first { $0.id == folderID }?.name ?? collection?.name ?? "Collection"
+        return collection?.folders?.first { $0.id == folderID }?.name ?? collection?.name ?? String(localized: "Collection")
     }
 
     /// Runs selected requests in sidebar order. Script variable edits carry forward within the run,
     /// and are also saved to the active environment, as they are for single sends.
     func startRun(collectionID: UUID, folderID: UUID?, configuration: RunConfiguration) {
-        guard runningID == nil, collectionRun?.running != true else { issue = "Wait for the current request to finish."; return }
+        guard runningID == nil, collectionRun?.running != true else { issue = String(localized: "Wait for the current request to finish."); return }
         let plan = runPlan(collectionID: collectionID, folderID: folderID).filter { configuration.requestIDs.contains($0.id) }
-        guard !plan.isEmpty else { issue = "Select at least one HTTP or GraphQL request to run."; return }
+        guard !plan.isEmpty else { issue = String(localized: "Select at least one HTTP or GraphQL request to run."); return }
         let iterations = max(1, min(RunnerData.maximumRows, configuration.iterations))
         let environmentID = workspace.selectedEnvironmentID
         let run = CollectionRun(collectionID: collectionID, folderID: folderID,
@@ -62,9 +62,9 @@ extension WorkspaceStore {
                 let row = configuration.data.isEmpty ? [:] : configuration.data[min(iteration, configuration.data.count - 1)]
                 var index: Int? = 0
                 while let current = index {
-                    guard executed < Self.maximumRunRequests else { run.notes.append("Stopped after \(Self.maximumRunRequests) requests."); break iterationLoop }
+                    guard executed < Self.maximumRunRequests else { run.notes.append(String(localized: "Stopped after \(Self.maximumRunRequests) requests.")); break iterationLoop }
                     if executed > 0, configuration.delayMilliseconds > 0 { try? await Task.sleep(for: .milliseconds(configuration.delayMilliseconds)) }
-                    if Task.isCancelled { run.notes.append("Run stopped."); break iterationLoop }
+                    if Task.isCancelled { run.notes.append(String(localized: "Run stopped.")); break iterationLoop }
                     executed += 1
                     // Use the latest saved definition so edits during a run apply to later requests.
                     let saved = request(plan[current].id) ?? plan[current]
@@ -80,17 +80,17 @@ extension WorkspaceStore {
                         if let response = execution.response {
                             result.status = response.status; result.duration = response.duration
                             result.tests = response.logs.filter { $0.level == "pass" || $0.level == "fail" }.map { RunnerTest(name: $0.message, passed: $0.level == "pass") }
-                            if let error = execution.scriptError { result.tests.append(RunnerTest(name: "After-response script: " + error, passed: false)) }
+                            if let error = execution.scriptError { result.tests.append(RunnerTest(name: String(localized: "After-response script: \(error)"), passed: false)) }
                             result.bodyPreview = String(decoding: response.body.prefix(Self.runBodyPreviewBytes), as: UTF8.self)
                         } else { result.skipped = true }
                     } catch {
-                        if Task.isCancelled { run.notes.append("Run stopped."); break iterationLoop }
+                        if Task.isCancelled { run.notes.append(String(localized: "Run stopped.")); break iterationLoop }
                         result.error = error.localizedDescription
                     }
                     run.report.results.append(result)
-                    if configuration.stopOnFailure && !result.passed { run.notes.append("Stopped at the first failure."); break iterationLoop }
+                    if configuration.stopOnFailure && !result.passed { run.notes.append(String(localized: "Stopped at the first failure.")); break iterationLoop }
                     index = RunnerPlan.nextIndex(after: current, directive: directive, plan: plan)
-                    if case .jump(let target) = directive, index == nil { run.notes.append("Iteration \(iteration + 1): next request “\(target)” is not in this run.") }
+                    if case .jump(let target) = directive, index == nil { run.notes.append(String(localized: "Iteration \(iteration + 1): next request “\(target)” is not in this run.")) }
                 }
             }
         }

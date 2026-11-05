@@ -34,7 +34,9 @@ public struct WatchRequest: Codable, Identifiable, Equatable, Sendable {
 }
 public struct WatchError: LocalizedError, Sendable {
     public var message: String
-    public init(_ message: String) { self.message = message }
+    public init(_ message: String.LocalizationValue) { self.message = String(localized: message, bundle: .module) }
+    public init(verbatim message: String) { self.message = message }
+    @_disfavoredOverload public init(_ message: String) { self.message = message }
     public var errorDescription: String? { message }
 }
 public enum WatchPayload {

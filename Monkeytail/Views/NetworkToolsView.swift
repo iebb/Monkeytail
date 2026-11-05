@@ -20,12 +20,12 @@ struct NetworkToolsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Cookies · \(store.environment?.name ?? "Default")") {
+                Section("Cookies · \(store.environment?.name ?? String(localized: "Default"))") {
                     ForEach(store.network.jar(store.workspace.selectedEnvironmentID).cookies) { item in
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(item.name + " · " + item.domain + item.path).font(.caption.monospaced())
+                            Text(item.name + " · " + item.domain + item.path).font(.system(.caption, design: .monospaced))
                             SecureField("Value", text: Binding(get: { store.network.jar(store.workspace.selectedEnvironmentID).cookies.first { $0.id == item.id }?.value ?? "" }, set: { value in mutateJar { if let index = $0.cookies.firstIndex(where: { $0.id == item.id }) { $0.cookies[index].value = value } } }))
-                            HStack { if item.secure { Text("Secure") }; if item.httpOnly { Text("HttpOnly") }; if let expires = item.expires { Text(expires, format: .dateTime) }; Spacer(); Button("Edit") { cookie = item; originalCookieID = item.id; addingCookie = true }; Button("Remove", role: .destructive) { mutateJar { $0.cookies.removeAll { $0.id == item.id } } } }.font(.caption)
+                            HStack { if item.secure { Text(verbatim: "Secure") }; if item.httpOnly { Text(verbatim: "HttpOnly") }; if let expires = item.expires { Text(expires, format: .dateTime) }; Spacer(); Button("Edit") { cookie = item; originalCookieID = item.id; addingCookie = true }; Button("Remove", role: .destructive) { mutateJar { $0.cookies.removeAll { $0.id == item.id } } } }.font(.caption)
                         }
                     }
                     Button("Add cookie") { cookie = StoredCookie(name: "", value: "", domain: ""); originalCookieID = nil; addingCookie = true }
@@ -66,7 +66,7 @@ struct NetworkToolsView: View {
                     Text("Trust a self-signed or private-CA certificate from the error shown after a failed send. Each trust covers one exact certificate for one host and port, on this device only.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Local mock server") {
-                    if let address = store.mockServer.address { Text(address).font(.footnote.monospaced()).textSelection(.enabled); Button("Copy URL") { Clipboard.copy(address) }; Button("Stop") { store.mockServer.stop() } }
+                    if let address = store.mockServer.address { Text(address).font(.system(.footnote, design: .monospaced)).textSelection(.enabled); Button("Copy URL") { Clipboard.copy(address) }; Button("Stop") { store.mockServer.stop() } }
                     else { Button("Start") {
                         do {
                             let requests = try store.workspace.collections.flatMap(\.requests).filter { $0.mock?.enabled == true }.map { request in
@@ -76,10 +76,10 @@ struct NetworkToolsView: View {
                         } catch { self.error = error.localizedDescription }
                     } }
                     Text("Loopback only. Runs while Monkeytail is active. Routes use enabled mocks and match method + path.").font(.caption).foregroundStyle(.secondary)
-                    if let error = store.mockServer.error { Text(error).foregroundStyle(.red) }
+                    if let error = store.mockServer.error { Text(error).foregroundStyle(Palette.error) }
                 }
-                if let error { Section { Text(error).font(.caption).foregroundStyle(.red) } }
-                if let issue = store.network.issue { Section { Text(issue).font(.caption).foregroundStyle(.red) } }
+                if let error { Section { Text(error).font(.caption).foregroundStyle(Palette.error) } }
+                if let issue = store.network.issue { Section { Text(issue).font(.caption).foregroundStyle(Palette.error) } }
             }.macGroupedForm().noCapitalization().autocorrectionDisabled().sheetTitle("Cookies & certificates")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
                 .fileImporter(isPresented: $choosing, allowedContentTypes: [.data]) { result in
@@ -88,7 +88,7 @@ struct NetworkToolsView: View {
                             let url = try result.get(), hostname = host.trimmingCharacters(in: .whitespaces), portNumber = Int(port) ?? 0, passphrase = password
                             let data = try await Task.detached {
                                 let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }
-                                guard (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) <= 5 * 1024 * 1024 else { throw ClientError("Identity exceeds 5 MB.") }; return try Data(contentsOf: url)
+                                guard (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0) <= 5 * 1024 * 1024 else { throw ClientError(String(localized: "Identity exceeds 5 MB.")) }; return try Data(contentsOf: url)
                             }.value
                             try store.network.addIdentity(.init(host: hostname, port: portNumber, filename: url.lastPathComponent, data: data, password: passphrase)); password = ""; error = nil
                         } catch { self.error = error.localizedDescription }

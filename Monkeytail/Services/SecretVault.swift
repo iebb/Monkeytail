@@ -35,7 +35,7 @@ struct SecretVault {
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecItemNotFound { return [:] }
-        guard status == errSecSuccess, let data = result as? Data else { throw ClientError("Local credentials are unavailable while the device is locked.") }
+        guard status == errSecSuccess, let data = result as? Data else { throw ClientError(String(localized: "Local credentials are unavailable while the device is locked.")) }
         return try JSONDecoder().decode([String: String].self, from: data)
     }
     func save(_ secrets: [String: String]) throws {
@@ -53,7 +53,7 @@ struct SecretVault {
             create[kSecAttrSynchronizable as String] = false
             status = SecItemAdd(create as CFDictionary, nil)
         }
-        guard status == errSecSuccess else { throw ClientError("Could not save local credentials (\(status)).") }
+        guard status == errSecSuccess else { throw ClientError(String(localized: "Could not save local credentials (\(status)).")) }
     }
     func remove() throws {
         if useKeychain { try removeKeychain() }
@@ -61,6 +61,6 @@ struct SecretVault {
     }
     private func removeKeychain() throws {
         let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else { throw ClientError("Could not remove the previous credential storage (\(status)).") }
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw ClientError(String(localized: "Could not remove the previous credential storage (\(status)).")) }
     }
 }

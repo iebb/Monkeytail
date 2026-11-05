@@ -57,10 +57,10 @@ enum HTTPFileImport {
                 lines = lines.dropFirst()
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.hasPrefix("> {%") { request.postScript += script(trimmed, rest: &lines, prefix: ">"); continue }
-                if trimmed.hasPrefix(">") || trimmed.hasPrefix("<>") { warnings.append("Response handler files and saved-response references (> file.js, <> file) were not imported."); continue }
+                if trimmed.hasPrefix(">") || trimmed.hasPrefix("<>") { warnings.append(String(localized: "Response handler files and saved-response references (> file.js, <> file) were not imported.", bundle: .module)); continue }
                 if trimmed.hasPrefix("< ") && body.allSatisfy({ $0.trimmingCharacters(in: .whitespaces).isEmpty }) {
                     request.bodyKind = .file; request.fileBody = RequestFile(filename: (trimmed.dropFirst(2).trimmingCharacters(in: .whitespaces) as NSString).lastPathComponent)
-                    warnings.append("Choose the imported body file on this device before sending."); continue
+                    warnings.append(String(localized: "Choose the imported body file on this device before sending.", bundle: .module)); continue
                 }
                 body.append(line)
             }
@@ -77,12 +77,12 @@ enum HTTPFileImport {
                     }
                     request.body = ""
                 } else { request.bodyKind = type.contains("json") || (type.isEmpty && (try? JSONSerialization.jsonObject(with: Data(request.body.utf8))) != nil) ? .json : .text }
-                if type.contains("multipart") { request.bodyKind = .text; warnings.append("Multipart bodies were imported as text. Recreate them in the Multipart body editor.") }
+                if type.contains("multipart") { request.bodyKind = .text; warnings.append(String(localized: "Multipart bodies were imported as text. Recreate them in the Multipart body editor.", bundle: .module)) }
             }
             if (request.url + request.body + request.headers.map(\.value).joined()).range(of: #"\{\{\s*\w+\.(response|request)\."#, options: .regularExpression) != nil {
-                warnings.append("Named request references such as {{login.response.body.token}} are not resolved. Set variables from a test script instead.")
+                warnings.append(String(localized: "Named request references such as {{login.response.body.token}} are not resolved. Set variables from a test script instead.", bundle: .module))
             }
-            if !request.preScript.isEmpty || !request.postScript.isEmpty { warnings.append("Imported scripts run when you send. JetBrains client, request and response objects are supported for tests, assertions and global variables.") }
+            if !request.preScript.isEmpty || !request.postScript.isEmpty { warnings.append(String(localized: "Imported scripts run when you send. JetBrains client, request and response objects are supported for tests, assertions and global variables.", bundle: .module)) }
             collection.requests.append(request)
         }
         guard !collection.requests.isEmpty else { throw ClientError("The HTTP file contains no requests.") }

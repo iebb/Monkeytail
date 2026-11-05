@@ -90,7 +90,7 @@ struct ResponseImageView: UIViewRepresentable {
             addSubview(imageView)
             accessibilityIdentifier = "Response image"
             imageView.isAccessibilityElement = true
-            imageView.accessibilityLabel = "Response image preview"
+            imageView.accessibilityLabel = String(localized: "Response image preview")
             backgroundColor = .secondarySystemBackground
         }
         required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -120,7 +120,7 @@ struct ResponseImageView: NSViewRepresentable {
         scroll.allowsMagnification = true; scroll.minMagnification = 0.1; scroll.maxMagnification = 8
         let view = NSImageView(frame: NSRect(x: 0, y: 0, width: image.width, height: image.height))
         view.image = NSImage(cgImage: image, size: view.frame.size); view.imageScaling = .scaleNone
-        view.setAccessibilityLabel("Response image preview"); scroll.documentView = view; return scroll
+        view.setAccessibilityLabel(String(localized: "Response image preview")); scroll.documentView = view; return scroll
     }
     func updateNSView(_ view: NSScrollView, context: Context) {}
 }
@@ -144,7 +144,7 @@ struct ResponseMediaView: View {
         VStack(spacing: 12) {
             if failed || error != nil {
                 Image(systemName: "exclamationmark.circle").font(.title)
-                Text(error ?? "Unsupported media. Use Hex or save the response.").font(.callout)
+                Text(error ?? String(localized: "Unsupported media. Use Hex or save the response.")).font(.callout)
                     .accessibilityIdentifier("Media preview error")
             } else if let player {
                 if audio {

@@ -31,6 +31,7 @@ struct WorkspaceView: View {
     @State private var editingFolderID: UUID?
     @State private var runnerCollectionID: UUID?
     @State private var runnerFolderID: UUID?
+    @AppStorage("activeCollectionID") private var activeCollectionRaw = ""
 
     enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, history, snapshots, curl, code, network, defaults, watch, runner; var id: String { rawValue } }
 
@@ -42,9 +43,9 @@ struct WorkspaceView: View {
             if let request = store.selectedRequest {
                 VStack(spacing: 0) {
                     #if os(macOS)
-                    RequestTabStrip(store: store); Divider()
+                    RequestTabStrip(store: store, collectionID: activeCollection?.id); Divider()
                     #else
-                    if geometry.size.width >= 700 { RequestTabStrip(store: store); Divider() }
+                    if geometry.size.width >= 700 { RequestTabStrip(store: store, collectionID: activeCollection?.id); Divider() }
                     #endif
                     RequestWorkspace(store: store, requestID: request.id)
                         .id(request.id)
@@ -56,6 +57,8 @@ struct WorkspaceView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        .onAppear { follow(store.selectedRequestID) }
+        .onChange(of: store.selectedRequestID) { _, id in follow(id) }
         #if os(macOS)
         .focusedSceneValue(\.workspaceActions, WorkspaceActions(
             findRequest: { visibility = .all; searchFocused = true },
@@ -96,7 +99,7 @@ struct WorkspaceView: View {
                 let name = collectionName.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { return }
                 if let id = renameID, let index = store.workspace.collections.firstIndex(where: { $0.id == id }) { store.workspace.collections[index].name = name }
-                else { store.workspace.collections.append(RequestCollection(name: name)) }
+                else { let collection = RequestCollection(name: name); store.workspace.collections.append(collection); activate(collection.id) }
                 renameID = nil
             }
         }
@@ -128,7 +131,7 @@ struct WorkspaceView: View {
                 .frame(maxHeight: 240)
             #endif
             HStack(spacing: 12) {
-                Button("New request", systemImage: "plus") { store.addRequest() }.buttonStyle(.borderedProminent)
+                Button("New request", systemImage: "plus") { store.addRequest(to: activeCollection?.id) }.buttonStyle(.borderedProminent)
                 Button("Import", systemImage: "arrow.down.doc") { sheet = .transfer }.buttonStyle(.bordered)
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.canvas)
@@ -138,7 +141,7 @@ struct WorkspaceView: View {
         VStack(spacing: 0) {
             #if !os(macOS)
             HStack(spacing: 10) {
-                Image(systemName: "terminal.fill").font(.system(size: 19, weight: .medium))
+                Image(systemName: "terminal.fill").font(.app(size: 19, weight: .medium))
                     .foregroundStyle(Palette.mint).frame(width: 38, height: 38)
                     .background(Palette.mint.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
                     .accessibilityHidden(true)
@@ -149,23 +152,24 @@ struct WorkspaceView: View {
                 Spacer()
             }.padding(SidebarMetrics.horizontalInset).padding(.top, 4)
             #endif
-            HStack(alignment: .center, spacing: 8) {
-                Text("Collections")
-                    #if os(macOS)
-                    .font(.system(size: 13, weight: .semibold))
-                    #else
-                    .font(.headline)
-                    #endif
-                Spacer()
+            HStack(alignment: .center, spacing: 4) {
+                collectionSwitcher
                 Menu {
-                    Button("New request", systemImage: "plus") { store.addRequest(); compactColumn = .detail }
-                    Button("New collection", systemImage: "folder.badge.plus") { collectionName = ""; renameID = nil; newCollection = true }
-                } label: { Image(systemName: "plus").frame(width: SidebarMetrics.rowHeight, height: SidebarMetrics.rowHeight) }
+                    Button("New request", systemImage: "plus") { store.addRequest(to: activeCollection?.id); compactColumn = .detail }
+                    if let collection = activeCollection {
+                        Button("New folder", systemImage: "folder.badge.plus") { folderCollectionID = collection.id; folderParentID = nil; folderName = ""; addingFolder = true }
+                    }
+                    Divider()
+                    Button("New collection…", systemImage: "rectangle.stack.badge.plus") { collectionName = ""; renameID = nil; newCollection = true }
+                } label: { Image(systemName: "plus").frame(width: SidebarMetrics.rowHeight, height: SidebarMetrics.rowHeight).contentShape(Rectangle()) }
                 .borderlessMenu()
                 .accessibilityLabel("Add request or collection")
-            }.padding(.horizontal, SidebarMetrics.horizontalInset)
+                if let collection = activeCollection { collectionOptions(collection) }
+            }.padding(.leading, SidebarMetrics.horizontalInset).padding(.trailing, SidebarMetrics.horizontalInset - 8)
                 #if os(macOS)
                 .padding(.top, 8).padding(.bottom, 6)
+                #else
+                .padding(.bottom, 4)
                 #endif
             #if os(macOS)
             MacRequestSearchField(text: $search, focused: $searchFocused)
@@ -177,32 +181,35 @@ struct WorkspaceView: View {
                 .padding(.horizontal, SidebarMetrics.horizontalInset).padding(.bottom, 8)
             #endif
             List(selection: $store.selectedRequestID) {
-                ForEach(store.workspace.collections) { collection in
+                if let collection = activeCollection {
                     Section {
                         if search.isEmpty {
                             FolderRows(store: store, collectionID: collection.id, edit: { id in editingCollectionID = collection.id; editingFolderID = id; sheet = .defaults }, add: { parent in folderCollectionID = collection.id; folderParentID = parent; folderName = ""; addingFolder = true }, run: { id in runCollection(collection.id, folder: id) })
+                            ForEach(collection.requests.filter { $0.folderID == nil }) { request in
+                                RequestSidebarRow(store: store, request: request, collectionID: collection.id)
+                            }
+                            if collection.requests.isEmpty && (collection.folders ?? []).isEmpty {
+                                sidebarNote("No requests yet", action: "New request") { store.addRequest(to: collection.id); compactColumn = .detail }
+                            }
+                        } else {
+                            let matches = collection.requests.filter(matchesSearch)
+                            ForEach(matches) { request in RequestSidebarRow(store: store, request: request, collectionID: collection.id) }
+                            if matches.isEmpty { sidebarNote("No matching requests in this collection") }
                         }
-                        ForEach(collection.requests.filter { search.isEmpty ? $0.folderID == nil : $0.name.localizedCaseInsensitiveContains(search) || $0.url.localizedCaseInsensitiveContains(search) }) { request in
-                            RequestSidebarRow(store: store, request: request, collectionID: collection.id)
-                        }
-                    } header: {
-                        HStack {
-                            Label(collection.name, systemImage: "folder").textCase(nil).font(.subheadline.weight(.medium))
-                            Spacer()
-                            Menu {
-                                Button("Add request", systemImage: "plus") { store.addRequest(to: collection.id) }
-                                Button("New folder", systemImage: "folder.badge.plus") { folderCollectionID = collection.id; folderParentID = nil; folderName = ""; addingFolder = true }
-                                Button("Run collection", systemImage: "play.circle") { runCollection(collection.id, folder: nil) }
-                                Button("Collection settings", systemImage: "slider.horizontal.3") { editingCollectionID = collection.id; editingFolderID = nil; sheet = .defaults }
-                                Button("Rename", systemImage: "pencil") { renameID = collection.id; collectionName = collection.name; newCollection = true }
-                                if collection.requests.isEmpty {
-                                    Button("Delete empty collection", systemImage: "trash", role: .destructive) { store.workspace.collections.removeAll { $0.id == collection.id } }
-                                }
-                            } label: { Image(systemName: "ellipsis").frame(width: SidebarMetrics.rowHeight, height: SidebarMetrics.rowHeight) }.borderlessMenu().buttonStyle(.plain).accessibilityLabel("Collection options")
-                        }
-                        .frame(minHeight: SidebarMetrics.rowHeight)
                     }
                     .listRowInsets(EdgeInsets(top: 0, leading: SidebarMetrics.horizontalInset, bottom: 0, trailing: SidebarMetrics.horizontalInset))
+                    if !search.isEmpty {
+                        ForEach(store.workspace.collections.filter { $0.id != collection.id && $0.requests.contains(where: matchesSearch) }) { other in
+                            Section {
+                                ForEach(other.requests.filter(matchesSearch)) { request in RequestSidebarRow(store: store, request: request, collectionID: other.id) }
+                            } header: {
+                                Label { Text(other.name) } icon: { Image(systemName: "rectangle.stack") }.textCase(nil).font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                            }
+                            .listRowInsets(EdgeInsets(top: 0, leading: SidebarMetrics.horizontalInset, bottom: 0, trailing: SidebarMetrics.horizontalInset))
+                        }
+                    }
+                } else {
+                    sidebarNote("No collections yet", action: "New collection") { collectionName = ""; renameID = nil; newCollection = true }
                 }
             }
                 #if os(macOS)
@@ -216,7 +223,7 @@ struct WorkspaceView: View {
                 .environment(\.defaultMinListHeaderHeight, SidebarMetrics.rowHeight)
             Divider()
             VStack(spacing: 0) {
-                Text("WORKSPACE").font(.system(size: 10, weight: .semibold)).tracking(1.2)
+                Text("Workspace").textCase(.uppercase).font(.app(size: 10, weight: .semibold)).tracking(1.2)
                     .foregroundStyle(.tertiary).frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, SidebarMetrics.horizontalInset).padding(.top, 8).padding(.bottom, 6)
                 sidebarButton("Import & export", symbol: "arrow.down.doc", sheet: .transfer)
@@ -238,7 +245,7 @@ struct WorkspaceView: View {
             }
     }
 
-    @ViewBuilder private func sidebarButton(_ title: String, symbol: String, sheet value: WorkspaceSheet) -> some View {
+    @ViewBuilder private func sidebarButton(_ title: LocalizedStringKey, symbol: String, sheet value: WorkspaceSheet) -> some View {
         #if os(macOS)
         if value == .settings {
             SettingsLink { sidebarActionLabel(title, symbol: symbol) }
@@ -253,11 +260,96 @@ struct WorkspaceView: View {
         #endif
     }
 
+    /// The sidebar shows one collection at a time: settings, auth, scripts and runs are all scoped to it.
+    private var activeCollection: RequestCollection? {
+        store.workspace.collections.first { $0.id.uuidString == activeCollectionRaw }
+            ?? store.workspace.collections.first { $0.requests.contains { $0.id == store.selectedRequestID } }
+            ?? store.workspace.collections.first
+    }
+
+    private func activate(_ id: UUID) {
+        activeCollectionRaw = id.uuidString
+        store.keepSelection(in: id)
+    }
+
+    /// Opening a request from elsewhere (tabs, history, import, search) switches to its collection.
+    private func follow(_ id: UUID?) {
+        guard let id, let owner = store.workspace.collections.first(where: { $0.requests.contains { $0.id == id } }), owner.id.uuidString != activeCollectionRaw else { return }
+        activeCollectionRaw = owner.id.uuidString
+    }
+
+    private func matchesSearch(_ request: APIRequest) -> Bool {
+        request.name.localizedCaseInsensitiveContains(search) || request.url.localizedCaseInsensitiveContains(search)
+    }
+
+    private var collectionSwitcher: some View {
+        let collection = activeCollection
+        return Menu {
+            Section("Collections") {
+                ForEach(store.workspace.collections) { item in
+                    Button { activate(item.id) } label: {
+                        if item.id == collection?.id { Label { Text(item.name) } icon: { Image(systemName: "checkmark") } }
+                        else { Text(item.name) }
+                    }
+                }
+            }
+            Divider()
+            Button("New collection…", systemImage: "rectangle.stack.badge.plus") { collectionName = ""; renameID = nil; newCollection = true }
+            Button("Import collection…", systemImage: "arrow.down.doc") { sheet = .transfer }
+        } label: {
+            HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Group {
+                        if let collection { Text(collection.name) } else { Text("No collection") }
+                    }
+                        #if os(macOS)
+                        .font(.app(size: 13, weight: .semibold))
+                        #else
+                        .font(.headline)
+                        #endif
+                        .foregroundStyle(.primary).lineLimit(1)
+                    Text("^[\(collection?.requests.count ?? 0) request](inflect: true)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold)).foregroundStyle(.secondary).accessibilityHidden(true)
+                Spacer(minLength: 0)
+            }.frame(minHeight: SidebarMetrics.rowHeight).contentShape(Rectangle())
+        }
+            #if os(macOS)
+            .menuStyle(.button).menuIndicator(.hidden)
+            #endif
+            .buttonStyle(.plain)
+            .accessibilityLabel("Switch collection").accessibilityValue(collection?.name ?? "")
+            .accessibilityIdentifier("Switch collection")
+    }
+
+    private func collectionOptions(_ collection: RequestCollection) -> some View {
+        Menu {
+            Button("Run collection", systemImage: "play.circle") { runCollection(collection.id, folder: nil) }
+            Button("Collection settings", systemImage: "slider.horizontal.3") { editingCollectionID = collection.id; editingFolderID = nil; sheet = .defaults }
+            Button("Rename", systemImage: "pencil") { renameID = collection.id; collectionName = collection.name; newCollection = true }
+            if collection.requests.isEmpty {
+                Button("Delete empty collection", systemImage: "trash", role: .destructive) {
+                    store.workspace.collections.removeAll { $0.id == collection.id }
+                    activeCollectionRaw = ""
+                    if let next = activeCollection { activate(next.id) }
+                }
+            }
+        } label: { Image(systemName: "ellipsis").frame(width: SidebarMetrics.rowHeight, height: SidebarMetrics.rowHeight).contentShape(Rectangle()) }
+            .borderlessMenu().buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Collection options")
+    }
+
+    private func sidebarNote(_ message: LocalizedStringKey, action: LocalizedStringKey? = nil, perform: @escaping () -> Void = {}) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(message).font(.subheadline).foregroundStyle(.secondary)
+            if let action { Button(action, action: perform).buttonStyle(.plain).font(.subheadline).foregroundStyle(Palette.mint) }
+        }.padding(.vertical, 8).listRowBackground(Color.clear).selectionDisabled()
+    }
+
     private func runCollection(_ id: UUID, folder: UUID?) {
         runnerCollectionID = id; runnerFolderID = folder; sheet = .runner
     }
 
-    private func sidebarActionLabel(_ title: String, symbol: String) -> some View {
+    private func sidebarActionLabel(_ title: LocalizedStringKey, symbol: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: symbol).frame(width: 22, alignment: .center).accessibilityHidden(true)
             Text(title).frame(maxWidth: .infinity, alignment: .leading)
@@ -300,12 +392,12 @@ struct WorkspaceView: View {
                 HStack(spacing: 6) {
                     Text(store.environment?.name ?? "No environment")
                     #if os(macOS)
-                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+                    Image(systemName: "chevron.down").font(.app(size: 9, weight: .semibold))
                         .foregroundStyle(.secondary).accessibilityHidden(true)
                     #endif
                 }
                     #if os(macOS)
-                    .font(.system(size: NSFont.preferredFont(forTextStyle: .caption1).pointSize + 1, weight: .medium))
+                    .font(.app(size: NSFont.preferredFont(forTextStyle: .caption1).pointSize + 1, weight: .medium))
                     .foregroundStyle(.primary).lineLimit(1).padding(.horizontal, 6).frame(maxWidth: 180, minHeight: 28)
                     #else
                     .font(.caption.weight(.medium)).lineLimit(1).frame(maxWidth: 80)
@@ -314,7 +406,7 @@ struct WorkspaceView: View {
         }.flatToolbarBackground()
         ToolbarItem(placement: .workspaceTrailing) {
             Menu {
-                Button("New request", systemImage: "plus") { store.addRequest() }
+                Button("New request", systemImage: "plus") { store.addRequest(to: activeCollection?.id) }
                 if let request = store.selectedRequest {
                     Button(request.favorite == true ? "Unfavourite" : "Favourite", systemImage: request.favorite == true ? "star.slash" : "star") { var value = request; value.favorite = request.favorite != true; store.update(value) }.accessibilityIdentifier("Toggle request favourite")
                 }
@@ -322,7 +414,7 @@ struct WorkspaceView: View {
                 Button("Apple Watch", systemImage: "applewatch") { sheet = .watch }
                 #endif
                 Button("Client code", systemImage: "curlybraces") { sheet = .code }.disabled(store.selectedRequest == nil)
-                if let collection = store.workspace.collections.first(where: { $0.requests.contains { $0.id == store.selectedRequestID } }) {
+                if let collection = activeCollection {
                     Button("Run collection", systemImage: "play.circle") { runCollection(collection.id, folder: nil) }
                 }
                 Button("Cookies & certificates", systemImage: "lock.shield") { sheet = .network }
@@ -553,7 +645,7 @@ struct RequestWorkspace: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text(request.method.wrappedValue).font(.system(.footnote, design: .monospaced, weight: .semibold))
-                        Image(systemName: "chevron.down").font(.system(size: 8))
+                        Image(systemName: "chevron.down").font(.app(size: 8))
                     }.foregroundStyle(Palette.method(request.method.wrappedValue)).padding(.horizontal, 12).frame(minHeight: max(36, WorkspaceMetrics.controlHeight))
                 }.borderlessMenu().buttonStyle(.plain).accessibilityLabel("HTTP method")
                 Divider().frame(height: 20)
@@ -601,8 +693,10 @@ struct RequestWorkspace: View {
 /// Postman-style tabs for requests opened this session.
 struct RequestTabStrip: View {
     @Bindable var store: WorkspaceStore
+    var collectionID: UUID?
     var body: some View {
-        let tabs = store.openRequestIDs.compactMap { store.request($0) }
+        let collection = store.workspace.collections.first { $0.id == collectionID }
+        let tabs = store.openRequestIDs.compactMap { id in collection?.requests.first { $0.id == id } }
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
@@ -617,26 +711,36 @@ struct RequestTabStrip: View {
                                         .foregroundStyle(selected ? Color.primary : Color.secondary)
                                 }.frame(maxWidth: 200, minHeight: 34).contentShape(Rectangle())
                             }.buttonStyle(.plain).accessibilityLabel("\(request.method) \(request.name) tab").accessibilityAddTraits(selected ? .isSelected : [])
-                            Button { store.closeTabs([request.id]) } label: { Image(systemName: "xmark").font(.caption2.weight(.semibold)).frame(width: 20, height: 20) }
+                            Button { store.closeTabs([request.id]); store.keepSelection(in: collectionID) } label: { Image(systemName: "xmark").font(.caption2.weight(.semibold)).frame(width: 20, height: 20) }
                                 .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Close \(request.name) tab")
                         }.padding(.leading, 12).padding(.trailing, 6)
-                            .background(selected ? Palette.surface : Color.clear)
+                            .background(selected ? Palette.surface : Color.clear, ignoresSafeAreaEdges: [])
                             .overlay(alignment: .bottom) { if selected { Rectangle().fill(Palette.mint).frame(height: 2) } }
                             .overlay(alignment: .trailing) { Divider().frame(height: 18) }
                             .contextMenu {
-                                Button("Close tab") { store.closeTabs([request.id]) }
-                                Button("Close other tabs") { store.closeTabs(Set(store.openRequestIDs).subtracting([request.id])) }
+                                Button("Close tab") { store.closeTabs([request.id]); store.keepSelection(in: collectionID) }
+                                Button("Close other tabs") { store.closeTabs(Set(tabs.map(\.id)).subtracting([request.id])) }
                                 Button("Duplicate request") { store.duplicate(request) }
                             }
                             .id(request.id)
                     }
-                    Button { store.addRequest(to: store.workspace.collections.first { $0.requests.contains { $0.id == store.selectedRequestID } }?.id) } label: {
+                    Button { store.addRequest(to: collectionID) } label: {
                         Image(systemName: "plus").frame(width: 34, height: 34)
                     }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("New request tab")
                 }
             }.onChange(of: store.selectedRequestID) { _, id in if let id { withAnimation { proxy.scrollTo(id) } } }
         }.background(Palette.canvas).accessibilityIdentifier("Request tabs")
             .onAppear { if let id = store.selectedRequestID { store.openTab(id) } }
+    }
+}
+
+extension WorkspaceStore {
+    /// Keeps the selection inside a collection after a switch, delete or tab close moved it elsewhere.
+    func keepSelection(in collectionID: UUID?) {
+        guard let collection = workspace.collections.first(where: { $0.id == collectionID }) else { return }
+        let ids = Set(collection.requests.map(\.id))
+        if let id = selectedRequestID, ids.contains(id) { return }
+        selectedRequestID = openRequestIDs.last(where: ids.contains) ?? collection.requests.first?.id
     }
 }
 

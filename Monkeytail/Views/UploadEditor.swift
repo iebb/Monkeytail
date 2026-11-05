@@ -24,7 +24,7 @@ struct UploadFileEditor: View {
                 if file != nil { Button { file = nil } label: { Image(systemName: "xmark.circle").frame(width: 44, height: 44) }.accessibilityLabel("Remove file") }
             }
             if let current = file {
-                Text(current.filename.isEmpty ? "No file selected" : current.filename).font(.system(.caption, design: .monospaced)).lineLimit(2)
+                Text(current.filename.isEmpty ? String(localized: "No file selected") : current.filename).font(.system(.caption, design: .monospaced)).lineLimit(2)
                 if let data = current.data {
                     HStack {
                         Text(ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)).font(.caption).foregroundStyle(.secondary)
@@ -45,10 +45,10 @@ struct UploadFileEditor: View {
                         }.font(.caption).frame(minHeight: 44)
                     }
                 }
-                else { Text("Choose this file on your device.").font(.caption).foregroundStyle(.orange) }
+                else { Text("Choose this file on your device.").font(.caption).foregroundStyle(Palette.warning) }
                 TextField("MIME type", text: Binding(get: { file?.mimeType ?? "" }, set: { file?.mimeType = $0 })).font(.system(.caption, design: .monospaced)).dismissibleInput()
             }
-            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if let error { Text(error).font(.caption).foregroundStyle(Palette.error) }
         }.noCapitalization().autocorrectionDisabled()
             .sheet(item: $share) { item in ShareSheet(items: [item.url]) }
             .fileImporter(isPresented: $choosing, allowedContentTypes: [.data]) { result in
@@ -63,9 +63,9 @@ struct UploadFileEditor: View {
                                 let access = url.startAccessingSecurityScopedResource()
                                 defer { if access { url.stopAccessingSecurityScopedResource() } }
                                 let values = try url.resourceValues(forKeys: [.fileSizeKey, .contentTypeKey])
-                                guard (values.fileSize ?? 0) <= MultipartEncoder.maximumBytes else { throw ClientError("Upload exceeds the 20 MB limit.") }
+                                guard (values.fileSize ?? 0) <= MultipartEncoder.maximumBytes else { throw ClientError(String(localized: "Upload exceeds the 20 MB limit.")) }
                                 let data = try Data(contentsOf: url)
-                                guard data.count <= MultipartEncoder.maximumBytes else { throw ClientError("Upload exceeds the 20 MB limit.") }
+                                guard data.count <= MultipartEncoder.maximumBytes else { throw ClientError(String(localized: "Upload exceeds the 20 MB limit.")) }
                                 return RequestFile(filename: url.lastPathComponent, mimeType: values.contentType?.preferredMIMEType ?? "application/octet-stream", data: data)
                             }.value
                             file = selected; error = nil
@@ -79,8 +79,8 @@ struct UploadFileEditor: View {
                 Task {
                     defer { loading = false; photo = nil }
                     do {
-                        guard let data = try await item.loadTransferable(type: Data.self) else { throw ClientError("This photo could not be loaded.") }
-                        guard data.count <= MultipartEncoder.maximumBytes else { throw ClientError("Upload exceeds the 20 MB limit.") }
+                        guard let data = try await item.loadTransferable(type: Data.self) else { throw ClientError(String(localized: "This photo could not be loaded.")) }
+                        guard data.count <= MultipartEncoder.maximumBytes else { throw ClientError(String(localized: "Upload exceeds the 20 MB limit.")) }
                         let type = item.supportedContentTypes.first ?? .data
                         file = RequestFile(filename: "attachment." + (type.preferredFilenameExtension ?? "bin"), mimeType: type.preferredMIMEType ?? "application/octet-stream", data: data)
                         error = nil

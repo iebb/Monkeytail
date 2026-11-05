@@ -28,10 +28,10 @@ import MonkeytailCore
             repeat {
                 do {
                     var model = model
-                    guard model.impersonation == nil else { throw ClientError("WebSocket and SSE use System TLS. Select System in Request → Auth.") }
+                    guard model.impersonation == nil else { throw ClientError(String(localized: "WebSocket and SSE use System TLS. Select System in Request → Auth.")) }
                     let websocket = model.transport == .websocket
                     if websocket {
-                        guard var url = URLComponents(string: try RequestBuilder.resolve(model.url, variables: variables)), ["ws", "wss"].contains(url.scheme ?? "") else { throw ClientError("Enter a ws:// or wss:// URL.") }
+                        guard var url = URLComponents(string: try RequestBuilder.resolve(model.url, variables: variables)), ["ws", "wss"].contains(url.scheme ?? "") else { throw ClientError(String(localized: "Enter a ws:// or wss:// URL.")) }
                         url.scheme = url.scheme == "wss" ? "https" : "http"; model.url = url.string ?? model.url
                     }
                     model.bodyKind = .none; model.requestSchema = nil
@@ -51,7 +51,7 @@ import MonkeytailCore
                             let message = try await socket.receive(); try Task.checkCancellation(); guard generation == current else { return }; connected = true; connecting = false
                             switch message {
                             case .string(let text): append(StreamEvent(direction: "Received", type: "Text", text: text))
-                            case .data(let data): append(StreamEvent(direction: "Received", type: "Binary", text: "\(data.count) bytes", binary: data))
+                            case .data(let data): append(StreamEvent(direction: "Received", type: "Binary", text: String(localized: "\(data.count) bytes"), binary: data))
                             @unknown default: break
                             }
                         }
@@ -59,7 +59,7 @@ import MonkeytailCore
                         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
                         if let lastEventID { request.setValue(lastEventID, forHTTPHeaderField: "Last-Event-ID") }
                         let (bytes, response) = try await session.bytes(for: request)
-                        guard let http = response as? HTTPURLResponse, http.statusCode == 200, http.value(forHTTPHeaderField: "Content-Type")?.lowercased().contains("text/event-stream") == true else { throw ClientError("Expected HTTP 200 with text/event-stream.") }
+                        guard let http = response as? HTTPURLResponse, http.statusCode == 200, http.value(forHTTPHeaderField: "Content-Type")?.lowercased().contains("text/event-stream") == true else { throw ClientError(String(localized: "Expected HTTP 200 with text/event-stream.")) }
                         connected = true; connecting = false
                         var parser = SSEParser(), line = Data(), carriageReturn = false
                         for try await byte in bytes {
@@ -68,7 +68,7 @@ import MonkeytailCore
                                 if byte == 10 && carriageReturn { carriageReturn = false; continue }
                                 if let event = try parser.consume(String(decoding: line, as: UTF8.self)) { append(event) }
                                 line.removeAll(keepingCapacity: true); carriageReturn = byte == 13; lastEventID = parser.lastEventID; retry = parser.retryMilliseconds ?? retry
-                            } else { carriageReturn = false; line.append(byte); guard line.count <= 64 * 1024 else { throw ClientError("SSE line exceeds 64 KB.") } }
+                            } else { carriageReturn = false; line.append(byte); guard line.count <= 64 * 1024 else { throw ClientError(String(localized: "SSE line exceeds 64 KB.")) } }
                         }
                     }
                     if !reconnect { break }
@@ -90,11 +90,11 @@ import MonkeytailCore
             do {
                 if binary {
                     let compact = text.components(separatedBy: .whitespacesAndNewlines).joined()
-                    guard compact.count % 2 == 0, compact.count <= 2 * 1024 * 1024 else { throw ClientError("Enter even-length hex up to 1 MB.") }
+                    guard compact.count % 2 == 0, compact.count <= 2 * 1024 * 1024 else { throw ClientError(String(localized: "Enter even-length hex up to 1 MB.")) }
                     var data = Data(); var index = compact.startIndex
-                    while index < compact.endIndex { let next = compact.index(index, offsetBy: 2); guard let byte = UInt8(compact[index..<next], radix: 16) else { throw ClientError("Invalid hex byte.") }; data.append(byte); index = next }
-                    try await socket.send(.data(data)); guard generation == current else { return }; append(StreamEvent(direction: "Sent", type: "Binary", text: "\(data.count) bytes", binary: data))
-                } else { guard text.utf8.count <= 1024 * 1024 else { throw ClientError("Message exceeds 1 MB.") }; try await socket.send(.string(text)); guard generation == current else { return }; append(StreamEvent(direction: "Sent", type: "Text", text: text)) }
+                    while index < compact.endIndex { let next = compact.index(index, offsetBy: 2); guard let byte = UInt8(compact[index..<next], radix: 16) else { throw ClientError(String(localized: "Invalid hex byte.")) }; data.append(byte); index = next }
+                    try await socket.send(.data(data)); guard generation == current else { return }; append(StreamEvent(direction: "Sent", type: "Binary", text: String(localized: "\(data.count) bytes"), binary: data))
+                } else { guard text.utf8.count <= 1024 * 1024 else { throw ClientError(String(localized: "Message exceeds 1 MB.")) }; try await socket.send(.string(text)); guard generation == current else { return }; append(StreamEvent(direction: "Sent", type: "Text", text: text)) }
             } catch { if generation == current { self.error = error.localizedDescription } }
         }
     }

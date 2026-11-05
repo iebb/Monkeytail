@@ -60,7 +60,9 @@ extension View {
         navigationBarTitleDisplayMode(.inline)
         #endif
     }
-    @ViewBuilder func sheetTitle(_ title: String) -> some View {
+    func sheetTitle(_ title: LocalizedStringKey) -> some View { sheetTitle(Text(title)) }
+    func sheetTitle<S: StringProtocol>(_ title: S) -> some View { sheetTitle(Text(title)) }
+    @ViewBuilder func sheetTitle(_ title: Text) -> some View {
         #if os(macOS)
         if #available(macOS 15, *) {
             navigationTitle(title).toolbar(removing: .title)
@@ -147,9 +149,9 @@ extension ToolbarContent {
 
 #if os(macOS)
 private struct SheetHeading: View {
-    let title: String
+    let title: Text
     var body: some View {
-        HStack { Text(title).font(.headline).accessibilityAddTraits(.isHeader); Spacer() }
+        HStack { title.font(.headline).accessibilityAddTraits(.isHeader); Spacer() }
             .padding(.horizontal, 16).frame(height: 44)
             .background(Palette.canvas)
             .overlay(alignment: .bottom) { Divider() }
@@ -191,15 +193,15 @@ struct MacRequestSearchField: NSViewRepresentable {
     }
     func makeNSView(context: Context) -> Field {
         let field = Field()
-        field.placeholderString = "Find a request"
+        field.placeholderString = String(localized: "Find a request")
         field.controlSize = .regular
-        field.font = .systemFont(ofSize: NSFont.systemFontSize)
+        field.font = .systemFont(ofSize: 14)
         field.maximumRecents = 0
         field.sendsSearchStringImmediately = true
         field.delegate = context.coordinator
         field.target = context.coordinator
         field.action = #selector(Coordinator.searchChanged(_:))
-        field.setAccessibilityLabel("Find a request")
+        field.setAccessibilityLabel(String(localized: "Find a request"))
         field.setAccessibilityIdentifier("Find a request")
         field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return field

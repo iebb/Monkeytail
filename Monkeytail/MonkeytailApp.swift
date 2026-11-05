@@ -17,7 +17,7 @@ struct MonkeytailApp: App {
         #endif
     }
     private var root: some View {
-        WorkspaceView(store: store).tint(Palette.mint)
+        WorkspaceView(store: store).themed()
             .onChange(of: phase) { _, value in
                 if value == .background { store.save(); store.mockServer.stop() }
                 else if value == .active { Task { await store.synchronize() } }
@@ -27,13 +27,13 @@ struct MonkeytailApp: App {
     var body: some Scene {
         #if os(macOS)
         Window("Monkeytail", id: "workspace") {
-            root.frame(minWidth: 800, minHeight: 560)
+            root.font(.body).frame(minWidth: 800, minHeight: 560)
                 .onDisappear { store.save(); store.mockServer.stop() }
         }
             .defaultSize(width: 1280, height: 800)
             .commands {
                 CommandGroup(replacing: .newItem) {
-                    Button("New request") { store.addRequest() }.keyboardShortcut("n", modifiers: .command)
+                    Button("New request") { store.addRequest(to: UUID(uuidString: UserDefaults.standard.string(forKey: "activeCollectionID") ?? "")) }.keyboardShortcut("n", modifiers: .command)
                     Button("Send request") { if store.runningID != nil { store.cancel() } else { store.send() } }.keyboardShortcut(.return, modifiers: .command)
                 }
                 CommandMenu("Workspace") {
@@ -46,7 +46,7 @@ struct MonkeytailApp: App {
                 SidebarCommands()
                 WorkspaceCommands()
             }
-        Settings { SettingsView(store: store) }
+        Settings { SettingsView(store: store).font(.body).themed() }
         #elseif os(visionOS)
         WindowGroup { root.frame(minWidth: 750, minHeight: 550) }
             .defaultSize(width: 1280, height: 800)

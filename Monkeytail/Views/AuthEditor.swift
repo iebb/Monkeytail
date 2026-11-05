@@ -20,7 +20,7 @@ struct AuthEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Picker("Authentication", selection: $auth.kind) {
-                ForEach(AuthKind.allCases.filter { allowInheritance || $0 != .inherit }, id: \.self) { Text($0.rawValue).tag($0) }
+                ForEach(AuthKind.allCases.filter { allowInheritance || $0 != .inherit }, id: \.self) { Text($0.title).tag($0) }
             }.pickerStyle(.menu).accessibilityIdentifier("Authentication type")
             switch auth.kind {
             case .none: EmptyView()
@@ -59,7 +59,7 @@ struct AuthEditor: View {
                 if jwt.wrappedValue.inQuery { TextField("Query parameter name", text: jwt.queryKey) } else { TextField("Header prefix", text: jwt.headerPrefix) }
                 Text("Signed locally on every send after {{variables}} resolve. The header’s alg always matches the algorithm.").font(.caption).foregroundStyle(.secondary)
             case .oauth2:
-                Picker("Grant", selection: oauth.grant) { ForEach(OAuthGrant.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
+                Picker("Grant", selection: oauth.grant) { ForEach(OAuthGrant.allCases, id: \.self) { Text($0.title).tag($0) } }.pickerStyle(.menu)
                 if oauth.wrappedValue.grant == .pkce { TextField("Authorization URL", text: oauth.authorizationURL).urlInput(); TextField("Callback URL", text: oauth.callbackURL).urlInput() }
                 if oauth.wrappedValue.grant == .password {
                     TextField("Username", text: Binding(get: { oauth.wrappedValue.username ?? "" }, set: { oauth.wrappedValue.username = $0 }))
@@ -75,7 +75,7 @@ struct AuthEditor: View {
                     if busy { ProgressView() }
                 }.frame(minHeight: 44)
             }
-            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if let error { Text(error).font(.caption).foregroundStyle(Palette.error) }
         }.textFieldStyle(.roundedBorder).noCapitalization().autocorrectionDisabled()
     }
     private func addClaim(_ claim: String, to payload: String) -> String {
@@ -91,5 +91,17 @@ struct AuthEditor: View {
             do { auth.oauth = try await (refresh ? authorizer.refresh(configuration, proxy: proxy) : authorizer.authorize(configuration, proxy: proxy)) }
             catch { self.error = error.localizedDescription }
         }
+    }
+}
+
+private extension AuthKind {
+    var title: LocalizedStringKey {
+        switch self { case .none: "None"; case .inherit: "Inherit"; case .apiKey: "API key"; case .bearer, .basic, .digest, .oauth1, .oauth2, .jwt, .aws: LocalizedStringKey(rawValue) }
+    }
+}
+
+private extension OAuthGrant {
+    var title: LocalizedStringKey {
+        switch self { case .pkce: "Authorization code + PKCE"; case .clientCredentials: "Client credentials"; case .password: "Password credentials" }
     }
 }

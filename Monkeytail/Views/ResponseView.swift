@@ -44,12 +44,12 @@ struct ResponseView: View {
             }
             #else
             if verticalSizeClass != .compact && !compactSearch {
-                PanelHeading(title: "Response", symbol: "arrow.down.right", detail: response == nil ? "Awaiting request" : "")
+                PanelHeading(title: "Response", symbol: "arrow.down.right", detail: response == nil ? "Awaiting request" : nil)
             }
             #endif
             if let error = store.errors[requestID] {
-                Label(error, systemImage: "exclamationmark.circle").font(.subheadline).foregroundStyle(.red).padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading).background(Color.red.opacity(0.06))
+                Label(error, systemImage: "exclamationmark.circle").font(.subheadline).foregroundStyle(Palette.error).padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading).background(Palette.error.opacity(0.06))
                 if let certificate = store.untrustedCertificates[requestID] {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("SHA-256 \(certificate.sha256)").font(.system(.caption2, design: .monospaced)).textSelection(.enabled).foregroundStyle(.secondary)
@@ -144,7 +144,7 @@ struct ResponseView: View {
                             ForEach(response.logs) { log in
                                 HStack(alignment: .top, spacing: 10) {
                                     Image(systemName: log.level == "pass" ? "checkmark.circle.fill" : ["fail", "error"].contains(log.level) ? "xmark.circle.fill" : "chevron.right")
-                                        .foregroundStyle(["fail", "error"].contains(log.level) ? .red : Palette.mint)
+                                        .foregroundStyle(["fail", "error"].contains(log.level) ? Palette.error : Palette.mint)
                                     Text(log.message).font(.system(.footnote, design: .monospaced)).textSelection(.enabled)
                                 }.frame(maxWidth: .infinity, alignment: .leading).padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                             }
@@ -156,11 +156,11 @@ struct ResponseView: View {
                 HStack(spacing: 10) {
                     Menu {
                         ForEach(preview.formats, id: \.self) { name in
-                            Button { format = name } label: { if name == format { Label(name, systemImage: "checkmark") } else { Text(name) } }
+                            Button { format = name } label: { if name == format { Label(LocalizedStringKey(name), systemImage: "checkmark") } else { Text(LocalizedStringKey(name)) } }
                                 .accessibilityIdentifier("Response format " + name)
                         }
                     } label: {
-                        HStack(spacing: 5) { Text(format); Image(systemName: "chevron.down").font(.caption2) }
+                        HStack(spacing: 5) { Text(LocalizedStringKey(format)); Image(systemName: "chevron.down").font(.caption2) }
                             .font(.caption.weight(.medium)).frame(minHeight: 30)
                     }.borderlessMenu().accessibilityIdentifier("Response format")
                     if ["Pretty", "Raw", "Tree"].contains(format) {
@@ -180,11 +180,11 @@ struct ResponseView: View {
                         HStack {
                             Menu {
                                 ForEach(preview.formats, id: \.self) { name in
-                                    Button { format = name } label: { if name == format { Label(name, systemImage: "checkmark") } else { Text(name) } }
+                                    Button { format = name } label: { if name == format { Label(LocalizedStringKey(name), systemImage: "checkmark") } else { Text(LocalizedStringKey(name)) } }
                                         .accessibilityIdentifier("Response format " + name)
                                 }
                             } label: {
-                                HStack { Text(format).font(.subheadline.weight(.medium)); Image(systemName: "chevron.down").font(.caption) }.frame(minHeight: 44)
+                                HStack { Text(LocalizedStringKey(format)).font(.subheadline.weight(.medium)); Image(systemName: "chevron.down").font(.caption) }.frame(minHeight: 44)
                             }.borderlessMenu().accessibilityIdentifier("Response format")
                             Spacer()
                             if !["Image", "Audio", "Video"].contains(format) {
@@ -246,7 +246,7 @@ struct ResponseView: View {
     private func status(_ response: APIResponse) -> some View {
         StatusBadge(status: response.status).accessibilityIdentifier("Response status")
     }
-    private func timing(_ response: APIResponse) -> some View { Text(String(format: "%.0f ms", response.duration * 1000)).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
+    private func timing(_ response: APIResponse) -> some View { Text("\(response.duration * 1000, specifier: "%.0f") ms").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
     private func size(_ response: APIResponse) -> some View { Text(ByteCountFormatter.string(fromByteCount: Int64(response.body.count), countStyle: .file)).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
 
     private func codeResponse(_ response: APIResponse, preview: ResponsePreview) -> some View {
@@ -264,7 +264,7 @@ struct ResponseView: View {
                             Text(highlight(line.element)).lineLimit(1).fixedSize(horizontal: true, vertical: false).textSelection(.enabled)
                         }.font(.system(.footnote, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    if response.body.count > 1_000_000 { Text("Preview limited to 1 MB. Save the response for the full body.").font(.caption).foregroundStyle(.orange) }
+                    if response.body.count > 1_000_000 { Text("Preview limited to 1 MB. Save the response for the full body.").font(.caption).foregroundStyle(Palette.warning) }
                 }.frame(width: max(geometry.size.width - 24, CGFloat(columns + 8) * characterWidth), alignment: .leading).padding(12)
             }
             .defaultScrollAnchor(.topLeading)

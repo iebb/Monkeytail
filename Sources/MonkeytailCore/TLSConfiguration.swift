@@ -39,7 +39,7 @@ public struct TrustedCertificate: Codable, Equatable, Identifiable, Sendable {
 public struct UntrustedCertificateError: LocalizedError, Sendable {
     public var certificate: TrustedCertificate
     public init(certificate: TrustedCertificate) { self.certificate = certificate }
-    public var errorDescription: String? { "The certificate for \(certificate.host):\(certificate.port) (\(certificate.subject)) is not trusted by this device." }
+    public var errorDescription: String? { String(localized: "The certificate for \(certificate.host):\(certificate.port) (\(certificate.subject)) is not trusted by this device.", bundle: .module) }
 }
 public struct CertificateDetails: Codable, Equatable, Identifiable, Sendable {
     public var id: String { sha256 }

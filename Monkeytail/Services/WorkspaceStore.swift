@@ -40,7 +40,7 @@ final class WorkspaceStore {
     private var cloud = ICloudWorkspace()
     private var settings: LocalSettings = LocalSettings()
     private(set) var snapshots: [SnapshotSummary] = []
-    private(set) var syncStatus = "Off"
+    private(set) var syncStatus = String(localized: "Off")
     private(set) var syncing = false
     var syncEnabled: Bool { settings.syncEnabled }
     var useKeychain: Bool { settings.useKeychain ?? false }
@@ -84,13 +84,13 @@ final class WorkspaceStore {
                     workspace = SecretPolicy.restore(workspace, secrets: loadedSecrets)
                 }
                 catch { vaultUnavailable = true; issue = error.localizedDescription }
-                guard workspace.version == 1 else { throw ClientError("Unsupported saved workspace version.") }
+                guard workspace.version == 1 else { throw ClientError(String(localized: "Unsupported saved workspace version.")) }
             } catch {
                 // Preserve the original file before offering a fresh workspace.
                 let backup = self.directory.appendingPathComponent("workspace-recovery-\(Int(Date().timeIntervalSince1970)).json")
                 try? FileManager.default.copyItem(at: location, to: backup)
                 workspace = .starter
-                issue = "The saved workspace could not be loaded. A recovery copy was retained. \(error.localizedDescription)"
+                issue = String(localized: "The saved workspace could not be loaded. A recovery copy was retained. \(error.localizedDescription)")
             }
         } else { workspace = .starter }
         if !testing, let data = try? Data(contentsOf: self.directory.appendingPathComponent("history.json")), let loaded = try? JSONDecoder().decode([HistoryEntry].self, from: data) {
@@ -129,7 +129,7 @@ final class WorkspaceStore {
     func update(_ request: APIRequest) {
         let oldBytes = self.request(request.id).map(attachmentBytes) ?? 0
         guard workspaceAttachmentBytes - oldBytes + attachmentBytes(request) <= 40 * 1024 * 1024 else {
-            issue = "Workspace attachments exceed 40 MB. Remove a file before adding more."; return
+            issue = String(localized: "Workspace attachments exceed 40 MB. Remove a file before adding more."); return
         }
         for c in workspace.collections.indices {
             if let r = workspace.collections[c].requests.firstIndex(where: { $0.id == request.id }) { workspace.collections[c].requests[r] = request; return }
@@ -139,7 +139,7 @@ final class WorkspaceStore {
         Binding(get: { self.request(id) ?? APIRequest() }, set: { self.update($0) })
     }
     func addRequest(to collectionID: UUID? = nil) {
-        if workspace.collections.isEmpty { workspace.collections.append(RequestCollection(name: "My collection")) }
+        if workspace.collections.isEmpty { workspace.collections.append(RequestCollection(name: String(localized: "My collection"))) }
         let index = workspace.collections.firstIndex { $0.id == collectionID } ?? 0
         let request = APIRequest()
         workspace.collections[index].requests.append(request); selectedRequestID = request.id
@@ -176,7 +176,7 @@ final class WorkspaceStore {
         try? write(data, name: "tabs.json")
     }
     func duplicate(_ request: APIRequest) {
-        guard workspaceAttachmentBytes + attachmentBytes(request) <= 40 * 1024 * 1024 else { issue = "Workspace attachments exceed 40 MB."; return }
+        guard workspaceAttachmentBytes + attachmentBytes(request) <= 40 * 1024 * 1024 else { issue = String(localized: "Workspace attachments exceed 40 MB."); return }
         var copy = request; copy.id = UUID(); copy.name += " copy"
         let index = workspace.collections.firstIndex { $0.requests.contains { $0.id == request.id } } ?? 0
         workspace.collections[index].requests.append(copy); selectedRequestID = copy.id
@@ -195,29 +195,29 @@ final class WorkspaceStore {
                    file.filename == request.multipart![index].file?.filename { request.multipart![index].file?.data = file.data }
             } }
         }
-        guard workspaceAttachmentBytes + attachmentBytes(request) <= 40 * 1024 * 1024 else { issue = "Workspace attachments exceed 40 MB."; return }
+        guard workspaceAttachmentBytes + attachmentBytes(request) <= 40 * 1024 * 1024 else { issue = String(localized: "Workspace attachments exceed 40 MB."); return }
         let destination = workspace.collections.firstIndex { $0.requests.contains { $0.id == request.id } } ?? 0
         if !workspace.collections.indices.contains(destination) || !(workspace.collections[destination].folders ?? []).contains(where: { $0.id == request.folderID }) { request.folderID = nil }
-        request.id = UUID(); request.name += " · replay"
-        if workspace.collections.isEmpty { workspace.collections.append(RequestCollection(name: "History")) }
+        request.id = UUID(); request.name += String(localized: " · replay")
+        if workspace.collections.isEmpty { workspace.collections.append(RequestCollection(name: String(localized: "History"))) }
         workspace.collections[destination].requests.append(request); selectedRequestID = request.id
     }
     func importContent(_ text: String) throws {
-        guard text.utf8.count <= 40 * 1024 * 1024 else { throw ClientError("Imports must be smaller than 40 MB.") }
+        guard text.utf8.count <= 40 * 1024 * 1024 else { throw ClientError(String(localized: "Imports must be smaller than 40 MB.")) }
         let command = text.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
         if CurlCodec.isCommand(command) {
             let result = try CurlCodec.decode(text)
-            let collection = RequestCollection(name: "Imported cURL", requests: [result.request])
+            let collection = RequestCollection(name: String(localized: "Imported cURL"), requests: [result.request])
             workspace.collections.append(collection); selectedRequestID = result.request.id
             if let proxy = result.proxy { workspace.proxy = proxy }
-            notice = (["Imported 1 request."] + result.warnings).joined(separator: "\n\n")
+            notice = ([String(localized: "Imported 1 request.")] + result.warnings).joined(separator: "\n\n")
         } else {
             try apply(InterchangeImport.decode(text))
         }
     }
     /// Imports several files or a chosen folder, such as a Bruno collection.
     func importFiles(_ files: [ImportFile], name: String) throws {
-        guard files.reduce(0, { $0 + $1.text.utf8.count }) <= 40 * 1024 * 1024 else { throw ClientError("Imports must be smaller than 40 MB.") }
+        guard files.reduce(0, { $0 + $1.text.utf8.count }) <= 40 * 1024 * 1024 else { throw ClientError(String(localized: "Imports must be smaller than 40 MB.")) }
         if files.count == 1, let file = files.first, CurlCodec.isCommand(file.text.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? "") { try importContent(file.text); return }
         try apply(InterchangeImport.decode(files: files, name: name))
     }
@@ -225,7 +225,7 @@ final class WorkspaceStore {
     private func apply(_ result: CollectionImport) throws {
         var incoming = result.workspace
         let incomingBytes = incoming.collections.flatMap(\.requests).reduce(0) { $0 + attachmentBytes($1) }
-        guard workspaceAttachmentBytes + incomingBytes <= 40 * 1024 * 1024 else { throw ClientError("Workspace attachments exceed 40 MB.") }
+        guard workspaceAttachmentBytes + incomingBytes <= 40 * 1024 * 1024 else { throw ClientError(String(localized: "Workspace attachments exceed 40 MB.")) }
         let originalSelected = incoming.selectedEnvironmentID
         var importedSelection: UUID?
         for c in incoming.collections.indices {
@@ -253,8 +253,9 @@ final class WorkspaceStore {
         if let selected = importedSelection ?? incoming.environments.first?.id { workspace.selectedEnvironmentID = selected }
         selectedRequestID = incoming.collections.first?.requests.first?.id ?? selectedRequestID
         let count = incoming.collections.reduce(0) { $0 + $1.requests.count }
-        let globalsNote = (incoming.globals ?? []).isEmpty ? "" : " and \(incoming.globals!.count) globals"
-        notice = (["Imported \(count) requests and \(incoming.environments.count) environments\(globalsNote)."] + result.warnings).joined(separator: "\n\n")
+        let globalCount = incoming.globals?.count ?? 0, environments = incoming.environments.count
+        let summary = globalCount == 0 ? String(localized: "Imported \(count) requests and \(environments) environments.") : String(localized: "Imported \(count) requests and \(environments) environments and \(globalCount) globals.")
+        notice = ([summary] + result.warnings).joined(separator: "\n\n")
     }
 
     func send() {
@@ -267,7 +268,7 @@ final class WorkspaceStore {
             do {
                 let execution = try await execute(saved, environmentID: environmentID, proxy: proxy)
                 testResults[saved.id] = execution.tests
-                guard let response = execution.response else { throw ClientError("A before-request script skipped this request.") }
+                guard let response = execution.response else { throw ClientError(String(localized: "A before-request script skipped this request.")) }
                 let prepared = await Task.detached(priority: .userInitiated) { [response] in
                     PreparedResponse(response: response)
                 }.value
@@ -280,7 +281,7 @@ final class WorkspaceStore {
                 }
                 history.insert(HistoryEntry(request: saved, status: response.status, duration: response.duration), at: 0)
             } catch {
-                let message = Task.isCancelled ? "Request cancelled." : error.localizedDescription
+                let message = Task.isCancelled ? String(localized: "Request cancelled.") : error.localizedDescription
                 errors[saved.id] = message
                 if let error = error as? UntrustedCertificateError { untrustedCertificates[saved.id] = error.certificate }
                 history.insert(HistoryEntry(request: saved, status: nil, duration: 0, error: message), at: 0)
@@ -480,7 +481,7 @@ final class WorkspaceStore {
         }
     }
     private func persistenceSnapshot() throws -> WorkspacePersistence.Snapshot {
-        guard !vaultUnavailable else { throw ClientError("Unlock the device and reopen Monkeytail to load credentials.") }
+        guard !vaultUnavailable else { throw ClientError(String(localized: "Unlock the device and reopen Monkeytail to load credentials.")) }
         if !useKeychain {
             return WorkspacePersistence.Snapshot(workspace: workspace, history: history, sync: syncState,
                 settings: try JSONEncoder().encode(settings), secrets: [:], directory: directory)
@@ -500,38 +501,38 @@ final class WorkspaceStore {
         do {
             persistence.enqueue(try persistenceSnapshot()) { [weak self] message in
                 guard let message else { return }
-                Task { @MainActor in self?.issue = "Could not save the workspace: \(message)" }
+                Task { @MainActor in self?.issue = String(localized: "Could not save the workspace: \(message)") }
             }
         } catch { issue = error.localizedDescription }
     }
     func save() {
         saveTask?.cancel()
         do { try persistence.save(persistenceSnapshot()) }
-        catch { issue = "Could not save the workspace: \(error.localizedDescription)" }
+        catch { issue = String(localized: "Could not save the workspace: \(error.localizedDescription)") }
     }
     func refreshSnapshots() async {
         do { snapshots = try await snapshotStorage.summaries() }
-        catch { issue = "Could not load snapshots: \(error.localizedDescription)" }
+        catch { issue = String(localized: "Could not load snapshots: \(error.localizedDescription)") }
     }
     func saveSnapshot(requestID: UUID, response: APIResponse) {
         guard let request = request(requestID) else { return }
         Task {
-            do { snapshots = try await snapshotStorage.save(ResponseSnapshot(request: request, response: response)); notice = "Snapshot saved." }
+            do { snapshots = try await snapshotStorage.save(ResponseSnapshot(request: request, response: response)); notice = String(localized: "Snapshot saved.") }
             catch { issue = error.localizedDescription }
         }
     }
     func loadSnapshot(_ id: UUID) async throws -> ResponseSnapshot { try await snapshotStorage.load(id) }
     func useSnapshotAsMock(_ snapshot: ResponseSnapshot) throws {
-        guard let text = String(data: snapshot.response.body, encoding: .utf8), snapshot.response.body.count <= 2 * 1024 * 1024 else { throw ClientError("Mocks require a UTF-8 response up to 2 MB.") }
+        guard let text = String(data: snapshot.response.body, encoding: .utf8), snapshot.response.body.count <= 2 * 1024 * 1024 else { throw ClientError(String(localized: "Mocks require a UTF-8 response up to 2 MB.")) }
         var mock = MockResponse(); mock.enabled = true; mock.status = snapshot.response.status; mock.body = text
         mock.headers = snapshot.response.headers.filter { !["content-length", "transfer-encoding", "content-encoding", "connection"].contains($0.name.lowercased()) }
         if let c = workspace.collections.firstIndex(where: { $0.requests.contains { $0.id == snapshot.requestID } }), let r = workspace.collections[c].requests.firstIndex(where: { $0.id == snapshot.requestID }) {
             workspace.collections[c].requests[r].mock = mock; selectedRequestID = snapshot.requestID
         } else {
             var request = APIRequest(name: snapshot.name, method: snapshot.method, url: snapshot.url); request.mock = mock
-            workspace.collections.append(RequestCollection(name: "Mocks", requests: [request])); selectedRequestID = request.id
+            workspace.collections.append(RequestCollection(name: String(localized: "Mocks"), requests: [request])); selectedRequestID = request.id
         }
-        notice = "Offline mock saved."
+        notice = String(localized: "Offline mock saved.")
     }
     func removeSnapshot(_ id: UUID) {
         Task { do { snapshots = try await snapshotStorage.remove(id) } catch { issue = error.localizedDescription } }
@@ -577,7 +578,7 @@ final class WorkspaceStore {
         settings.syncEnabled = enabled
         syncTask?.cancel(); syncTask = nil
         if enabled { settings.identity = nil; cloud = ICloudWorkspace(); startSyncLoop() }
-        else { syncStatus = "Off" }
+        else { syncStatus = String(localized: "Off") }
         save()
     }
     private func startSyncLoop() {
@@ -591,7 +592,7 @@ final class WorkspaceStore {
     }
     func synchronize() async {
         guard settings.syncEnabled, !syncing, !vaultUnavailable else { return }
-        syncing = true; syncStatus = "Syncing…"
+        syncing = true; syncStatus = String(localized: "Syncing…")
         defer { syncing = false }
         do {
             let remote = try await cloud.read()
@@ -614,7 +615,7 @@ final class WorkspaceStore {
             save()
             try await cloud.write(syncState)
             guard settings.syncEnabled else { return }
-            syncStatus = "Updated locally · iCloud transfers automatically"
+            syncStatus = String(localized: "Updated locally · iCloud transfers automatically")
         } catch {
             if !Task.isCancelled { syncStatus = error.localizedDescription }
         }

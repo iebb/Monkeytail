@@ -49,7 +49,7 @@ struct RequestEditor: View {
                         DocsEditor(text: $request.description)
                     default: scriptsEditor
                     }
-                    if let editorError { Label(editorError, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red) }
+                    if let editorError { Label(editorError, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(Palette.error) }
                 }.padding(WorkspaceMetrics.inset)
             }.dismissKeyboardOnScroll()
         }.background(Palette.canvas)
@@ -64,7 +64,7 @@ struct RequestEditor: View {
         request.pathVariables = synced.isEmpty && request.pathVariables == nil ? nil : synced
     }
 
-    @ViewBuilder private func editorHeading(_ title: String, message: String) -> some View {
+    @ViewBuilder private func editorHeading(_ title: LocalizedStringKey, message: LocalizedStringKey) -> some View {
         #if os(macOS)
         Text(title).font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
         #else
@@ -74,7 +74,7 @@ struct RequestEditor: View {
 
     private func parameterSummary(_ hint: ParameterHint) -> String {
         var result = "\(hint.name) · \(hint.location) · \(hint.type)"
-        if hint.required { result += " · required" }
+        if hint.required { result += " · " + String(localized: "required") }
         if !hint.description.isEmpty { result += "\n" + hint.description }
         return result
     }
@@ -83,7 +83,7 @@ struct RequestEditor: View {
         VStack(alignment: .leading, spacing: 8) {
             if request.transport == .graphql { GraphQLEditor(request: $request, store: store) }
             else {
-            Picker("Body type", selection: $request.bodyKind) { ForEach(BodyKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
+            Picker("Body type", selection: $request.bodyKind) { ForEach(BodyKind.allCases, id: \.self) { Text($0.title).tag($0) } }.pickerStyle(.menu)
             switch request.bodyKind {
             case .none:
                 #if os(macOS)
@@ -98,7 +98,7 @@ struct RequestEditor: View {
             case .json, .text:
                 if request.bodyKind == .json {
                     HStack {
-                        Text("JSON").font(.caption).foregroundStyle(.secondary)
+                        Text(verbatim: "JSON").font(.caption).foregroundStyle(.secondary)
                         Spacer()
                         Button("Format") { formatJSON(pretty: true) }.frame(minHeight: 44)
                         Button("Minify") { formatJSON(pretty: false) }.frame(minHeight: 44)
@@ -144,7 +144,7 @@ struct RequestEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle("Run scripts", isOn: $request.scriptsEnabled).font(.subheadline)
             if !request.scriptsEnabled && !(request.preScript.isEmpty && request.postScript.isEmpty) {
-                Label("This request's scripts are saved but skipped on send.", systemImage: "pause.circle").font(.caption).foregroundStyle(.orange)
+                Label("This request's scripts are saved but skipped on send.", systemImage: "pause.circle").font(.caption).foregroundStyle(Palette.warning)
             }
             Picker("Script phase", selection: $scriptTab) { Text("Before request").tag("Before"); Text("After response").tag("After") }.pickerStyle(.segmented)
             CodeEditor(text: scriptTab == "Before" ? $request.preScript : $request.postScript, label: "JavaScript editor", minimumHeight: 250)
@@ -158,7 +158,7 @@ struct RequestEditor: View {
             } label: { Label("Examples", systemImage: "text.badge.plus").font(.subheadline).frame(minHeight: 44) }
             DisclosureGroup("Scripting reference") {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("pm.environment · pm.collectionVariables · pm.globals\npm.variables · pm.request · pm.response · pm.cookies\npm.test() · pm.expect() · pm.sendRequest()\nCryptoJS · _ · moment() · require() · console.log()")
+                    Text(verbatim: "pm.environment · pm.collectionVariables · pm.globals\npm.variables · pm.request · pm.response · pm.cookies\npm.test() · pm.expect() · pm.sendRequest()\nCryptoJS · _ · moment() · require() · console.log()")
                         .font(.system(.caption, design: .monospaced))
                     Text("Scripts run on every send and collection run, after any collection and folder scripts. 3-second limit; network only through pm.sendRequest; no file access. Before-request hooks can change the URL, method, headers, and raw body. Results appear in Console.")
                         .font(.caption).foregroundStyle(.secondary)
@@ -181,7 +181,7 @@ struct CurlExportView: View {
                 Text("Includes resolved variables and credentials.").font(.caption).foregroundStyle(.secondary)
                 if request.bodyKind == .multipart || request.bodyKind == .file { Text("Export files from Body and place them beside the command.").font(.caption).foregroundStyle(.secondary) }
                 if request.impersonation != nil { Text("Requires curl-impersonate 2.2.3 or later.").font(.caption).foregroundStyle(.secondary) }
-                if let error { Text(error).font(.footnote).foregroundStyle(.red) }
+                if let error { Text(error).font(.footnote).foregroundStyle(Palette.error) }
                 ScrollView { Text(curl).font(.system(.footnote, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12) }
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                 HStack {
@@ -193,5 +193,11 @@ struct CurlExportView: View {
         }.macSheetFrame(minHeight: 400).task {
             do { curl = try CurlCodec.encode(request, variables: variables) } catch { self.error = error.localizedDescription }
         }
+    }
+}
+
+private extension BodyKind {
+    var title: LocalizedStringKey {
+        switch self { case .none: "None"; case .json: "JSON"; case .text: "Text"; case .form: "Form"; case .multipart: "Multipart"; case .file: "File" }
     }
 }

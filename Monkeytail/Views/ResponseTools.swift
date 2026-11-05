@@ -14,31 +14,31 @@ struct DiagnosticsView: View {
                     Text(diagnostics.transport).font(.subheadline.weight(.medium))
                     if let tls = diagnostics.tlsDetails {
                         DisclosureGroup("TLS certificates") {
-                            Text(tlsSummary(tls)).font(.caption.monospaced())
+                            Text(tlsSummary(tls)).font(.system(.caption, design: .monospaced))
                             ForEach(tls.certificates) { certificate in
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(certificate.subject).font(.caption.weight(.medium))
-                                    if let start = certificate.notBefore { Text("Valid from " + start.formatted()).font(.caption2) }
-                                    if let end = certificate.notAfter { Text("Expires " + end.formatted()).font(.caption2).foregroundStyle(end < Date() ? Color.red : Color.secondary) }
-                                    Text("SHA-256 " + certificate.sha256).font(.caption2.monospaced()).textSelection(.enabled)
+                                    if let start = certificate.notBefore { Text("Valid from \(start.formatted())").font(.caption2) }
+                                    if let end = certificate.notAfter { Text("Expires \(end.formatted())").font(.caption2).foregroundStyle(end < Date() ? Palette.error : Color.secondary) }
+                                    Text("SHA-256 \(certificate.sha256)").font(.system(.caption2, design: .monospaced)).textSelection(.enabled)
                                 }.padding(.vertical, 4)
                             }
                         }
                     }
                     ForEach(Array(diagnostics.transactions.enumerated()), id: \.element.id) { index, transaction in
                         VStack(alignment: .leading, spacing: 10) {
-                            HStack { Text("\(index + 1)").font(.headline); StatusBadge(status: transaction.status); Spacer(); Text(transaction.protocolName ?? "—").font(.caption.monospaced()) }
-                            Text(transaction.request.method + " " + transaction.request.url).font(.caption.monospaced()).textSelection(.enabled)
-                            if let address = transaction.remoteAddress { Text(address).font(.caption.monospaced()).foregroundStyle(.secondary) }
+                            HStack { Text("\(index + 1)").font(.headline); StatusBadge(status: transaction.status); Spacer(); Text(transaction.protocolName ?? "—").font(.system(.caption, design: .monospaced)) }
+                            Text(transaction.request.method + " " + transaction.request.url).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                            if let address = transaction.remoteAddress { Text(address).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }
                             HStack { if transaction.proxy { Label("Proxy", systemImage: "network") }; if transaction.reusedConnection { Label("Reused", systemImage: "arrow.triangle.2.circlepath") } }.font(.caption)
                             timing("DNS", transaction.dns); timing("Connect", transaction.connect); timing("TLS", transaction.tls)
                             timing("Upload", transaction.upload); timing("Server wait", transaction.wait); timing("Download", transaction.download); timing("Total", transaction.total)
                             DisclosureGroup("Sent headers") {
-                                Text(transaction.request.headers.map { $0.name + ": " + $0.value }.joined(separator: "\n")).font(.caption.monospaced()).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                                Text(transaction.request.headers.map { $0.name + ": " + $0.value }.joined(separator: "\n")).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                             }.font(.subheadline)
                             if transaction.request.bodyBytes > 0 {
                                 DisclosureGroup("Sent body · \(transaction.request.bodyBytes) bytes") {
-                                    if let text = String(data: transaction.request.body, encoding: .utf8) { Text(text).font(.caption.monospaced()).textSelection(.enabled) }
+                                    if let text = String(data: transaction.request.body, encoding: .utf8) { Text(text).font(.system(.caption, design: .monospaced)).textSelection(.enabled) }
                                     else { ResponseBytesView(bytes: Array(transaction.request.body.prefix(4096)), totalCount: transaction.request.bodyBytes, binary: false).frame(height: 200) }
                                     if transaction.request.bodyBytes > transaction.request.body.count { Text("First 1 MB shown").font(.caption).foregroundStyle(.secondary) }
                                 }.font(.subheadline)
@@ -53,10 +53,10 @@ struct DiagnosticsView: View {
     private func tlsSummary(_ tls: TLSDetails) -> String {
         let version: String
         switch tls.version { case "0x0304": version = "TLS 1.3"; case "0x0303": version = "TLS 1.2"; default: version = tls.version ?? "—" }
-        return "Version: \(version) · Cipher: \(tls.cipher ?? "—") · ALPN: \(tls.alpn ?? "—")"
+        return String(localized: "Version: \(version) · Cipher: \(tls.cipher ?? "—") · ALPN: \(tls.alpn ?? "—")")
     }
-    private func timing(_ name: String, _ seconds: Double?) -> some View {
-        HStack { Text(name); Spacer(); Text(seconds.map { String(format: "%.1f ms", $0 * 1000) } ?? "—").monospacedDigit() }.font(.caption)
+    private func timing(_ name: LocalizedStringKey, _ seconds: Double?) -> some View {
+        HStack { Text(name); Spacer(); (seconds.map { Text("\($0 * 1000, specifier: "%.1f") ms") } ?? Text(verbatim: "—")).monospacedDigit() }.font(.caption)
     }
 }
 
@@ -71,14 +71,14 @@ struct JSONPathView: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    TextField("$.data.items[*].id", text: $path).noCapitalization().autocorrectionDisabled().font(.body.monospaced()).textFieldStyle(.roundedBorder).accessibilityIdentifier("JSONPath expression")
+                    TextField("$.data.items[*].id" as String, text: $path).noCapitalization().autocorrectionDisabled().font(.system(.body, design: .monospaced)).textFieldStyle(.roundedBorder).accessibilityIdentifier("JSONPath expression")
                     Button("Extract") { extract() }.disabled(extracting).frame(minHeight: 44)
                 }
-                if let error { Text(error).font(.caption).foregroundStyle(.red) }
+                if let error { Text(error).font(.caption).foregroundStyle(Palette.error) }
                 ScrollView([.horizontal, .vertical]) {
                     Group {
                         if result.isEmpty { Text("Run an expression to see the result.").foregroundStyle(.secondary) }
-                        else { Text(result).font(.footnote.monospaced()).textSelection(.enabled) }
+                        else { Text(result).font(.system(.footnote, design: .monospaced)).textSelection(.enabled) }
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(12)
                 }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
@@ -160,7 +160,7 @@ struct SnapshotsView: View {
     private func snapshotRow(_ item: SnapshotSummary) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack { MethodBadge(method: item.method); Text(item.name).font(.subheadline); Spacer(); StatusBadge(status: item.status, showsLabel: false) }
-            Text(item.url).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(1)
+            Text(item.url).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1)
             Text(item.date, format: .dateTime.month().day().hour().minute()).font(.caption2).foregroundStyle(.secondary)
         }.padding(.vertical, 4)
         #if os(macOS)
@@ -232,7 +232,7 @@ struct SnapshotCompareView: View {
             VStack(spacing: 0) {
                 Picker("Compare against", selection: $selection) {
                     Text("Choose baseline").tag(UUID?.none)
-                    ForEach(store.snapshots) { item in Text(item.name + " · " + item.date.formatted(date: .abbreviated, time: .shortened)).tag(Optional(item.id)) }
+                    ForEach(store.snapshots) { item in Text("\(item.name) · \(item.date.formatted(date: .abbreviated, time: .shortened))").tag(Optional(item.id)) }
                 }.pickerStyle(.menu).padding(12).accessibilityIdentifier("Snapshot baseline")
                 Divider()
                 if let error { EmptyPanel(title: error) }
@@ -241,10 +241,10 @@ struct SnapshotCompareView: View {
                     else {
                         List(changes) { change in
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(change.path).font(.caption.monospaced()).foregroundStyle(Palette.mint).textSelection(.enabled)
-                                Text("− " + (change.before ?? "missing")).foregroundStyle(.red)
-                                Text("+ " + (change.after ?? "missing")).foregroundStyle(Palette.mint)
-                            }.font(.footnote.monospaced()).textSelection(.enabled)
+                                Text(change.path).font(.system(.caption, design: .monospaced)).foregroundStyle(Palette.mint).textSelection(.enabled)
+                                Text("− \(change.before ?? String(localized: "missing"))").foregroundStyle(Palette.error)
+                                Text("+ \(change.after ?? String(localized: "missing"))").foregroundStyle(Palette.mint)
+                            }.font(.system(.footnote, design: .monospaced)).textSelection(.enabled)
                         }
                     }
                 } else { EmptyPanel(title: store.snapshots.isEmpty ? "Save a snapshot first" : "Choose a baseline") }

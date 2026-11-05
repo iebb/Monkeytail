@@ -86,7 +86,7 @@ struct ResponsePreview: Sendable {
                 let url = directory.appendingPathComponent(UUID().uuidString).appendingPathExtension(fileExtension)
                 try response.body.write(to: url, options: [.atomic, .completeFileProtectionUnlessOpen])
                 mediaFile = ResponseMediaFile(url: url)
-            } catch { mediaError = "Could not prepare media. Use Hex or save the response." }
+            } catch { mediaError = String(localized: "Could not prepare media. Use Hex or save the response.") }
             return
         }
         let text = response.body.count <= 1_000_000 ? response.text : String(decoding: response.body.prefix(1_000_000), as: UTF8.self)

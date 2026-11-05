@@ -47,7 +47,7 @@ import MonkeytailCore
     func setJar(_ jar: CookieJar, environment: UUID?) throws { try requireAvailable(); jars[environment?.uuidString ?? "default"] = jar; try save() }
     func addIdentity(_ record: IdentityRecord) throws {
         try requireAvailable()
-        guard (1...65535).contains(record.port), !record.host.contains("/"), !record.host.contains("*"), !record.host.isEmpty else { throw ClientError("Enter an exact hostname and a port from 1 to 65535.") }
+        guard (1...65535).contains(record.port), !record.host.contains("/"), !record.host.contains("*"), !record.host.isEmpty else { throw ClientError(String(localized: "Enter an exact hostname and a port from 1 to 65535.")) }
         _ = try TLSConfiguration.importPKCS12(record.data, password: record.password, host: record.host, port: record.port)
         identities.removeAll { $0.id == record.id }; identities.append(record); try save()
     }

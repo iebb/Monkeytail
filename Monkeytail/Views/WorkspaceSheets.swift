@@ -31,15 +31,14 @@ struct TransferView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Picker("Transfer mode", selection: $mode) { Text("Import").tag("Import"); Text("Export").tag("Export") }.pickerStyle(.segmented)
                     if mode == "Import" {
-                        EvilMonkTitle(subtitle: "Import from files, or straight from another app")
                         NavigationLink { RemoteImportView(store: store) { dismiss() } } label: {
                             HStack {
-                                Label("Connect Postman, GitHub or Hoppscotch", systemImage: "link")
+                                Label { Text("Import from Postman, Insomnia, Hoppscotch or GitHub") } icon: { Image(systemName: "arrow.down.circle").foregroundStyle(Palette.mint) }
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
                             }.padding(12).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                                 .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
-                        }.buttonStyle(.plain).foregroundStyle(.purple).accessibilityIdentifier("Connect a service")
+                        }.buttonStyle(.plain).accessibilityIdentifier("Import from an app")
                         Text("cURL, collection, or .http file").font(.subheadline.weight(.medium))
                         CodeEditor(text: $source, label: "Import content", minimumHeight: 240)
                         HStack {
@@ -220,6 +219,16 @@ struct SettingsView: View {
                             .disabled(store.history.isEmpty)
                     }
                 } header: { Text("Workspace") }
+                Section {
+                    NavigationLink { ThemeSettingsView() } label: { Label("Theme & fonts", systemImage: "paintpalette") }
+                    LabeledContent("Language") {
+                        #if os(macOS)
+                        Text(Locale.current.localizedString(forIdentifier: Bundle.main.preferredLocalizations.first ?? "en") ?? "English")
+                        #else
+                        Button { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } label: { Text(Locale.current.localizedString(forIdentifier: Bundle.main.preferredLocalizations.first ?? "en") ?? "English") }
+                        #endif
+                    }
+                } header: { Text("Appearance") } footer: { Text("Monkeytail follows your device language. Change it in System Settings.") }
                 Section {
                     LabeledContent("Monkeytail", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3")
                     HStack(spacing: 20) {

@@ -62,10 +62,10 @@ struct VariableAssist: View {
         }
     }
     private func summary(_ reference: VariableHints.Reference) -> String {
-        if reference.isDynamic { return reference.isResolved ? "generated each send" : "unknown dynamic variable" }
-        guard let value = reference.value else { return "unresolved" }
+        if reference.isDynamic { return reference.isResolved ? String(localized: "generated each send") : String(localized: "unknown dynamic variable") }
+        guard let value = reference.value else { return String(localized: "unresolved") }
         if hints.secrets.contains(reference.name) { return "••••••" }
-        return value.isEmpty ? "empty" : value.count > 60 ? String(value.prefix(60)) + "…" : value
+        return value.isEmpty ? String(localized: "empty") : value.count > 60 ? String(value.prefix(60)) + "…" : value
     }
     private func chips<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 6) { content() } }.font(.system(.caption, design: .monospaced)).padding(insets)
@@ -84,37 +84,6 @@ extension View {
     func dismissibleInput() -> some View { modifier(DismissibleInput()) }
 }
 
-enum Palette {
-    #if os(macOS)
-    static let mint = Color(nsColor: NSColor(name: nil) { appearance in appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(red: 0.36, green: 0.89, blue: 0.75, alpha: 1) : NSColor(red: 0.04, green: 0.43, blue: 0.35, alpha: 1) })
-    static let canvas = Color(nsColor: NSColor(name: nil) { appearance in appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(red: 0.09, green: 0.10, blue: 0.11, alpha: 1) : NSColor(red: 0.96, green: 0.965, blue: 0.96, alpha: 1) })
-    static let surface = Color(nsColor: .controlBackgroundColor)
-    #else
-    static let mint = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.36, green: 0.89, blue: 0.75, alpha: 1) : UIColor(red: 0.04, green: 0.43, blue: 0.35, alpha: 1) })
-    static let canvas = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.09, green: 0.10, blue: 0.11, alpha: 1) : UIColor(red: 0.96, green: 0.965, blue: 0.96, alpha: 1) })
-    static let surface = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.12, green: 0.13, blue: 0.14, alpha: 1) : .white })
-    #endif
-    static let border = Color.primary.opacity(0.09)
-    static let warning = adaptive(light: (0.60, 0.34, 0.02), dark: (0.98, 0.72, 0.40))
-    static let danger = adaptive(light: (0.72, 0.18, 0.29), dark: (1.0, 0.53, 0.63))
-    private static func adaptive(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
-        #if os(macOS)
-        Color(nsColor: NSColor(name: nil) { appearance in
-            let value = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
-            return NSColor(red: value.0, green: value.1, blue: value.2, alpha: 1)
-        })
-        #else
-        Color(uiColor: UIColor { traits in
-            let value = traits.userInterfaceStyle == .dark ? dark : light
-            return UIColor(red: value.0, green: value.1, blue: value.2, alpha: 1)
-        })
-        #endif
-    }
-    static func method(_ value: String) -> Color {
-        switch value { case "GET": return mint; case "POST": return warning; case "PUT", "PATCH": return .blue; case "DELETE": return danger; default: return .purple }
-    }
-}
-
 enum WorkspaceMetrics {
     #if os(macOS)
     static let inset: CGFloat = 12
@@ -128,23 +97,23 @@ enum WorkspaceMetrics {
 }
 
 struct PanelHeading: View {
-    let title: String
+    let title: LocalizedStringKey
     let symbol: String
-    var detail = ""
+    var detail: LocalizedStringKey?
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: symbol).foregroundStyle(Palette.mint).accessibilityHidden(true)
             Text(title).fontWeight(.semibold).accessibilityAddTraits(.isHeader)
             Spacer()
-            if !detail.isEmpty { Text(detail).font(.caption).foregroundStyle(.secondary) }
+            if let detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
         }.font(.subheadline).padding(.horizontal, WorkspaceMetrics.inset).frame(minHeight: 44)
             .background(Palette.surface)
     }
 }
 
 struct EditorHeading: View {
-    let title: String
-    let message: String
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title).font(.headline).accessibilityAddTraits(.isHeader)
@@ -180,7 +149,7 @@ struct StatusBadge: View {
 
 /// Magnifying-glass search field; a clear button appears once there's text.
 struct SearchField: View {
-    let placeholder: String
+    let placeholder: LocalizedStringResource
     @Binding var text: String
     var focused: FocusState<Bool>.Binding
     var canvas = false
@@ -192,8 +161,8 @@ struct SearchField: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary).accessibilityHidden(true)
-            TextField(placeholder, text: $text).textFieldStyle(.plain).font(.subheadline).noCapitalization().autocorrectionDisabled()
-                .focused(focused).submitLabel(.done).onSubmit { focused.wrappedValue = false }.accessibilityIdentifier(placeholder)
+            TextField(String(localized: placeholder), text: $text).textFieldStyle(.plain).font(.subheadline).noCapitalization().autocorrectionDisabled()
+                .focused(focused).submitLabel(.done).onSubmit { focused.wrappedValue = false }.accessibilityIdentifier(placeholder.key)
             if !text.isEmpty {
                 Button { text = ""; focused.wrappedValue = false } label: { Image(systemName: "xmark.circle.fill").frame(width: WorkspaceMetrics.controlHeight, height: WorkspaceMetrics.controlHeight).contentShape(Rectangle()) }
                     .buttonStyle(.plain).foregroundStyle(.secondary).padding(.trailing, -12).accessibilityLabel("Clear search")
@@ -205,23 +174,25 @@ struct SearchField: View {
 }
 
 struct EmptyPanel: View {
-    let title: String
-    var message = ""
+    let title: Text
+    var message: Text?
     var symbol = "tray"
+    init(title: LocalizedStringKey, message: LocalizedStringKey? = nil, symbol: String = "tray") { self.title = Text(title); self.message = message.map { Text($0) }; self.symbol = symbol }
+    init<S: StringProtocol>(title: S, symbol: String = "tray") { self.title = Text(title); self.symbol = symbol }
     var body: some View {
         #if os(macOS)
         VStack(spacing: 8) {
-            Image(systemName: symbol).font(.system(size: 23)).foregroundStyle(.secondary).accessibilityHidden(true)
-            Text(title).font(.subheadline.weight(.medium))
-            if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 300) }
+            Image(systemName: symbol).font(.app(size: 23)).foregroundStyle(.secondary).accessibilityHidden(true)
+            title.font(.subheadline.weight(.medium))
+            if let message { message.font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 300) }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(16)
         #else
         VStack(spacing: 12) {
-            Image(systemName: symbol).font(.system(size: 26, weight: .light)).foregroundStyle(Palette.mint)
+            Image(systemName: symbol).font(.app(size: 26, weight: .light)).foregroundStyle(Palette.mint)
                 .frame(width: 64, height: 64).background(Palette.mint.opacity(0.08), in: RoundedRectangle(cornerRadius: 18))
                 .accessibilityHidden(true)
-            Text(title).font(.headline)
-            if !message.isEmpty { Text(message).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 280) }
+            title.font(.headline)
+            if let message { message.font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 280) }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(24)
         #endif
     }
@@ -251,7 +222,7 @@ struct FieldEditor: View {
             if bulk {
                 TextEditor(text: Binding(get: { bulkText }, set: { bulkText = $0; fields = FieldBulkText.decode($0, existing: fields) }))
                     .dismissibleInput().font(.system(.footnote, design: .monospaced)).scrollContentBackground(.hidden)
-                    .frame(minHeight: 140).padding(8).accessibilityLabel("\(name) bulk text")
+                    .frame(minHeight: 140).padding(8).accessibilityLabel(copy.bulk)
             } else {
                 ForEach($fields) { $field in
                     HStack(alignment: .center, spacing: 0) {
@@ -260,11 +231,11 @@ struct FieldEditor: View {
                         }.buttonStyle(.plain).accessibilityLabel(field.enabled ? "Disable \(field.name)" : "Enable \(field.name)")
                         let layout = dynamicType.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0)) : AnyLayout(HStackLayout(spacing: 8))
                         layout {
-                            TextField("\(name) name", text: $field.name).dismissibleInput().frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight).accessibilityLabel("\(name) name")
+                            TextField(copy.name, text: $field.name).dismissibleInput().frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight).accessibilityLabel(copy.name)
                             Group {
                                 if field.isSecret { SecureField("Value", text: $field.value) }
                                 else { TextField("Value", text: $field.value) }
-                            }.dismissibleInput().frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight).accessibilityLabel("\(name) value")
+                            }.dismissibleInput().frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight).accessibilityLabel(copy.value)
                         }.opacity(field.enabled ? 1 : 0.5)
                             .font(.system(.footnote, design: .monospaced))
                         Menu {
@@ -276,13 +247,28 @@ struct FieldEditor: View {
                     VariableAssist(text: $field.value, showsReferences: false, insets: EdgeInsets(top: 0, leading: 44, bottom: 6, trailing: 12))
                     Divider().padding(.leading, 44)
                 }
-                Button { fields.append(Field()) } label: { Label("Add \(name.lowercased())", systemImage: "plus").font(.subheadline).frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight, alignment: .leading).padding(.horizontal, 12) }
+                Button { fields.append(Field()) } label: { Label(copy.add, systemImage: "plus").font(.subheadline).frame(maxWidth: .infinity, minHeight: WorkspaceMetrics.controlHeight, alignment: .leading).padding(.horizontal, 12) }
                     .buttonStyle(.plain).foregroundStyle(Palette.mint)
             }
         }
         .textFieldStyle(.plain).noCapitalization().autocorrectionDisabled()
         .background(Palette.surface).clipShape(RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
         .overlay(RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius).strokeBorder(Palette.border))
+    }
+}
+
+extension FieldEditor {
+    /// Whole phrases per field kind, so translations never splice an English noun into a sentence.
+    fileprivate struct Copy { let add, name, value, bulk: LocalizedStringKey }
+    fileprivate var copy: Copy {
+        switch name {
+        case "Parameter": Copy(add: "Add parameter", name: "Parameter name", value: "Parameter value", bulk: "Parameter bulk text")
+        case "Path variable": Copy(add: "Add path variable", name: "Path variable name", value: "Path variable value", bulk: "Path variable bulk text")
+        case "Variable": Copy(add: "Add variable", name: "Variable name", value: "Variable value", bulk: "Variable bulk text")
+        case "Global": Copy(add: "Add global", name: "Global name", value: "Global value", bulk: "Global bulk text")
+        case "Field": Copy(add: "Add field", name: "Field name", value: "Field value", bulk: "Field bulk text")
+        default: Copy(add: "Add header", name: "Header name", value: "Header value", bulk: "Header bulk text")
+        }
     }
 }
 
@@ -298,7 +284,7 @@ struct CodeEditor: View {
             .scrollContentBackground(.hidden).padding(10)
             .frame(minHeight: minimumHeight).background(Palette.surface, in: RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius))
             .overlay(RoundedRectangle(cornerRadius: WorkspaceMetrics.cornerRadius).strokeBorder(Palette.border))
-            .accessibilityLabel(label).accessibilityIdentifier(label)
+            .accessibilityLabel(LocalizedStringKey(label)).accessibilityIdentifier(label)
     }
 }
 
@@ -335,7 +321,7 @@ struct PillTabs: View {
             HStack(spacing: 20) {
                 ForEach(tabs, id: \.self) { tab in
                     Button { selection = tab } label: {
-                        Text(tab).font(.system(size: 12, weight: selection == tab ? .semibold : .medium))
+                        Text(LocalizedStringKey(tab)).font(.app(size: 13, weight: selection == tab ? .semibold : .medium))
                             .foregroundStyle(selection == tab ? Color.primary : Color.secondary)
                             .frame(minHeight: 34)
                             .overlay(alignment: .bottom) {
@@ -348,7 +334,7 @@ struct PillTabs: View {
             HStack(spacing: 4) {
                 ForEach(tabs, id: \.self) { tab in
                     Button { selection = tab } label: {
-                        Text(tab).font(.footnote.weight(selection == tab ? .semibold : .medium))
+                        Text(LocalizedStringKey(tab)).font(.footnote.weight(selection == tab ? .semibold : .medium))
                             .foregroundStyle(selection == tab ? Palette.mint : Color.secondary)
                             .padding(.horizontal, 10).frame(minWidth: 44, minHeight: WorkspaceMetrics.controlHeight)
                             .background(selection == tab ? Palette.mint.opacity(0.09) : Color.clear, in: RoundedRectangle(cornerRadius: 7))

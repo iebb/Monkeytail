@@ -150,7 +150,7 @@ public struct MockResponse: Codable, Equatable, Sendable {
         guard (100...599).contains(status), (0...30000).contains(delayMilliseconds), body.utf8.count <= 2 * 1024 * 1024 else { throw ClientError("Invalid mock status, delay, or body size.") }
         try await Task.sleep(for: .milliseconds(delayMilliseconds))
         try Task.checkCancellation()
-        if let error = simulatedError, !error.isEmpty { throw ClientError(error) }
+        if let error = simulatedError, !error.isEmpty { throw ClientError(verbatim: error) }
         var response = APIResponse(status: status, headers: headers, body: Data(body.utf8), duration: Double(delayMilliseconds) / 1000, url: url)
         response.diagnostics = RequestDiagnostics(transport: "Offline mock", transactions: [])
         return response

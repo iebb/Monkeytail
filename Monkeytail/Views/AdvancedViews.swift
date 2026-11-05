@@ -17,7 +17,7 @@ struct TestsEditor: View {
                         TextField("Test name", text: $test.name)
                         Button(role: .destructive) { request.assertions?.removeAll { $0.id == test.id } } label: { Image(systemName: "minus.circle").frame(width: 44, height: 44) }.accessibilityLabel("Remove test")
                     }
-                    Picker("Check", selection: $test.kind) { ForEach(AssertionKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
+                    Picker("Check", selection: $test.kind) { ForEach(AssertionKind.allCases, id: \.self) { Text($0.title).tag($0) } }.pickerStyle(.menu)
                     if test.kind == .header || test.kind == .json { TextField(test.kind == .json ? "JSONPath, e.g. $.id" : "Header name", text: $test.path) }
                     if test.kind == .schema { CodeEditor(text: $test.expected, label: "Test JSON schema", minimumHeight: 120) }
                     else { TextField(test.kind == .duration ? "Maximum milliseconds" : test.kind == .json ? "Expected JSON value, e.g. 42 or \"ok\"" : "Expected value", text: $test.expected) }
@@ -30,7 +30,7 @@ struct TestsEditor: View {
             DisclosureGroup("Request schema") { CodeEditor(text: Binding(get: { request.requestSchema ?? "" }, set: { request.requestSchema = $0 }), label: "Request JSON schema", minimumHeight: 180) }
             DisclosureGroup("Response schema") {
                 CodeEditor(text: Binding(get: { request.responseSchema ?? "" }, set: { request.responseSchema = $0 }), label: "Response JSON schema", minimumHeight: 180)
-                Button("Add schema assertion") { var test = ResponseAssertion(); test.kind = .schema; test.name = "Response schema"; test.expected = request.responseSchema ?? "{}"; request.assertions = (request.assertions ?? []) + [test] }.frame(minHeight: 44)
+                Button("Add schema assertion") { var test = ResponseAssertion(); test.kind = .schema; test.name = String(localized: "Response schema"); test.expected = request.responseSchema ?? "{}"; request.assertions = (request.assertions ?? []) + [test] }.frame(minHeight: 44)
             }
         }.textFieldStyle(.roundedBorder).noCapitalization().autocorrectionDisabled()
     }
@@ -42,8 +42,8 @@ struct TestResultsView: View {
             if results.isEmpty { Text("Add checks in Request → Tests.").foregroundStyle(.secondary) }
             ForEach(results) { result in
                 VStack(alignment: .leading, spacing: 6) {
-                    Label(result.name, systemImage: result.passed ? "checkmark.circle.fill" : "xmark.circle.fill").foregroundStyle(result.passed ? Palette.mint : Color.red)
-                    Text(result.message).font(.caption.monospaced()).textSelection(.enabled)
+                    Label(result.name, systemImage: result.passed ? "checkmark.circle.fill" : "xmark.circle.fill").foregroundStyle(result.passed ? Palette.mint : Palette.error)
+                    Text(result.message).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
                 }.padding(.vertical, 4)
             }
         }.scrollContentBackground(.hidden).accessibilityIdentifier("Response test results")
@@ -59,7 +59,7 @@ struct MockEditor: View {
         VStack(alignment: .leading, spacing: 10) {
             Toggle("Offline mock", isOn: mock.enabled).accessibilityIdentifier("Enable offline mock")
             Button("Use current response") {
-                guard let response, let text = String(data: response.body, encoding: .utf8), response.body.count <= 2 * 1024 * 1024 else { error = "Choose a UTF-8 response up to 2 MB."; return }
+                guard let response, let text = String(data: response.body, encoding: .utf8), response.body.count <= 2 * 1024 * 1024 else { error = String(localized: "Choose a UTF-8 response up to 2 MB."); return }
                 var value = MockResponse(); value.status = response.status; value.headers = response.headers.filter { !["content-length", "transfer-encoding", "content-encoding", "connection"].contains($0.name.lowercased()) }; value.body = text; value.enabled = true; request.mock = value
             }.disabled(response == nil).frame(minHeight: 44)
             Stepper("Status: \(mock.wrappedValue.status)", value: mock.status, in: 100...599)
@@ -67,7 +67,7 @@ struct MockEditor: View {
             TextField("Simulated error (optional)", text: Binding(get: { request.mock?.simulatedError ?? "" }, set: { if request.mock == nil { request.mock = MockResponse() }; request.mock?.simulatedError = $0.isEmpty ? nil : $0 }))
             FieldEditor(fields: mock.headers)
             CodeEditor(text: mock.body, label: "Mock response body", minimumHeight: 200)
-            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if let error { Text(error).font(.caption).foregroundStyle(Palette.error) }
             Divider().padding(.vertical, 6)
             Text("Saved examples").font(.headline)
             Text("Saved responses travel with the request and export as Postman examples.").font(.caption).foregroundStyle(.secondary)
@@ -77,7 +77,7 @@ struct MockEditor: View {
                     guard let response else { return }
                     do {
                         let name = exampleName.trimmingCharacters(in: .whitespaces)
-                        request.examples = (request.examples ?? []) + [try ResponseExample(name: name.isEmpty ? "\(response.status) response" : name, response: response)]; exampleName = ""; error = nil
+                        request.examples = (request.examples ?? []) + [try ResponseExample(name: name.isEmpty ? String(localized: "\(response.status) response") : name, response: response)]; exampleName = ""; error = nil
                     } catch { self.error = error.localizedDescription }
                 }.disabled(response == nil || (request.examples?.count ?? 0) >= ResponseExample.maximumCount).accessibilityIdentifier("Save response as example")
             }.frame(minHeight: 44)
@@ -122,7 +122,7 @@ struct GraphQLEditor: View {
             Text("Variables").font(.caption).foregroundStyle(.secondary)
             CodeEditor(text: graph.variables, label: "GraphQL variables", minimumHeight: 140)
             HStack { Button("Load schema") { load() }.disabled(loading); if loading { ProgressView() }; Spacer(); Text("\(fields.count) fields").font(.caption).foregroundStyle(.secondary) }.frame(minHeight: 44)
-            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if let error { Text(error).font(.caption).foregroundStyle(Palette.error) }
             if !fields.isEmpty {
                 TextField("Find a field or type", text: $search).textFieldStyle(.roundedBorder)
                 ForEach(Array(fields.filter { search.isEmpty || $0.id.localizedCaseInsensitiveContains(search) }.prefix(100))) { field in
@@ -133,8 +133,8 @@ struct GraphQLEditor: View {
                         graph.wrappedValue.query = query
                     } label: {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(field.id + " → " + field.resultType).font(.caption.monospaced())
-                            if !field.arguments.isEmpty { Text("Arguments: " + field.arguments.joined(separator: ", ")).font(.caption2).foregroundStyle(.secondary) }
+                            Text(verbatim: "\(field.id) → \(field.resultType)").font(.system(.caption, design: .monospaced))
+                            if !field.arguments.isEmpty { Text("Arguments: \(field.arguments.joined(separator: ", "))").font(.caption2).foregroundStyle(.secondary) }
                             if !field.description.isEmpty { Text(field.description).font(.caption2).foregroundStyle(.secondary).lineLimit(2) }
                         }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                     }.buttonStyle(.plain)
@@ -152,7 +152,7 @@ struct GraphQLEditor: View {
                 var built = try RequestBuilder.build(resolved.request, variables: resolved.variables)
                 if resolved.request.cookieJarEnabled == true, let url = built.url { let value = store.network.jar(store.workspace.selectedEnvironmentID).header(for: url); if !value.isEmpty { built.setValue(value, forHTTPHeaderField: "Cookie") } }
                 let response = try await HTTPClient(followRedirects: resolved.request.followRedirects).send(built, proxy: store.workspace.proxy, impersonation: resolved.request.impersonation, tls: store.network.identity(for: built.url))
-                guard (200...299).contains(response.status) else { throw ClientError("Schema request returned HTTP \(response.status).") }
+                guard (200...299).contains(response.status) else { throw ClientError(String(localized: "Schema request returned HTTP \(response.status).")) }
                 fields = try await Task.detached { try GraphQLSchema.fields(response.body) }.value
             } catch { self.error = error.localizedDescription }
         }
@@ -188,13 +188,13 @@ struct GraphQLEditor: View {
                 Toggle("Reconnect", isOn: $live.reconnect).font(.caption)
                 Spacer(); Button("Clear") { live.clear() }
             }.frame(minHeight: 44)
-            if let error = live.error { Text(error).font(.caption).foregroundStyle(.red).frame(maxWidth: .infinity, alignment: .leading) }
+            if let error = live.error { Text(error).font(.caption).foregroundStyle(Palette.error).frame(maxWidth: .infinity, alignment: .leading) }
             TextField("Filter messages", text: $filter).textFieldStyle(.roundedBorder)
             List(live.events.filter { filter.isEmpty || $0.text.localizedCaseInsensitiveContains(filter) || $0.type.localizedCaseInsensitiveContains(filter) }) { event in
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack { Text(event.direction + " · " + event.type).font(.caption.weight(.medium)); Spacer(); Text(event.date, format: .dateTime.hour().minute().second()).font(.caption2).foregroundStyle(.secondary) }
-                    if let data = event.binary { Text(ByteFormatter.dump(Array(data.prefix(4096)), width: 8, binary: false)).font(.caption.monospaced()).textSelection(.enabled) }
-                    else { Text((try? JSONTools.format(event.text)) ?? event.text).font(.caption.monospaced()).textSelection(.enabled) }
+                    HStack { Text("\(Text(LocalizedStringKey(event.direction))) · \(Text(LocalizedStringKey(event.type)))").font(.caption.weight(.medium)); Spacer(); Text(event.date, format: .dateTime.hour().minute().second()).font(.caption2).foregroundStyle(.secondary) }
+                    if let data = event.binary { Text(ByteFormatter.dump(Array(data.prefix(4096)), width: 8, binary: false)).font(.system(.caption, design: .monospaced)).textSelection(.enabled) }
+                    else { Text((try? JSONTools.format(event.text)) ?? event.text).font(.system(.caption, design: .monospaced)).textSelection(.enabled) }
                 }.padding(.vertical, 3)
             }.scrollContentBackground(.hidden).accessibilityIdentifier("Stream messages")
             if request?.transport == .websocket {
@@ -226,8 +226,8 @@ struct CodeExportView: View {
         NavigationStack {
             VStack(spacing: 12) {
                 HStack { Picker("Language", selection: $language) { ForEach(CodeLanguage.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu); Toggle("Hide credentials", isOn: Binding(get: { store.hideCredentials }, set: { store.setHideCredentials($0) })) }
-                if let error { Text(error).font(.caption).foregroundStyle(.red) }
-                ScrollView([.horizontal, .vertical]) { Text(code).font(.footnote.monospaced()).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12) }.background(Palette.surface)
+                if let error { Text(error).font(.caption).foregroundStyle(Palette.error) }
+                ScrollView([.horizontal, .vertical]) { Text(code).font(.system(.footnote, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12) }.background(Palette.surface)
                 HStack { Button("Copy") { Clipboard.copy(code) }; ShareLink(item: code) { Label("Share", systemImage: "square.and.arrow.up") } }.disabled(code.isEmpty).frame(minHeight: 44)
             }.padding(12).sheetTitle("Client code").toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }.macSheetFrame(minHeight: 400).task(id: language.rawValue + String(store.hideCredentials)) {
@@ -237,5 +237,11 @@ struct CodeExportView: View {
             }
             catch { self.error = error.localizedDescription; code = "" }
         }
+    }
+}
+
+private extension AssertionKind {
+    var title: LocalizedStringKey {
+        switch self { case .status: "Status"; case .duration: "Response time"; case .header: "Header"; case .json: "JSON value"; case .schema: "JSON schema" }
     }
 }

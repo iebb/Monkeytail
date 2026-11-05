@@ -78,7 +78,7 @@ public enum JWTSigner {
             }
             var error: Unmanaged<CFError>?
             guard let signature = SecKeyCreateSignature(key, algorithm, input as CFData, &error) as Data? else {
-                throw ClientError("JWT \(name) signing failed: \(error?.takeRetainedValue().localizedDescription ?? "unknown error").")
+                throw ClientError("JWT \(name) signing failed: \(error?.takeRetainedValue().localizedDescription ?? String(localized: "unknown error", bundle: .module)).")
             }
             return signature
         }

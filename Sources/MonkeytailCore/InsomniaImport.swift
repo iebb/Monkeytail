@@ -73,9 +73,9 @@ enum InsomniaImport {
         var warnings = warnings
         let requests = workspace.collections.flatMap(\.requests)
         if requests.contains(where: { !$0.preScript.isEmpty || !$0.postScript.isEmpty }) || workspace.collections.flatMap({ $0.folders ?? [] }).contains(where: { !$0.defaults.preScript.isEmpty || !$0.defaults.postScript.isEmpty }) {
-            warnings.append("Imported scripts run when you send. The insomnia object is available as an alias of pm.")
+            warnings.append(String(localized: "Imported scripts run when you send. The insomnia object is available as an alias of pm.", bundle: .module))
         }
-        if requests.contains(where: { ($0.url + $0.body + $0.headers.map(\.value).joined()).contains("{%") }) { warnings.append("Insomnia template tags such as {% response %} are not evaluated. Replace them with variables or scripts.") }
+        if requests.contains(where: { ($0.url + $0.body + $0.headers.map(\.value).joined()).contains("{%") }) { warnings.append(String(localized: "Insomnia template tags such as {% response %} are not evaluated. Replace them with variables or scripts.", bundle: .module)) }
         return CollectionImport(workspace: workspace, warnings: InterchangeImport.unique(warnings))
     }
 
@@ -103,7 +103,7 @@ enum InsomniaImport {
             }
         }
         try walk(items, parent: nil, depth: 0)
-        if skipped > 0 { warnings.append("Skipped \(skipped) gRPC, Socket.IO or MCP \(skipped == 1 ? "request" : "requests"). Monkeytail imports HTTP, GraphQL and WebSocket requests.") }
+        if skipped > 0 { warnings.append(skipped == 1 ? String(localized: "Skipped 1 gRPC, Socket.IO or MCP request. Monkeytail imports HTTP, GraphQL and WebSocket requests.", bundle: .module) : String(localized: "Skipped \(skipped) gRPC, Socket.IO or MCP requests. Monkeytail imports HTTP, GraphQL and WebSocket requests.", bundle: .module)) }
         collection.folders = folders.isEmpty ? nil : folders
         if let source { collection.defaults = defaults(source, inherit: false, warnings: &warnings) }
         return collection
@@ -128,7 +128,7 @@ enum InsomniaImport {
                     MultipartPart(name: normalize(CollectionCodec.string(field["name"])), value: normalize(CollectionCodec.string(field["value"])), enabled: !(field["disabled"] as? Bool ?? false),
                                   file: field["type"] as? String == "file" ? RequestFile(filename: CollectionCodec.string(field["fileName"]), mimeType: field["contentType"] as? String ?? "application/octet-stream") : nil)
                 }
-                if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append("Choose imported attachment files on this device before sending.") }
+                if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append(String(localized: "Choose imported attachment files on this device before sending.", bundle: .module)) }
             } else if mime == "application/graphql" {
                 let text = normalize(body["text"] as? String ?? "")
                 let payload = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any] ?? [:]
@@ -139,7 +139,7 @@ enum InsomniaImport {
                 if !request.headers.contains(where: { $0.name.lowercased() == "content-type" }) { request.headers.append(Field("Content-Type", "application/json")) }
             } else if body["fileName"] != nil {
                 request.bodyKind = .file; request.fileBody = RequestFile(filename: CollectionCodec.string(body["fileName"]), mimeType: mime)
-                warnings.append("Choose the imported body file on this device before sending.")
+                warnings.append(String(localized: "Choose the imported body file on this device before sending.", bundle: .module))
             } else {
                 request.bodyKind = mime.contains("json") ? .json : .text; request.body = normalize(body["text"] as? String ?? "")
                 if !request.headers.contains(where: { $0.name.lowercased() == "content-type" }) { request.headers.append(Field("Content-Type", mime)) }

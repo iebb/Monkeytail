@@ -34,8 +34,8 @@ private struct WatchRequestView: View {
     var body: some View {
         ScrollView {
         VStack(spacing: 6) {
-            Text(current.map { $0.method + " " + $0.url } ?? "Removed from Watch").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-            Button(store.runningID == request.id ? "Cancel" : "Send") {
+            Text(current.map { $0.method + " " + $0.url } ?? String(localized: "Removed from Watch")).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            Button(store.runningID == request.id ? String(localized: "Cancel") : String(localized: "Send")) {
                 if store.runningID == request.id { store.cancel() } else if let current { store.send(current) }
             }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity).disabled(current == nil).accessibilityIdentifier("Watch send request")
             if let issue = store.issue { Text(issue).font(.caption).foregroundStyle(.red) }
@@ -61,9 +61,9 @@ private struct WatchBodyView: View {
     var body: some View {
         VStack(spacing: 4) {
             HStack {
-                ForEach(["Pretty", "Raw", "Hex"], id: \.self) { name in
-                    Button(name) { format = name }.font(.caption2).frame(maxWidth: .infinity, minHeight: 32)
-                        .foregroundStyle(format == name ? Color.mint : Color.secondary)
+                ForEach([("Pretty", String(localized: "Pretty")), ("Raw", String(localized: "Raw")), ("Hex", String(localized: "Hex"))], id: \.0) { item in
+                    Button(item.1) { format = item.0 }.font(.caption2).frame(maxWidth: .infinity, minHeight: 32)
+                        .foregroundStyle(format == item.0 ? Color.mint : Color.secondary)
                 }
             }.buttonStyle(.plain)
             ScrollView {

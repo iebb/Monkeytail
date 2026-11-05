@@ -9,7 +9,7 @@ public struct ImportFile: Sendable {
 
 /// Detects and decodes collections exported by other API clients. No account or network access is involved.
 public enum InterchangeImport {
-    static let unsupportedMessage = "Unsupported format. Import cURL, Postman (v1, v2, v2.1, environments, globals or data dumps), Insomnia (v4 JSON/YAML or v5 YAML), Bruno (.bru files, folders or JSON), Hoppscotch, Thunder Client, HAR, .http files, OpenAPI/Swagger, or Monkeytail JSON."
+    static var unsupportedMessage: String { String(localized: "Unsupported format. Import cURL, Postman (v1, v2, v2.1, environments, globals or data dumps), Insomnia (v4 JSON/YAML or v5 YAML), Bruno (.bru files, folders or JSON), Hoppscotch, Thunder Client, HAR, .http files, OpenAPI/Swagger, or Monkeytail JSON.", bundle: .module) }
 
     /// Decodes any supported text other than cURL.
     public static func decode(_ text: String, filename: String? = nil) throws -> CollectionImport {
@@ -31,8 +31,10 @@ public enum InterchangeImport {
             if root["openapi"] != nil || root["swagger"] != nil { return try OpenAPICodec.decode(data) }
             return try CollectionCodec.decode(root: root)
         }
-        throw ClientError(unsupportedMessage)
+        throw ClientError(verbatim: unsupportedMessage)
     }
+
+    static func skipped(_ path: String, _ reason: String) -> String { String(localized: "Skipped \(path): \(reason)", bundle: .module) }
 
     /// Decodes several files, or a folder such as a Bruno collection, into one import.
     public static func decode(files: [ImportFile], name: String) throws -> CollectionImport {
@@ -42,11 +44,11 @@ public enum InterchangeImport {
         let brunoFolder = files.contains { filename($0) == "bruno.json" }
         var results: [CollectionImport] = [], warnings: [String] = []
         if bruno.contains(where: { filename($0).hasSuffix(".bru") }) { results.append(try BrunoImport.decode(files: bruno, name: name)) }
-        if brunoFolder && files.contains(where: { filename($0) == "opencollection.yml" }) { warnings.append("Bruno YAML (OpenCollection) requests are not imported yet. Save the collection in the .bru format or export it as JSON.") }
+        if brunoFolder && files.contains(where: { filename($0) == "opencollection.yml" }) { warnings.append(String(localized: "Bruno YAML (OpenCollection) requests are not imported yet. Save the collection in the .bru format or export it as JSON.", bundle: .module)) }
         for file in files where !brunoFolder && !bruno.contains(where: { $0.path == file.path }) {
-            do { results.append(try decode(file.text, filename: file.path)) } catch { warnings.append("Skipped \(file.path): \(error.localizedDescription)") }
+            do { results.append(try decode(file.text, filename: file.path)) } catch { warnings.append(skipped(file.path, error.localizedDescription)) }
         }
-        guard !results.isEmpty else { throw ClientError(warnings.first ?? unsupportedMessage) }
+        guard !results.isEmpty else { throw ClientError(verbatim: warnings.first ?? unsupportedMessage) }
         var merged = merge(results); merged.warnings = unique(warnings + merged.warnings)
         return merged
     }
@@ -83,12 +85,12 @@ public enum InterchangeImport {
     private static func ensureContentType(_ request: inout APIRequest, _ type: String) {
         if !type.isEmpty && !request.headers.contains(where: { $0.name.lowercased() == "content-type" }) { request.headers.append(Field("Content-Type", type)) }
     }
-    private static func scriptWarning(_ workspace: Workspace, _ note: String) -> [String] {
+    private static func scriptWarning(_ workspace: Workspace, _ message: String) -> [String] {
         let scripted = workspace.collections.contains { collection in
             collection.requests.contains { !$0.preScript.isEmpty || !$0.postScript.isEmpty } || (collection.folders ?? []).contains { !$0.defaults.preScript.isEmpty || !$0.defaults.postScript.isEmpty }
                 || !(collection.defaults?.preScript ?? "").isEmpty || !(collection.defaults?.postScript ?? "").isEmpty
         }
-        return scripted ? ["Imported scripts run when you send. " + note] : []
+        return scripted ? [message] : []
     }
     private static func trimmedScript(_ value: String) -> String { value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : value }
 
@@ -126,7 +128,7 @@ public enum InterchangeImport {
         defaults.variables = CollectionCodec.fields(root["variables"] as? [[String: Any]] ?? [])
         collection.defaults = defaults
         let workspace = Workspace(collections: [collection])
-        return CollectionImport(workspace: workspace, warnings: unique(warnings + scriptWarning(workspace, "Review them in each Scripts tab.")))
+        return CollectionImport(workspace: workspace, warnings: unique(warnings + scriptWarning(workspace, String(localized: "Imported scripts run when you send. Review them in each Scripts tab.", bundle: .module))))
     }
 
     private static func postmanV1Request(_ source: [String: Any], warnings: inout [String]) -> APIRequest {
@@ -155,8 +157,8 @@ public enum InterchangeImport {
                 MultipartPart(name: CollectionCodec.string(field["key"]), value: field["type"] as? String == "file" ? "" : CollectionCodec.string(field["value"]), enabled: field["enabled"] as? Bool ?? true,
                               file: field["type"] as? String == "file" ? RequestFile(filename: CollectionCodec.string(field["value"])) : nil)
             }
-            if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append("Choose imported attachment files on this device before sending.") }
-        case "binary": request.bodyKind = .file; request.fileBody = RequestFile(filename: "body"); warnings.append("Choose the imported body file on this device before sending.")
+            if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append(String(localized: "Choose imported attachment files on this device before sending.", bundle: .module)) }
+        case "binary": request.bodyKind = .file; request.fileBody = RequestFile(filename: "body"); warnings.append(String(localized: "Choose the imported body file on this device before sending.", bundle: .module))
         case "graphql":
             let graph = source["graphqlModeData"] as? [String: Any] ?? [:]
             var graphql = GraphQLRequest(); graphql.query = graph["query"] as? String ?? ""; graphql.variables = (graph["variables"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "{}"
@@ -172,7 +174,7 @@ public enum InterchangeImport {
             case "digestAuth": request.auth.kind = .digest; request.auth.username = CollectionCodec.string(helper["username"]); request.auth.password = CollectionCodec.string(helper["password"])
             case "bearerAuth": request.auth.kind = .bearer; request.auth.token = CollectionCodec.string(helper["token"])
             case nil, "normal", "": request.auth.kind = .inherit
-            case let other?: warnings.append("Postman v1 helper ‘\(other)’ is unsupported. Configure authentication manually.")
+            case let other?: warnings.append(String(localized: "Postman v1 helper ‘\(other)’ is unsupported. Configure authentication manually.", bundle: .module))
             }
         }
         request.preScript = trimmedScript(source["preRequestScript"] as? String ?? "")
@@ -228,7 +230,7 @@ public enum InterchangeImport {
                                       file: param["fileName"].map { RequestFile(filename: CollectionCodec.string($0), mimeType: param["contentType"] as? String ?? "application/octet-stream") })
                     }
                     request.headers.removeAll { $0.name.lowercased() == "content-type" }
-                    if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append("Choose imported attachment files on this device before sending.") }
+                    if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append(String(localized: "Choose imported attachment files on this device before sending.", bundle: .module)) }
                 } else if let text = post["text"] as? String, !text.isEmpty {
                     request.bodyKind = mime.contains("json") ? .json : .text; request.body = text
                     ensureContentType(&request, mime)
@@ -245,7 +247,7 @@ public enum InterchangeImport {
             collection.requests.append(request)
         }
         guard !collection.requests.isEmpty else { throw ClientError("The HAR file contains no HTTP requests.") }
-        if collection.requests.contains(where: { $0.headers.contains { ["cookie", "authorization"].contains($0.name.lowercased()) } }) { warnings.append("Recorded Cookie and Authorization headers were imported. Remove them if the session has expired.") }
+        if collection.requests.contains(where: { $0.headers.contains { ["cookie", "authorization"].contains($0.name.lowercased()) } }) { warnings.append(String(localized: "Recorded Cookie and Authorization headers were imported. Remove them if the session has expired.", bundle: .module)) }
         return CollectionImport(workspace: Workspace(collections: [collection]), warnings: unique(warnings))
     }
 
@@ -271,15 +273,15 @@ public enum InterchangeImport {
         case "inherit": auth.kind = .inherit
         case "none": break
         case "bearer": auth.kind = .bearer; auth.token = thunderValue(CollectionCodec.string(source["bearer"]))
-            if let prefix = source["bearerPrefix"] as? String, !prefix.isEmpty, prefix != "Bearer" { warnings.append("Bearer prefix ‘\(prefix)’ was replaced by Bearer. Use an Authorization header to keep it.") }
+            if let prefix = source["bearerPrefix"] as? String, !prefix.isEmpty, prefix != "Bearer" { warnings.append(String(localized: "Bearer prefix ‘\(prefix)’ was replaced by Bearer. Use an Authorization header to keep it.", bundle: .module)) }
         case "basic", "ntlm":
             let basic = source[type] as? [String: Any] ?? [:]
             auth.kind = .basic; auth.username = thunderValue(CollectionCodec.string(basic["username"])); auth.password = thunderValue(CollectionCodec.string(basic["password"]))
-            if type == "ntlm" { warnings.append("NTLM authentication is unsupported; Basic is used instead.") }
+            if type == "ntlm" { warnings.append(String(localized: "NTLM authentication is unsupported; Basic is used instead.", bundle: .module)) }
         case "oauth2", "aws":
             var values = source[type] as? [String: Any] ?? [:]; values["type"] = type
             auth = CollectionCodec.decodeAuth(values, postman: false, warnings: &warnings)
-        default: warnings.append("Thunder Client authentication ‘\(type)’ is unsupported. Configure it manually.")
+        default: warnings.append(String(localized: "Thunder Client authentication ‘\(type)’ is unsupported. Configure it manually.", bundle: .module))
         }
         return auth
     }
@@ -296,7 +298,7 @@ public enum InterchangeImport {
             case "json-query", "set-env-var": read = custom.hasPrefix("json") ? "{ const json = tc.response.json; return \(custom); }" : "pm.response.headers.get(\(quoted(custom.replacingOccurrences(of: "header.", with: ""))))"
             case "content-type", "content-length", "content-encoding": read = "pm.response.headers.get(\(quoted(type)))"
             case "header", "custom-header": read = "pm.response.headers.get(\(quoted(custom)))"
-            default: warnings.append("Thunder Client test type ‘\(type)’ was not converted."); return nil
+            default: warnings.append(String(localized: "Thunder Client test type ‘\(type)’ was not converted.", bundle: .module)); return nil
             }
             let body = read.hasPrefix("{") ? read : "{ return \(read); }"
             if type.lowercased() == "set-env-var" {
@@ -366,24 +368,24 @@ public enum InterchangeImport {
                 request.bodyKind = .multipart
                 request.multipart = thunderFields(body["form"]).map { MultipartPart(name: $0.name, value: $0.value, enabled: $0.enabled) }
                     + (body["files"] as? [[String: Any]] ?? []).map { MultipartPart(name: CollectionCodec.string($0["name"]), enabled: !($0["isDisabled"] as? Bool ?? false), file: RequestFile(filename: (CollectionCodec.string($0["value"]) as NSString).lastPathComponent)) }
-                if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append("Choose imported attachment files on this device before sending.") }
+                if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append(String(localized: "Choose imported attachment files on this device before sending.", bundle: .module)) }
             case "graphql":
                 let graph = body["graphql"] as? [String: Any] ?? [:]
                 var graphql = GraphQLRequest(); graphql.query = thunderValue(CollectionCodec.string(graph["query"])); graphql.variables = CollectionCodec.string(graph["variables"]).isEmpty ? "{}" : thunderValue(CollectionCodec.string(graph["variables"]))
                 request.transport = .graphql; request.graphql = graphql; request.bodyKind = .json
                 request.body = String(decoding: (try? CollectionCodec.json(["query": graphql.query])) ?? Data(), as: UTF8.self); ensureContentType(&request, "application/json")
-            case "binary": request.bodyKind = .file; request.fileBody = RequestFile(filename: (CollectionCodec.string(body["binary"]) as NSString).lastPathComponent); warnings.append("Choose the imported body file on this device before sending.")
+            case "binary": request.bodyKind = .file; request.fileBody = RequestFile(filename: (CollectionCodec.string(body["binary"]) as NSString).lastPathComponent); warnings.append(String(localized: "Choose the imported body file on this device before sending.", bundle: .module))
             default: break
             }
             request.auth = thunderAuth(source["auth"], warnings: &warnings)
             request.preScript = thunderScripts(source["preReq"])
             request.postScript = [thunderTests(source["tests"], warnings: &warnings), thunderScripts(source["postReq"])].filter { !$0.isEmpty }.joined(separator: "\n")
-            if (source["preReq"] as? [String: Any])?["runRequests"] != nil { warnings.append("Thunder Client ‘run request before’ steps were not imported. Use a collection run instead.") }
+            if (source["preReq"] as? [String: Any])?["runRequests"] != nil { warnings.append(String(localized: "Thunder Client ‘run request before’ steps were not imported. Use a collection run instead.", bundle: .module)) }
             collection.requests.append(request)
         }
         collection.defaults = thunderDefaults(settings, inherit: false, warnings: &warnings)
         let workspace = Workspace(collections: [collection])
-        return CollectionImport(workspace: workspace, warnings: unique(warnings + scriptWarning(workspace, "Thunder Client tests were converted to scripts that use tc and pm.")))
+        return CollectionImport(workspace: workspace, warnings: unique(warnings + scriptWarning(workspace, String(localized: "Imported scripts run when you send. Thunder Client tests were converted to scripts that use tc and pm.", bundle: .module))))
     }
 
     // MARK: Hoppscotch
@@ -392,7 +394,7 @@ public enum InterchangeImport {
     private static func hoppFields(_ source: Any?) -> [Field] {
         (source as? [[String: Any]] ?? []).map { Field(hopp(CollectionCodec.string($0["key"] ?? $0["name"])), hopp(CollectionCodec.string($0["value"])), enabled: $0["active"] as? Bool ?? $0["enabled"] as? Bool ?? true) }
     }
-    private static func hoppVariables(_ source: Any?) -> [Field] {
+    static func hoppVariables(_ source: Any?) -> [Field] {
         (source as? [[String: Any]] ?? []).map { item in
             let current = CollectionCodec.string(item["currentValue"]), value = item["value"] != nil ? CollectionCodec.string(item["value"]) : current.isEmpty ? CollectionCodec.string(item["initialValue"]) : current
             var field = Field(CollectionCodec.string(item["key"] ?? item["name"]), hopp(value), enabled: item["enabled"] as? Bool ?? item["active"] as? Bool ?? true)
@@ -429,9 +431,9 @@ public enum InterchangeImport {
             oauth.clientID = hopp(CollectionCodec.string(info["clientID"])); oauth.clientSecret = hopp(CollectionCodec.string(info["clientSecret"])); oauth.scope = hopp(CollectionCodec.string(info["scopes"]))
             oauth.accessToken = CollectionCodec.string(info["token"])
             if oauth.grant == .password { oauth.username = hopp(CollectionCodec.string(info["username"])); oauth.password = hopp(CollectionCodec.string(info["password"])) }
-            if grant == "IMPLICIT" { warnings.append("OAuth 2.0 implicit grants are imported as authorization code with PKCE.") }
+            if grant == "IMPLICIT" { warnings.append(String(localized: "OAuth 2.0 implicit grants are imported as authorization code with PKCE.", bundle: .module)) }
             auth.kind = .oauth2; auth.oauth = oauth
-        default: warnings.append("Hoppscotch authentication ‘\(type)’ is unsupported. Configure it manually.")
+        default: warnings.append(String(localized: "Hoppscotch authentication ‘\(type)’ is unsupported. Configure it manually.", bundle: .module))
         }
         return auth
     }
@@ -459,7 +461,7 @@ public enum InterchangeImport {
                 return MultipartPart(name: hopp(CollectionCodec.string(field["key"])), value: file ? "" : hopp(CollectionCodec.string(field["value"])), enabled: field["active"] as? Bool ?? true,
                                      file: file ? RequestFile(filename: CollectionCodec.string(field["key"]), mimeType: field["contentType"] as? String ?? "application/octet-stream") : nil)
             }
-            if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append("Choose imported attachment files on this device before sending.") }
+            if request.multipart?.contains(where: { $0.file != nil }) == true { warnings.append(String(localized: "Choose imported attachment files on this device before sending.", bundle: .module)) }
         case "application/x-www-form-urlencoded":
             request.bodyKind = .form
             request.form = CollectionCodec.string(body["body"]).split(whereSeparator: \.isNewline).compactMap { line in
@@ -467,7 +469,7 @@ public enum InterchangeImport {
                 guard let colon = entry.firstIndex(of: ":") else { return nil }
                 return Field(hopp(entry[..<colon].trimmingCharacters(in: .whitespaces)), hopp(entry[entry.index(after: colon)...].trimmingCharacters(in: .whitespaces)), enabled: !disabled)
             }
-        case "application/octet-stream": request.bodyKind = .file; request.fileBody = RequestFile(filename: "body"); warnings.append("Choose the imported body file on this device before sending.")
+        case "application/octet-stream": request.bodyKind = .file; request.fileBody = RequestFile(filename: "body"); warnings.append(String(localized: "Choose the imported body file on this device before sending.", bundle: .module))
         default:
             request.bodyKind = type.contains("json") ? .json : .text; request.body = hopp(CollectionCodec.string(body["body"]))
             ensureContentType(&request, type == "binary" ? "application/octet-stream" : type)
@@ -486,7 +488,7 @@ public enum InterchangeImport {
         var warnings: [String] = [], workspace = Workspace()
         for item in list {
             if item["requests"] == nil && item["folders"] == nil {
-                guard item["variables"] != nil else { throw ClientError(unsupportedMessage) }
+                guard item["variables"] != nil else { throw ClientError(verbatim: unsupportedMessage) }
                 workspace.environments.append(APIEnvironment(name: item["name"] as? String ?? "Environment", variables: hoppVariables(item["variables"])))
                 continue
             }
@@ -510,6 +512,6 @@ public enum InterchangeImport {
             collection.folders = folders.isEmpty ? nil : folders; collection.defaults = defaults(item, inherit: false)
             workspace.collections.append(collection)
         }
-        return CollectionImport(workspace: workspace, warnings: unique(warnings + scriptWarning(workspace, "Hoppscotch pw and hopp scripts are supported for environment, test, expect and response.")))
+        return CollectionImport(workspace: workspace, warnings: unique(warnings + scriptWarning(workspace, String(localized: "Imported scripts run when you send. Hoppscotch pw and hopp scripts are supported for environment, test, expect and response.", bundle: .module))))
     }
 }

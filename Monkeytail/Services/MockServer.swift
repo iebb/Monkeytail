@@ -23,10 +23,10 @@ import MonkeytailCore
                 guard let mock = request.mock, mock.enabled else { continue }
                 let url = URL(string: try RequestBuilder.resolve(request.url, variables: variables))
                 let key = request.method.uppercased() + " " + (url?.path.isEmpty == false ? url!.path : "/")
-                guard routes[key] == nil else { throw ClientError("Duplicate mock route: " + key) }
+                guard routes[key] == nil else { throw ClientError(String(localized: "Duplicate mock route: \(key)")) }
                 routes[key] = mock
             }
-            guard !routes.isEmpty else { throw ClientError("Enable a mock on at least one request.") }
+            guard !routes.isEmpty else { throw ClientError(String(localized: "Enable a mock on at least one request.")) }
             let parameters = NWParameters.tcp; parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
             let listener = try NWListener(using: parameters); self.listener = listener
             let current = generation
@@ -49,12 +49,12 @@ import MonkeytailCore
                 var buffer = Data()
                 while buffer.range(of: Data("\r\n\r\n".utf8)) == nil {
                     let chunk: Data = try await withCheckedThrowingContinuation { continuation in connection.receive(minimumIncompleteLength: 1, maximumLength: 4096) { data, _, complete, error in
-                        if let error { continuation.resume(throwing: error) } else if let data, !data.isEmpty { continuation.resume(returning: data) } else { continuation.resume(throwing: ClientError(complete ? "Connection closed." : "Empty request.")) }
+                        if let error { continuation.resume(throwing: error) } else if let data, !data.isEmpty { continuation.resume(returning: data) } else { continuation.resume(throwing: ClientError(complete ? String(localized: "Connection closed.") : String(localized: "Empty request."))) }
                     } }
-                    buffer.append(chunk); guard buffer.count <= 64 * 1024 else { throw ClientError("Request headers exceed 64 KB.") }; try Task.checkCancellation()
+                    buffer.append(chunk); guard buffer.count <= 64 * 1024 else { throw ClientError(String(localized: "Request headers exceed 64 KB.")) }; try Task.checkCancellation()
                 }
                 let first = String(decoding: buffer, as: UTF8.self).components(separatedBy: "\r\n").first ?? ""
-                let pieces = first.split(separator: " "); guard pieces.count == 3 else { throw ClientError("Invalid HTTP request.") }
+                let pieces = first.split(separator: " "); guard pieces.count == 3 else { throw ClientError(String(localized: "Invalid HTTP request.")) }
                 let path = String(pieces[1]).components(separatedBy: "?").first ?? "/"
                 var missing = MockResponse(); missing.status = 404; missing.body = "{\"error\":\"No matching mock\"}"
                 let mock = routes[String(pieces[0]).uppercased() + " " + path] ?? missing

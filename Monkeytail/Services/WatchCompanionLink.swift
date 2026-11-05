@@ -20,7 +20,7 @@ import MonkeytailCompanion
         guard proxy.kind == .system, request.impersonation == nil, request.cookieJarEnabled != true, request.mock?.enabled != true,
               request.transport != .websocket, request.transport != .sse, ![.oauth1, .oauth2, .jwt, .aws, .digest].contains(request.auth.kind),
               !request.scriptsEnabled || (request.preScript.isEmpty && request.postScript.isEmpty) else {
-            throw ClientError("Watch supports System HTTP and GraphQL requests. Use iPhone for proxies, browser profiles, cookies, OAuth/AWS/Digest, scripts, or mocks.")
+            throw ClientError(String(localized: "Watch supports System HTTP and GraphQL requests. Use iPhone for proxies, browser profiles, cookies, OAuth/AWS/Digest, scripts, or mocks."))
         }
         var built = try RequestBuilder.build(request, variables: variables)
         var privateHeaders = try request.headers.filter { $0.isCredential || SecretPolicy.isSensitive($0.name) }.map { try RequestBuilder.resolve($0.name, variables: variables) }
@@ -33,7 +33,7 @@ import MonkeytailCompanion
             for (name, value) in built.allHTTPHeaderFields ?? [:] where SecretPolicy.isSensitive(name) || containsSecret(name) || containsSecret(value) || privateHeaders.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) || ["content-length", "content-encoding", "transfer-encoding"].contains(name.lowercased()) { built.setValue(nil, forHTTPHeaderField: name) }
             if var url = URLComponents(url: built.url!, resolvingAgainstBaseURL: false) {
                 url.user = nil; url.password = nil
-                guard !containsSecret(url.host ?? ""), !containsSecret(url.path) else { throw ClientError("The URL contains a private value. Enable credentials to copy it to Watch.") }
+                guard !containsSecret(url.host ?? ""), !containsSecret(url.path) else { throw ClientError(String(localized: "The URL contains a private value. Enable credentials to copy it to Watch.")) }
                 url.fragment = nil
                 let marked = try request.query.filter(\.isCredential).map { try RequestBuilder.resolve($0.name, variables: variables) }
                 url.queryItems = url.queryItems?.filter { !SecretPolicy.isSensitive($0.name) && !containsSecret($0.name) && !containsSecret($0.value ?? "") && !marked.contains($0.name) && !(request.auth.kind == .apiKey && request.auth.apiKey?.inQuery == true && $0.name == request.auth.apiKey?.name) }
@@ -46,21 +46,21 @@ import MonkeytailCompanion
     }
     func setUseKeychain(_ enabled: Bool) throws { try vault.setUseKeychain(enabled); requests = try vault.load() ?? [] }
     func add(_ request: WatchRequest) throws {
-        guard !unavailable else { throw WatchError(issue ?? "Watch storage is unavailable.") }
+        guard !unavailable else { throw WatchError(issue ?? String(localized: "Watch storage is unavailable.")) }
         var next = requests.filter { $0.id != request.id }; next.append(request)
         _ = try WatchPayload.encode(next); try vault.save(next); requests = next; try transfer()
     }
     func remove(_ id: UUID) throws {
-        guard !unavailable else { throw WatchError(issue ?? "Watch storage is unavailable.") }
+        guard !unavailable else { throw WatchError(issue ?? String(localized: "Watch storage is unavailable.")) }
         let next = requests.filter { $0.id != id }; try vault.save(next); requests = next; try transfer()
     }
     func transfer(favoriteIDs: Set<UUID>? = nil) throws {
         if let favoriteIDs {
-            guard !unavailable else { throw WatchError(issue ?? "Watch storage is unavailable.") }
+            guard !unavailable else { throw WatchError(issue ?? String(localized: "Watch storage is unavailable.")) }
             let next = requests.filter { favoriteIDs.contains($0.id) }
             try vault.save(next); requests = next
         }
-        guard WCSession.isSupported(), WCSession.default.activationState == .activated, WCSession.default.isPaired, WCSession.default.isWatchAppInstalled else { throw WatchError("Saved on iPhone. Install Monkeytail on your paired Watch, then tap Sync.") }
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated, WCSession.default.isPaired, WCSession.default.isWatchAppInstalled else { throw WatchError(String(localized: "Saved on iPhone. Install Monkeytail on your paired Watch, then tap Sync.")) }
         try WCSession.default.updateApplicationContext(["version": 1, "requests": WatchPayload.encode(requests), "useKeychain": vault.useKeychain])
     }
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {

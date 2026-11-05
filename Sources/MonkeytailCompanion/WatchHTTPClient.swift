@@ -6,7 +6,7 @@ public struct WatchResponse: Sendable {
     public var headers: [String: String]
     public var body: Data
     public var url: String
-    public var text: String { String(data: body.prefix(16 * 1024), encoding: .utf8) ?? "Binary response — use Hex." }
+    public var text: String { String(data: body.prefix(16 * 1024), encoding: .utf8) ?? String(localized: "Binary response — use Hex.", bundle: .module) }
     public var pretty: String {
         guard body.count <= 16 * 1024, let value = try? JSONSerialization.jsonObject(with: body, options: [.fragmentsAllowed]), let data = try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed, .prettyPrinted, .sortedKeys]), data.count <= 32 * 1024 else { return text }
         return String(decoding: data, as: UTF8.self)

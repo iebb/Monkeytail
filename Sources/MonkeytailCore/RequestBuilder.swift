@@ -121,7 +121,7 @@ public enum RequestBuilder {
         }
         if let schema = model.requestSchema, !schema.isEmpty, let body = request.httpBody {
             let errors = try JSONSchema.validate(body, schema: schema)
-            if !errors.isEmpty { throw ClientError("Request schema: " + errors.prefix(5).joined(separator: "; ")) }
+            if !errors.isEmpty { throw ClientError("Request schema: \(errors.prefix(5).joined(separator: "; "))") }
         }
         if let body = request.httpBody, body.count > MultipartEncoder.maximumBytes { throw ClientError("Upload exceeds the 20 MB limit.") }
         if model.auth.kind == .aws {

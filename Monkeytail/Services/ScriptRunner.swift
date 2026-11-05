@@ -84,7 +84,7 @@ final class ScriptRunner: NSObject, WKNavigationDelegate, WKScriptMessageHandler
                 timeoutTask = Task { [weak self] in
                     try? await Task.sleep(for: .seconds(10))
                     guard !Task.isCancelled else { return }
-                    self?.finish(.failure(ClientError("The JavaScript sandbox could not start within 10 seconds.")))
+                    self?.finish(.failure(ClientError(String(localized: "The JavaScript sandbox could not start within 10 seconds."))))
                 }
                 view.loadHTMLString("<html><head><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'unsafe-inline'; connect-src 'none'; form-action 'none'\"></head><body></body></html>", baseURL: nil)
             }
@@ -99,12 +99,12 @@ final class ScriptRunner: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         webView.callAsyncJavaScript(ScriptLibraries.source + Self.harness + "\nawait (async () => {\n" + script + "\n})();\n" + Self.epilogue, arguments: ["payload": payload], in: nil, in: .page) { [weak self] result in
             switch result {
             case .success(let value):
-                guard let text = value as? String else { self?.finish(.failure(ClientError("The script did not produce a valid result. Avoid top-level return statements."))); return }
+                guard let text = value as? String else { self?.finish(.failure(ClientError(String(localized: "The script did not produce a valid result. Avoid top-level return statements.")))); return }
                 do { self?.finish(.success(try JSONDecoder().decode(ScriptResult.self, from: Data(text.utf8)))) }
-                catch { self?.finish(.failure(ClientError("Scripts must leave request fields and environment values as strings."))) }
+                catch { self?.finish(.failure(ClientError(String(localized: "Scripts must leave request fields and environment values as strings.")))) }
             case .failure(let error):
                 let detail = (error as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String ?? error.localizedDescription
-                self?.finish(.failure(ClientError("JavaScript: \(detail)")))
+                self?.finish(.failure(ClientError(String(localized: "JavaScript: \(detail)"))))
             }
         }
     }
@@ -116,13 +116,13 @@ final class ScriptRunner: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         timeoutTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(limit))
             guard !Task.isCancelled else { return }
-            self?.finish(.failure(ClientError("JavaScript exceeded its \(Int(limit))-second time limit.")))
+            self?.finish(.failure(ClientError(String(localized: "JavaScript exceeded its \(Int(limit))-second time limit."))))
         }
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping @MainActor @Sendable (Any?, String?) -> Void) {
-        guard continuation != nil, let proxy else { replyHandler(nil, "pm.sendRequest is unavailable."); return }
-        guard sentRequests < Self.maximumSentRequests else { replyHandler(nil, "Scripts can send at most \(Self.maximumSentRequests) requests."); return }
+        guard continuation != nil, let proxy else { replyHandler(nil, String(localized: "pm.sendRequest is unavailable.")); return }
+        guard sentRequests < Self.maximumSentRequests else { replyHandler(nil, String(localized: "Scripts can send at most \(Self.maximumSentRequests) requests.")); return }
         let request: URLRequest
         do { request = try Self.urlRequest(message.body) } catch { replyHandler(nil, error.localizedDescription); return }
         sentRequests += 1; inFlight += 1
@@ -141,17 +141,17 @@ final class ScriptRunner: NSObject, WKNavigationDelegate, WKScriptMessageHandler
 
     private static func urlRequest(_ body: Any) throws -> URLRequest {
         guard let spec = body as? [String: Any], let text = spec["url"] as? String, let url = URL(string: text),
-              ["http", "https"].contains(url.scheme?.lowercased() ?? ""), url.host?.isEmpty == false else { throw ClientError("pm.sendRequest needs a complete http:// or https:// URL.") }
+              ["http", "https"].contains(url.scheme?.lowercased() ?? ""), url.host?.isEmpty == false else { throw ClientError(String(localized: "pm.sendRequest needs a complete http:// or https:// URL.")) }
         let method = (spec["method"] as? String ?? "GET").uppercased()
-        guard method.range(of: #"^[A-Z0-9!#$%&'*+.^_`|~-]+$"#, options: .regularExpression) != nil else { throw ClientError("pm.sendRequest has an invalid method.") }
+        guard method.range(of: #"^[A-Z0-9!#$%&'*+.^_`|~-]+$"#, options: .regularExpression) != nil else { throw ClientError(String(localized: "pm.sendRequest has an invalid method.")) }
         var request = URLRequest(url: url, timeoutInterval: 30)
         request.httpMethod = method
         for (name, value) in spec["headers"] as? [String: String] ?? [:] {
-            guard !name.isEmpty, !(name + value).contains(where: { $0 == "\r" || $0 == "\n" }) else { throw ClientError("pm.sendRequest has an invalid header.") }
+            guard !name.isEmpty, !(name + value).contains(where: { $0 == "\r" || $0 == "\n" }) else { throw ClientError(String(localized: "pm.sendRequest has an invalid header.")) }
             request.setValue(value, forHTTPHeaderField: name)
         }
         if let text = spec["body"] as? String, !text.isEmpty {
-            guard text.utf8.count <= MultipartEncoder.maximumBytes else { throw ClientError("Upload exceeds the 20 MB limit.") }
+            guard text.utf8.count <= MultipartEncoder.maximumBytes else { throw ClientError(String(localized: "Upload exceeds the 20 MB limit.")) }
             request.httpBody = Data(text.utf8)
         }
         return request
@@ -424,7 +424,7 @@ final class ScriptRunner: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         decisionHandler(navigationAction.request.url?.absoluteString == "about:blank" ? .allow : .cancel)
     }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { finish(.failure(error)) }
-    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { finish(.failure(ClientError("The JavaScript process terminated."))) }
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { finish(.failure(ClientError(String(localized: "The JavaScript process terminated.")))) }
     private func finish(_ result: Result<ScriptResult, Error>) {
         guard let continuation else { return }
         self.continuation = nil
