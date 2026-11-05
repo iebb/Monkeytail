@@ -56,7 +56,7 @@ struct ResponseView: View {
                         Text("Trust only a certificate you recognise, such as a local development server. Only this exact certificate is accepted, and only for \(certificate.host):\(String(certificate.port)). Every other host is still verified. Remove it in Network settings.")
                             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         Button { store.trustCertificate(for: requestID) } label: { Label("Trust for \(certificate.host):\(String(certificate.port)) and resend", systemImage: "checkmark.shield") }
-                            .buttonStyle(.bordered).accessibilityIdentifier("Trust certificate")
+                            .secondaryButton().accessibilityIdentifier("Trust certificate")
                     }.padding(.horizontal, 16).padding(.bottom, 12).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if response != nil { Text("Previous response shown below").font(.caption).foregroundStyle(.secondary).padding(12) }

@@ -44,6 +44,7 @@
 		4C1E92712548551603B6991C /* RunnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4C43A582F9574E651A8338B /* RunnerView.swift */; };
 		4E35F1AD7527543CB5AA3F95 /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */; };
 		4E456ED815B6BC8EC4A63FA6 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = C943681490E40EBA8B13274A /* Platform.swift */; };
+		4E5973B785FF5639464D4F92 /* FlatStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47000D28249897793BD338A /* FlatStyle.swift */; };
 		4E5A45F1B856A7BF5003B142 /* SidebarTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0610D9A5EEC42F067B156CE5 /* SidebarTree.swift */; };
 		50AAEF37FFE48B33188F43EA /* SidebarTree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0610D9A5EEC42F067B156CE5 /* SidebarTree.swift */; };
 		53597B40463A0CB7A729F31F /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = E16BA4A29B7F3F12F7607307 /* Localizable.xcstrings */; };
@@ -84,6 +85,7 @@
 		A29AAED733E7048AC71EDE55 /* SecretVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5071325300ABE069E1D857EB /* SecretVault.swift */; };
 		A3084FF752E45C07359EA343 /* RequestEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4D0239FCDE78AC65AE32E3 /* RequestEditor.swift */; };
 		A378707D27785362832500D5 /* RequestEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4D0239FCDE78AC65AE32E3 /* RequestEditor.swift */; };
+		A3849BE2DEE54C7E2138F25C /* FlatStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47000D28249897793BD338A /* FlatStyle.swift */; };
 		A4D38D81A046BF300109614E /* WatchTransferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1809CE88176324CFE51E42 /* WatchTransferTests.swift */; };
 		A6F224903CF676C9BA1FAE2D /* CollectionRun.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB844D3D7B24142C30777746 /* CollectionRun.swift */; };
 		A7C146ED7BDEEE247929D542 /* FolderViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18BFFDA0E72F9144E8A3271B /* FolderViews.swift */; };
@@ -120,6 +122,7 @@
 		DC30BF87EA3E7FD53B9F5F36 /* MonkeytailWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 394EFB86C5861596EF3FF5B1 /* MonkeytailWatchApp.swift */; };
 		DF7E8B931043798F6776F1C0 /* LiveSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 783C803438A67A3B60183816 /* LiveSession.swift */; };
 		DF876B1428C5036B408FBFC3 /* MonkeytailApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831469D5704A4C38BCF3DFD6 /* MonkeytailApp.swift */; };
+		E08F33FC75F9C254AA87AD1B /* FlatStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47000D28249897793BD338A /* FlatStyle.swift */; };
 		E67D0254E288E0077A0344AF /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 61C6EDD543D1B4C857002357 /* InfoPlist.xcstrings */; };
 		E7867E75B75098F924F2226E /* MonkeytailWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = B5C6996B097A9D8D6AA00099 /* MonkeytailWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E7F4CA71CDA891F77D9393BB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 9BCBBAD4A09C3F785FE137E1 /* PrivacyInfo.xcprivacy */; };
@@ -254,6 +257,7 @@
 		C943681490E40EBA8B13274A /* Platform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Platform.swift; sourceTree = "<group>"; };
 		CC1809CE88176324CFE51E42 /* WatchTransferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchTransferTests.swift; sourceTree = "<group>"; };
 		D0FC810EDA3542E742DBD459 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D47000D28249897793BD338A /* FlatStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlatStyle.swift; sourceTree = "<group>"; };
 		DB2DE83B58964AF7FA51BD07 /* WatchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchUITests.swift; sourceTree = "<group>"; };
 		DB844D3D7B24142C30777746 /* CollectionRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionRun.swift; sourceTree = "<group>"; };
 		DD1C8051E82EDB7BBEC2C8A9 /* MonkeytailVision.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MonkeytailVision.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -402,6 +406,7 @@
 				7D7768D6D4D2997FE0F06E48 /* AdvancedViews.swift */,
 				6645A70EECA48443C6147147 /* AuthEditor.swift */,
 				F292057CE60FE52926AEEE6C /* Components.swift */,
+				D47000D28249897793BD338A /* FlatStyle.swift */,
 				18BFFDA0E72F9144E8A3271B /* FolderViews.swift */,
 				F8FA8B20A3048C5DB64659D7 /* NetworkToolsView.swift */,
 				C943681490E40EBA8B13274A /* Platform.swift */,
@@ -804,6 +809,7 @@
 				E9279AB6502CBCDE4FF80FC4 /* AuthEditor.swift in Sources */,
 				A6F224903CF676C9BA1FAE2D /* CollectionRun.swift in Sources */,
 				10581EAEE18449219345570F /* Components.swift in Sources */,
+				E08F33FC75F9C254AA87AD1B /* FlatStyle.swift in Sources */,
 				AD7F50DF9473C9768F98A9AB /* FolderViews.swift in Sources */,
 				229104C9C93127E70662B916 /* ICloudWorkspace.swift in Sources */,
 				BBD62FE8739B362D2E281A16 /* LiveSession.swift in Sources */,
@@ -853,6 +859,7 @@
 				7F764317B7DDCB1DD16EA004 /* AuthEditor.swift in Sources */,
 				6849F6D79DDD09072ADC2748 /* CollectionRun.swift in Sources */,
 				87745FD78D3CA0918D1E8CDC /* Components.swift in Sources */,
+				A3849BE2DEE54C7E2138F25C /* FlatStyle.swift in Sources */,
 				D0E733098CCAEDD6F3E22CB1 /* FolderViews.swift in Sources */,
 				16393256937BB797AA103142 /* ICloudWorkspace.swift in Sources */,
 				DF7E8B931043798F6776F1C0 /* LiveSession.swift in Sources */,
@@ -919,6 +926,7 @@
 				69D052B9239793EDE0C57E87 /* AuthEditor.swift in Sources */,
 				302A8F7A36C5955739B28712 /* CollectionRun.swift in Sources */,
 				071E4038C671D6F62E247D2D /* Components.swift in Sources */,
+				4E5973B785FF5639464D4F92 /* FlatStyle.swift in Sources */,
 				A7C146ED7BDEEE247929D542 /* FolderViews.swift in Sources */,
 				B19B4ED19A3A1D8C9E358730 /* ICloudWorkspace.swift in Sources */,
 				9B696FAF827B567A25F155E7 /* LiveSession.swift in Sources */,

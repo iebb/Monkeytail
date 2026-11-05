@@ -44,8 +44,7 @@ struct CollectionRunnerView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    Picker("Runner view", selection: $tab) { Text("Configure").tag("Configure"); Text("Results").tag("Results") }
-                        .pickerStyle(.segmented).labelsHidden()
+                    SegmentedChoice(title: "Runner view", selection: $tab, options: [("Configure", "Configure"), ("Results", "Results")])
                     if tab == "Configure" { configuration } else { results }
                     if let error { Label(error, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(Palette.error) }
                 }.padding(12)
@@ -127,7 +126,7 @@ struct CollectionRunnerView: View {
                 }
                 Spacer()
                 if dataName != nil { Button("Remove", role: .destructive) { data = []; dataName = nil; iterations = 1 }.font(.subheadline) }
-                Button { importing = true } label: { Label("Choose", systemImage: "doc") }.buttonStyle(.bordered)
+                Button { importing = true } label: { Label("Choose", systemImage: "doc") }.secondaryButton()
             }
         }.font(.subheadline).padding(12).background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
         Text("\(environmentNote) Variables set by scripts carry to later requests and are saved to the active environment. Scripts can use pm.iterationData, pm.info, and pm.execution.setNextRequest(name) or setNextRequest(null) to end an iteration. When iterations exceed data rows, the last row repeats.")

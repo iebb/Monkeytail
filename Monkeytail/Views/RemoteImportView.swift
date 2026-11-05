@@ -67,7 +67,7 @@ struct RemoteImportView: View {
                         case .hoppscotch: hoppscotch
                         case .github: github
                         }
-                    }.textFieldStyle(.roundedBorder).noCapitalization().autocorrectionDisabled()
+                    }.fieldStyle().noCapitalization().autocorrectionDisabled()
                     if let status {
                         HStack(spacing: 8) { ProgressView().controlSize(.small); Text(status).font(.footnote).foregroundStyle(.secondary); Spacer(); Button("Cancel") { task?.cancel() }.buttonStyle(.borderless).font(.footnote) }
                     }
@@ -296,7 +296,7 @@ struct RemoteImportView: View {
     private func finish(_ result: CollectionImport) throws { try store.importRemote(result); token = ""; postmanSession = nil; insomniaSession = nil; finished() }
     private func prominent(_ title: LocalizedStringKey, systemImage: String, disabled: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) { Label(title, systemImage: systemImage).frame(maxWidth: .infinity).padding(.vertical, 5) }
-            .buttonStyle(.borderedProminent).disabled(disabled || task != nil)
+            .prominentButton().disabled(disabled || task != nil)
     }
     private func primary(_ title: LocalizedStringKey, systemImage: String, disabled: Bool, action: @escaping @MainActor () async throws -> Void) -> some View {
         prominent(title, systemImage: systemImage, disabled: disabled) { run(action) }

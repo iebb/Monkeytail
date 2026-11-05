@@ -71,7 +71,7 @@ struct JSONPathView: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    TextField("$.data.items[*].id" as String, text: $path).noCapitalization().autocorrectionDisabled().font(.system(.body, design: .monospaced)).textFieldStyle(.roundedBorder).accessibilityIdentifier("JSONPath expression")
+                    TextField("$.data.items[*].id" as String, text: $path).noCapitalization().autocorrectionDisabled().font(.system(.body, design: .monospaced)).fieldStyle().accessibilityIdentifier("JSONPath expression")
                     Button("Extract") { extract() }.disabled(extracting).frame(minHeight: 44)
                 }
                 if let error { Text(error).font(.caption).foregroundStyle(Palette.error) }

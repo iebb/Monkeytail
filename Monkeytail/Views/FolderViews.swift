@@ -28,7 +28,7 @@ struct FolderSettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     if let c, let f {
-                        TextField("Folder name", text: Binding(get: { store.workspace.collections[c].folders![f].name }, set: { store.workspace.collections[c].folders![f].name = $0 })).textFieldStyle(.roundedBorder)
+                        TextField("Folder name", text: Binding(get: { store.workspace.collections[c].folders![f].name }, set: { store.workspace.collections[c].folders![f].name = $0 })).fieldStyle()
                         Picker("Parent", selection: Binding<UUID?>(get: { store.workspace.collections[c].folders![f].parentID }, set: { store.workspace.collections[c].folders![f].parentID = $0 })) {
                             Text("Collection root").tag(UUID?.none)
                             ForEach(parents) { folder in Text(folder.name).tag(Optional(folder.id)) }

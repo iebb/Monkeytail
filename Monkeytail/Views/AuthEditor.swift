@@ -55,7 +55,7 @@ struct AuthEditor: View {
                     Button("Unique ID (jti)") { jwt.wrappedValue.payload = addClaim(#""jti": "{{$guid}}""#, to: jwt.wrappedValue.payload) }
                 } label: { Label("Add claim", systemImage: "plus.circle").font(.subheadline).frame(minHeight: 44) }
                 DisclosureGroup("JWT header") { CodeEditor(text: jwt.header, label: "Extra header fields (JSON)", minimumHeight: 70) }.font(.subheadline)
-                Picker("Add token to", selection: jwt.inQuery) { Text("Header").tag(false); Text("Query parameter").tag(true) }.pickerStyle(.segmented)
+                LabeledContent("Add token to") { SegmentedChoice(title: "Add token to", selection: jwt.inQuery, options: [(false, "Header"), (true, "Query parameter")]) }
                 if jwt.wrappedValue.inQuery { TextField("Query parameter name", text: jwt.queryKey) } else { TextField("Header prefix", text: jwt.headerPrefix) }
                 Text("Signed locally on every send after {{variables}} resolve. The header’s alg always matches the algorithm.").font(.caption).foregroundStyle(.secondary)
             case .oauth2:
@@ -76,7 +76,7 @@ struct AuthEditor: View {
                 }.frame(minHeight: 44)
             }
             if let error { Text(error).font(.caption).foregroundStyle(Palette.error) }
-        }.textFieldStyle(.roundedBorder).noCapitalization().autocorrectionDisabled()
+        }.fieldStyle().noCapitalization().autocorrectionDisabled()
     }
     private func addClaim(_ claim: String, to payload: String) -> String {
         let text = payload.trimmingCharacters(in: .whitespacesAndNewlines)

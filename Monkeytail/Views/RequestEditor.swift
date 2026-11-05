@@ -146,7 +146,7 @@ struct RequestEditor: View {
             if !request.scriptsEnabled && !(request.preScript.isEmpty && request.postScript.isEmpty) {
                 Label("This request's scripts are saved but skipped on send.", systemImage: "pause.circle").font(.caption).foregroundStyle(Palette.warning)
             }
-            Picker("Script phase", selection: $scriptTab) { Text("Before request").tag("Before"); Text("After response").tag("After") }.pickerStyle(.segmented)
+            SegmentedChoice(title: "Script phase", selection: $scriptTab, options: [("Before", "Before request"), ("After", "After response")])
             CodeEditor(text: scriptTab == "Before" ? $request.preScript : $request.postScript, label: "JavaScript editor", minimumHeight: 250)
             Menu {
                 Button("Set header") { request.preScript = "request.headers['X-Request-ID'] = crypto.randomUUID();\nconsole.log('Sending', request.method, request.url);"; scriptTab = "Before" }
@@ -185,8 +185,8 @@ struct CurlExportView: View {
                 ScrollView { Text(curl).font(.system(.footnote, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12) }
                     .background(Palette.surface, in: RoundedRectangle(cornerRadius: 8))
                 HStack {
-                    ShareLink(item: curl) { Label("Share", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
-                    Button { Clipboard.copy(curl); dismiss() } label: { Label("Copy", systemImage: "doc.on.doc").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+                    ShareLink(item: curl) { Label("Share", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity) }.secondaryButton()
+                    Button { Clipboard.copy(curl); dismiss() } label: { Label("Copy", systemImage: "doc.on.doc").frame(maxWidth: .infinity) }.prominentButton()
                 }.disabled(curl.isEmpty)
             }.padding(12).background(Palette.canvas).sheetTitle("cURL")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }

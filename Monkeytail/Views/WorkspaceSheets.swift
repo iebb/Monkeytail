@@ -29,7 +29,7 @@ struct TransferView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Picker("Transfer mode", selection: $mode) { Text("Import").tag("Import"); Text("Export").tag("Export") }.pickerStyle(.segmented)
+                    SegmentedChoice(title: "Transfer mode", selection: $mode, options: [("Import", "Import"), ("Export", "Export")])
                     if mode == "Import" {
                         NavigationLink { RemoteImportView(store: store) { dismiss() } } label: {
                             HStack {
@@ -44,7 +44,7 @@ struct TransferView: View {
                         HStack {
                             PasteButton(payloadType: String.self) { strings in source = strings.first ?? "" }.labelStyle(.titleAndIcon)
                             Spacer()
-                            Button { importing = true } label: { Label("Choose files or folder", systemImage: "folder") }.buttonStyle(.bordered)
+                            Button { importing = true } label: { Label("Choose files or folder", systemImage: "folder") }.secondaryButton()
                         }
                         DisclosureGroup("Supported formats") {
                             Text("cURL; Postman v1, v2 and v2.1 collections, environments, globals and data dumps; Insomnia v4 JSON/YAML and v5 YAML; Bruno folders, .bru files and JSON; Hoppscotch; Thunder Client; HAR; .http files (REST Client and JetBrains); OpenAPI and Swagger; and Monkeytail. Choose a Bruno collection folder to import it with its folders and environments. Imports append to your workspace, and imported scripts run when you send.")
@@ -64,7 +64,7 @@ struct TransferView: View {
                         Button {
                             do { document = CollectionDocument(data: try CollectionCodec.encode(store.activeWorkspaceDocument, format: format)); exporting = true }
                             catch { self.error = error.localizedDescription }
-                        } label: { Label("Export \(store.name(of: store.activeWorkspace))", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity).padding(.vertical, 5) }.buttonStyle(.borderedProminent)
+                        } label: { Label("Export \(store.name(of: store.activeWorkspace))", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity).padding(.vertical, 5) }.prominentButton()
                     }
                     if let error { Label(error, systemImage: "exclamationmark.circle").font(.footnote).foregroundStyle(.red) }
                 }.padding(12)
@@ -152,12 +152,12 @@ struct EnvironmentView: View {
                         } label: { Label("New", systemImage: "plus") }
                     }
                     if let index = store.workspace.environments.firstIndex(where: { $0.id == editingID }) {
-                        TextField("Environment name", text: $store.workspace.environments[index].name).font(.headline).textFieldStyle(.roundedBorder)
+                        TextField("Environment name", text: $store.workspace.environments[index].name).font(.headline).fieldStyle()
                         FieldEditor(fields: $store.workspace.environments[index].variables, name: "Variable")
                         Text("Use {{name}} in requests.").font(.caption).foregroundStyle(.secondary)
                         Button {
                             store.selectedEnvironmentID = editingID
-                        } label: { Label(store.selectedEnvironmentID == editingID ? "Active environment" : "Use this environment", systemImage: store.selectedEnvironmentID == editingID ? "checkmark.circle.fill" : "circle").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+                        } label: { Label(store.selectedEnvironmentID == editingID ? "Active environment" : "Use this environment", systemImage: store.selectedEnvironmentID == editingID ? "checkmark.circle.fill" : "circle").frame(maxWidth: .infinity) }.prominentButton()
                             .disabled(store.selectedEnvironmentID == editingID)
                         Button("Delete environment", role: .destructive) {
                             if store.selectedEnvironmentID == editingID { store.selectedEnvironmentID = nil }

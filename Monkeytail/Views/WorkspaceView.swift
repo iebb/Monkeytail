@@ -14,11 +14,9 @@ struct WorkspaceView: View {
     @State private var compactColumn: NavigationSplitViewColumn = .detail
     @State private var sheet: WorkspaceSheet?
     @State private var search = ""
-    #if os(macOS)
-    @State private var searchFocused = false
-    @AppStorage("macWorkspaceLayout") private var macWorkspaceLayout = "stacked"
-    #else
     @FocusState private var searchFocused: Bool
+    #if os(macOS)
+    @AppStorage("macWorkspaceLayout") private var macWorkspaceLayout = "stacked"
     #endif
     @State private var newCollection = false
     @State private var collectionName = ""
@@ -62,6 +60,7 @@ struct WorkspaceView: View {
         }
         .navigationSplitViewStyle(.balanced)
         #if os(macOS)
+        .toolbar(removing: .sidebarToggle)
         .focusedSceneValue(\.workspaceActions, WorkspaceActions(
             findRequest: { visibility = .all; searchFocused = true },
             importExport: { sheet = .transfer },
@@ -152,8 +151,8 @@ struct WorkspaceView: View {
                 .frame(maxHeight: 240)
             #endif
             HStack(spacing: 12) {
-                Button("New request", systemImage: "plus") { store.addRequest(to: currentCollection?.id) }.buttonStyle(.borderedProminent)
-                Button("Import", systemImage: "arrow.down.doc") { sheet = .transfer }.buttonStyle(.bordered)
+                Button("New request", systemImage: "plus") { store.addRequest(to: currentCollection?.id) }.prominentButton()
+                Button("Import", systemImage: "arrow.down.doc") { sheet = .transfer }.secondaryButton()
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.canvas)
     }
@@ -179,15 +178,8 @@ struct WorkspaceView: View {
                 #else
                 .padding(.top, 4).padding(.bottom, 8)
                 #endif
-            #if os(macOS)
-            MacRequestSearchField(text: $search, focused: $searchFocused)
-                .frame(height: 28)
-                .padding(.horizontal, SidebarMetrics.horizontalInset)
-                .padding(.bottom, 8)
-            #else
             SearchField(placeholder: "Find a request", text: $search, focused: $searchFocused)
                 .padding(.horizontal, SidebarMetrics.horizontalInset).padding(.bottom, 8)
-            #endif
             SidebarTree(store: store, search: search, actions: SidebarTreeActions(
                 newFolder: { collection, parent in folderCollectionID = collection; folderParentID = parent; folderName = ""; addingFolder = true },
                 settings: { collection, folder in editingCollectionID = collection; editingFolderID = folder; sheet = .defaults },
@@ -213,10 +205,23 @@ struct WorkspaceView: View {
             .background(Palette.canvas)
             #endif
             .hideNavigationBar()
+            #if os(macOS)
+            .toolbar(removing: .sidebarToggle)
+            .toolbar { ToolbarItem { sidebarToggle }.flatToolbarBackground() }
+            #endif
             .onChange(of: store.selectedRequestID) { _, id in
                 if id != nil { compactColumn = .detail }
             }
     }
+
+    #if os(macOS)
+    /// A flat stand-in for the system's glass sidebar button.
+    private var sidebarToggle: some View {
+        Button { withAnimation { visibility = visibility == .detailOnly ? .all : .detailOnly } } label: {
+            Image(systemName: "sidebar.left").foregroundStyle(.secondary).frame(width: 28, height: 28).contentShape(Rectangle())
+        }.buttonStyle(.plain).help("Toggle sidebar").accessibilityLabel("Toggle sidebar")
+    }
+    #endif
 
     @ViewBuilder private func sidebarButton(_ title: LocalizedStringKey, symbol: String, sheet value: WorkspaceSheet) -> some View {
         #if os(macOS)
@@ -305,6 +310,9 @@ struct WorkspaceView: View {
 
     @ToolbarContentBuilder private var workspaceToolbar: some ToolbarContent {
         #if os(macOS)
+        ToolbarItem(placement: .navigation) {
+            if visibility == .detailOnly { sidebarToggle }
+        }.flatToolbarBackground()
         ToolbarItem(placement: .navigation) {
             if let id = store.selectedRequestID {
                 TextField("Request name", text: store.binding(for: id).name)

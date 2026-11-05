@@ -70,7 +70,7 @@ extension View {
     }
     @ViewBuilder func borderlessMenu() -> some View {
         #if os(macOS)
-        menuStyle(.borderlessButton).menuIndicator(.hidden)
+        menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden)
         #else
         self
         #endif
@@ -122,7 +122,7 @@ extension View {
     }
     @ViewBuilder func macGroupedForm() -> some View {
         #if os(macOS)
-        formStyle(.grouped).textFieldStyle(.roundedBorder)
+        formStyle(.grouped).fieldStyle()
         #else
         self
         #endif
@@ -209,57 +209,6 @@ struct MacSidebarBackground: NSViewRepresentable {
     func updateNSView(_ view: NSVisualEffectView, context: Context) {}
 }
 
-struct MacRequestSearchField: NSViewRepresentable {
-    @Binding var text: String
-    @Binding var focused: Bool
-
-    final class Field: NSSearchField {
-        var focusRequested = false
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            if focusRequested { window?.makeFirstResponder(self) }
-        }
-    }
-    func makeNSView(context: Context) -> Field {
-        let field = Field()
-        field.placeholderString = String(localized: "Find a request")
-        field.controlSize = .regular
-        field.font = .systemFont(ofSize: 14)
-        field.maximumRecents = 0
-        field.sendsSearchStringImmediately = true
-        field.delegate = context.coordinator
-        field.target = context.coordinator
-        field.action = #selector(Coordinator.searchChanged(_:))
-        field.setAccessibilityLabel(String(localized: "Find a request"))
-        field.setAccessibilityIdentifier("Find a request")
-        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        return field
-    }
-    func updateNSView(_ field: Field, context: Context) {
-        context.coordinator.parent = self
-        if field.stringValue != text { field.stringValue = text }
-        field.focusRequested = focused
-        if focused, field.currentEditor() == nil { field.window?.makeFirstResponder(field) }
-    }
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-    final class Coordinator: NSObject, NSSearchFieldDelegate {
-        var parent: MacRequestSearchField
-        init(_ parent: MacRequestSearchField) { self.parent = parent }
-        @objc func searchChanged(_ field: NSSearchField) {
-            if parent.text != field.stringValue { parent.text = field.stringValue }
-        }
-        func controlTextDidChange(_ notification: Notification) {
-            if let field = notification.object as? NSSearchField { searchChanged(field) }
-        }
-        func controlTextDidBeginEditing(_ notification: Notification) {
-            if !parent.focused { parent.focused = true }
-        }
-        func controlTextDidEndEditing(_ notification: Notification) {
-            if parent.focused { parent.focused = false }
-        }
-    }
-}
-
 struct WorkspaceActions {
     var findRequest: () -> Void
     var importExport: () -> Void
@@ -308,7 +257,7 @@ struct ShareSheet: View {
                         dismiss()
                     } catch { self.error = error.localizedDescription }
                 }
-            }.buttonStyle(.borderedProminent)
+            }.prominentButton()
             Button("Done") { dismiss() }
             if let error { Text(error).font(.caption).foregroundStyle(.red) }
         }.padding(24).frame(minWidth: 300)

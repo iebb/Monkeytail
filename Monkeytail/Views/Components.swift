@@ -294,7 +294,7 @@ struct DocsEditor: View {
     @State private var preview = false
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("Documentation mode", selection: $preview) { Text("Edit").tag(false); Text("Preview").tag(true) }.pickerStyle(.segmented).frame(maxWidth: 220)
+            SegmentedChoice(title: "Documentation mode", selection: $preview, options: [(false, "Edit"), (true, "Preview")]).frame(maxWidth: 220)
             if preview {
                 Group {
                     if let text, !text.isEmpty { Text(Self.render(text)).textSelection(.enabled) }

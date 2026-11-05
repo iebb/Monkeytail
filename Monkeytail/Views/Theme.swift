@@ -282,7 +282,7 @@ enum AppLanguage {
 private struct ThemedModifier: ViewModifier {
     private var theme = ThemeStore.shared
     func body(content: Content) -> some View {
-        content.tint(Palette.mint).preferredColorScheme(theme.settings.appearance.scheme)
+        content.flatControls().tint(Palette.mint).preferredColorScheme(theme.settings.appearance.scheme)
             .environment(\.locale, theme.language.map(Locale.init(identifier:)) ?? .autoupdatingCurrent)
     }
 }

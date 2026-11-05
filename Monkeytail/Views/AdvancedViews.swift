@@ -32,7 +32,7 @@ struct TestsEditor: View {
                 CodeEditor(text: Binding(get: { request.responseSchema ?? "" }, set: { request.responseSchema = $0 }), label: "Response JSON schema", minimumHeight: 180)
                 Button("Add schema assertion") { var test = ResponseAssertion(); test.kind = .schema; test.name = String(localized: "Response schema"); test.expected = request.responseSchema ?? "{}"; request.assertions = (request.assertions ?? []) + [test] }.frame(minHeight: 44)
             }
-        }.textFieldStyle(.roundedBorder).noCapitalization().autocorrectionDisabled()
+        }.fieldStyle().noCapitalization().autocorrectionDisabled()
     }
 }
 struct TestResultsView: View {
@@ -72,7 +72,7 @@ struct MockEditor: View {
             Text("Saved examples").font(.headline)
             Text("Saved responses travel with the request and export as Postman examples.").font(.caption).foregroundStyle(.secondary)
             HStack {
-                TextField("Example name", text: $exampleName).textFieldStyle(.roundedBorder)
+                TextField("Example name", text: $exampleName).fieldStyle()
                 Button("Save response") {
                     guard let response else { return }
                     do {
@@ -84,7 +84,7 @@ struct MockEditor: View {
             ForEach(Binding(get: { request.examples ?? [] }, set: { request.examples = $0.isEmpty ? nil : $0 })) { $example in
                 DisclosureGroup {
                     VStack(alignment: .leading, spacing: 8) {
-                        TextField("Name", text: $example.name).textFieldStyle(.roundedBorder)
+                        TextField("Name", text: $example.name).fieldStyle()
                         Stepper("Status: \(example.status)", value: $example.status, in: 100...599)
                         FieldEditor(fields: $example.headers)
                         CodeEditor(text: $example.body, label: "Example body", minimumHeight: 150)
@@ -124,7 +124,7 @@ struct GraphQLEditor: View {
             HStack { Button("Load schema") { load() }.disabled(loading); if loading { ProgressView() }; Spacer(); Text("\(fields.count) fields").font(.caption).foregroundStyle(.secondary) }.frame(minHeight: 44)
             if let error { Text(error).font(.caption).foregroundStyle(Palette.error) }
             if !fields.isEmpty {
-                TextField("Find a field or type", text: $search).textFieldStyle(.roundedBorder)
+                TextField("Find a field or type", text: $search).fieldStyle()
                 ForEach(Array(fields.filter { search.isEmpty || $0.id.localizedCaseInsensitiveContains(search) }.prefix(100))) { field in
                     Button {
                         var query = graph.wrappedValue.query
@@ -184,12 +184,12 @@ struct GraphQLEditor: View {
                         }
                         catch { live.error = error.localizedDescription }
                     }
-                }.buttonStyle(.borderedProminent).accessibilityIdentifier("Connect stream")
+                }.prominentButton().accessibilityIdentifier("Connect stream")
                 Toggle("Reconnect", isOn: $live.reconnect).font(.caption)
                 Spacer(); Button("Clear") { live.clear() }
             }.frame(minHeight: 44)
             if let error = live.error { Text(error).font(.caption).foregroundStyle(Palette.error).frame(maxWidth: .infinity, alignment: .leading) }
-            TextField("Filter messages", text: $filter).textFieldStyle(.roundedBorder)
+            TextField("Filter messages", text: $filter).fieldStyle()
             List(live.events.filter { filter.isEmpty || $0.text.localizedCaseInsensitiveContains(filter) || $0.type.localizedCaseInsensitiveContains(filter) }) { event in
                 VStack(alignment: .leading, spacing: 6) {
                     HStack { Text("\(Text(LocalizedStringKey(event.direction))) · \(Text(LocalizedStringKey(event.type)))").font(.caption.weight(.medium)); Spacer(); Text(event.date, format: .dateTime.hour().minute().second()).font(.caption2).foregroundStyle(.secondary) }
@@ -199,7 +199,7 @@ struct GraphQLEditor: View {
             }.scrollContentBackground(.hidden).accessibilityIdentifier("Stream messages")
             if request?.transport == .websocket {
                 HStack {
-                    TextField(binary ? "Hex bytes" : "Message", text: $message, axis: .vertical).lineLimit(1...5).textFieldStyle(.roundedBorder).accessibilityIdentifier("WebSocket message")
+                    TextField(binary ? "Hex bytes" : "Message", text: $message, axis: .vertical).lineLimit(1...5).fieldStyle().accessibilityIdentifier("WebSocket message")
                     Menu { Toggle("Binary (hex)", isOn: $binary); Button("Ping") { live.ping() } } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }
                     Button("Send") { live.send(message, binary: binary) }.disabled(!live.connected).frame(minHeight: 44)
                 }
