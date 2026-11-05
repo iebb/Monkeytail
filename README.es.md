@@ -10,6 +10,10 @@ Monkeytail abre las colecciones que ya tienes y las ejecuta igual. No hay cuenta
 
 <p><img src="docs/screenshots/iphone-request.png" alt="Editor de solicitudes en iPhone" width="285"> <img src="docs/screenshots/iphone-response.png" alt="Respuesta JSON en iPhone" width="285"></p>
 
+## Descargar
+
+**[Descárgalo en el App Store](https://apps.apple.com/app/id6814706725)**: gratis y sin compras dentro de la app, para iPhone, iPad, Mac y Apple Vision Pro. Sitio web: [monk.ieb.app](https://monk.ieb.app)
+
 ## Si vienes de Postman o Insomnia
 
 - **Importa todo.** Colecciones de Postman (v1, v2, v2.1), entornos, globales y exportaciones completas de datos; exportaciones de Insomnia v4 y v5; además de Bruno, Hoppscotch, Thunder Client, HAR, archivos `.http`, OpenAPI/Swagger y cURL. Elige varios archivos o una carpeta entera a la vez.

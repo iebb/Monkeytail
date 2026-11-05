@@ -10,6 +10,10 @@ Monkeytail 打开你现有的集合，并以相同的方式运行。没有 Monke
 
 <p><img src="docs/screenshots/iphone-request.png" alt="iPhone 上的请求编辑器" width="285"> <img src="docs/screenshots/iphone-response.png" alt="iPhone 上的 JSON 响应" width="285"></p>
 
+## 下载
+
+**[在 App Store 下载](https://apps.apple.com/app/id6814706725)**：适用于 iPhone、iPad、Mac 和 Apple Vision Pro，免费且无 App 内购买。网站：[monk.ieb.app](https://monk.ieb.app)
+
 ## 从 Postman 或 Insomnia 迁移
 
 - **全部导入。** 支持 Postman 集合（v1、v2、v2.1）、环境、全局变量和完整数据导出，Insomnia v4 与 v5 导出，以及 Bruno、Hoppscotch、Thunder Client、HAR、`.http` 文件、OpenAPI/Swagger 和 cURL。可一次选择多个文件或整个文件夹。

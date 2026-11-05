@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monkeytail — a login-free API client for iPhone, iPad, Mac and Vision Pro</title>
+<meta name="description" content="A native, open-source API client. Bring your Postman and Insomnia collections, keep your scripts, and skip the sign-in.">
+<meta property="og:title" content="Monkeytail">
+<meta property="og:description" content="Bring your Postman and Insomnia collections, keep your scripts, and skip the sign-in.">
+<meta property="og:image" content="https://monk.ieb.app/assets/mac-01-workspace.jpg">
+<meta property="og:url" content="https://monk.ieb.app/">
+<meta name="apple-itunes-app" content="app-id=6814706725">
+<link rel="icon" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/icon.png">
+<style>
+  :root {
+    --accent: #0A6E59; --canvas: #F5F6F5; --surface: #FFFFFF; --text: #17191C; --muted: #5E6368; --border: rgba(23,25,28,.10);
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --accent: #5CE3BF; --canvas: #17191C; --surface: #1F2124; --text: #ECEDEE; --muted: #9BA1A6; --border: rgba(255,255,255,.10); }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--text); font: 17px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  nav { display: flex; align-items: center; gap: 24px; height: 64px; border-bottom: 1px solid var(--border); }
+  nav .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--text); margin-right: auto; }
+  nav .brand img { width: 28px; height: 28px; border-radius: 7px; }
+  nav a:not(.brand) { color: var(--muted); font-size: 15px; }
+  header { padding: 72px 0 48px; text-align: center; }
+  header img.icon { width: 112px; height: 112px; border-radius: 25px; }
+  h1 { font-size: clamp(36px, 6vw, 60px); line-height: 1.08; letter-spacing: -.02em; margin: 24px auto 16px; max-width: 820px; }
+  .lede { font-size: 20px; color: var(--muted); max-width: 680px; margin: 0 auto 32px; }
+  .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+  .button { display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 22px; border-radius: 6px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  .button:hover { text-decoration: none; opacity: .9; }
+  .button svg { width: 20px; height: 20px; fill: currentColor; }
+  .note { font-size: 14px; color: var(--muted); margin-top: 14px; }
+  .shot { display: block; width: 100%; border-radius: 10px; border: 1px solid var(--border); }
+  .hero-shot { margin: 8px 0 96px; }
+  section { padding: 72px 0; border-top: 1px solid var(--border); }
+  h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -.015em; line-height: 1.15; margin: 0 0 12px; }
+  .sub { color: var(--muted); font-size: 19px; max-width: 720px; margin: 0 0 40px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .grid > div { background: var(--surface); padding: 24px; }
+  .grid h3 { margin: 0 0 6px; font-size: 17px; }
+  .grid p { margin: 0; color: var(--muted); font-size: 15px; }
+  code { font-family: var(--mono); font-size: .88em; }
+  .phones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .phones img { border-radius: 22px; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  ul.checks { list-style: none; padding: 0; margin: 0; columns: 2; column-gap: 40px; }
+  ul.checks li { break-inside: avoid; padding: 10px 0 10px 26px; border-bottom: 1px solid var(--border); position: relative; font-size: 16px; }
+  ul.checks li::before { content: ""; position: absolute; left: 4px; top: 19px; width: 8px; height: 8px; background: var(--accent); border-radius: 2px; }
+  .privacy { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; }
+  .privacy strong { display: block; font-size: 22px; margin-bottom: 4px; }
+  .privacy span { color: var(--muted); font-size: 15px; }
+  .cta { text-align: center; }
+  footer { border-top: 1px solid var(--border); padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 20px; }
+  footer .wrap span { margin-right: auto; }
+  footer a { color: var(--muted); }
+  @media (max-width: 760px) {
+    nav a.hide { display: none; }
+    .phones { grid-template-columns: repeat(2, 1fr); }
+    .split { grid-template-columns: 1fr; }
+    ul.checks { columns: 1; }
+    header { padding-top: 48px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="/"><img src="assets/icon.png" alt="">Monkeytail</a>
+    <a class="hide" href="#switch">Switching</a>
+    <a class="hide" href="#features">Features</a>
+    <a href="https://github.com/iebb/Monkeytail">GitHub</a>
+  </nav>
+
+  <header>
+    <img class="icon" src="assets/icon.png" alt="Monkeytail icon">
+    <h1>Your Postman collections. None of the logins.</h1>
+    <p class="lede">Monkeytail is a native, open-source API client for iPhone, iPad, Mac and Apple Vision Pro. Bring your Postman and Insomnia collections, keep your scripts, and get straight to sending requests.</p>
+    <div class="buttons">
+      <a class="button primary" href="https://apps.apple.com/app/id6814706725">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.37 12.6c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.15-2.77.83-3.49.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.59-.75 2.99-.75s1.79.75 3.01.72c1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.53 1.26-2.6-.03-.01-2.42-.93-2.45-3.71zM14.08 5.84c.64-.77 1.07-1.85.95-2.92-.92.04-2.03.61-2.69 1.38-.59.68-1.1 1.77-.97 2.82 1.03.08 2.07-.52 2.71-1.28z"/></svg>
+        Download on the App Store
+      </a>
+      <a class="button" href="https://github.com/iebb/Monkeytail">View source on GitHub</a>
+    </div>
+    <p class="note">Free · No in-app purchases · No account · One download for iPhone, iPad, Mac and Vision Pro</p>
+  </header>
+
+  <img class="shot hero-shot" src="assets/mac-01-workspace.jpg" alt="Monkeytail on the Mac with a collection tree, request editor and JSON response" width="1600" height="1000">
+</div>
+
+<section id="switch">
+  <div class="wrap">
+    <h2>A drop-in replacement for Postman and Insomnia</h2>
+    <p class="sub">Open the collections you already have and run them the same way. No Monkeytail account, no login wall, no cloud workspace and no telemetry.</p>
+    <div class="grid">
+      <div><h3>Import everything</h3><p>Postman collections, environments, globals and data dumps; Insomnia v4 and v5; Bruno, Hoppscotch, Thunder Client, HAR, <code>.http</code> files, OpenAPI and cURL. Pick a whole folder at once.</p></div>
+      <div><h3>Or pull from the cloud</h3><p>Sign in to Postman, Insomnia or Hoppscotch once to pull your synced workspaces, or point at a GitHub repository. The session is used for that import only and never saved.</p></div>
+      <div><h3>Your scripts keep working</h3><p>A Postman-compatible <code>pm</code> API with <code>pm.test</code>, <code>pm.expect</code>, <code>pm.sendRequest</code>, CryptoJS, lodash and moment. Insomnia and Bruno scripts run too.</p></div>
+      <div><h3>The same mental model</h3><p>Workspaces, collections and nested folders that inherit auth, headers, variables and scripts. Environments, globals and <code>{{variables}}</code>, including <code>{{$guid}}</code>.</p></div>
+      <div><h3>Export back any time</h3><p>Postman v2.1, Insomnia v4 or a full-fidelity Monkeytail JSON file. Your data is never locked in.</p></div>
+      <div><h3>Native, not a web view</h3><p>Built in SwiftUI for each Apple platform, with keyboard shortcuts on the Mac and a thumb-friendly editor on iPhone.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>A full API client in your pocket</h2>
+    <p class="sub">The same workspace on iPhone, iPad and Mac, synced through your own iCloud Drive.</p>
+    <div class="phones">
+      <img class="shot" src="assets/iphone-01-workspace.jpg" alt="JSON response on iPhone" loading="lazy">
+      <img class="shot" src="assets/iphone-03-tree.jpg" alt="Response tree on iPhone" loading="lazy">
+      <img class="shot" src="assets/iphone-05-body.jpg" alt="Request body editor on iPhone" loading="lazy">
+      <img class="shot" src="assets/iphone-08-auth.jpg" alt="OAuth 2.0 settings on iPhone" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Everything else you'd expect</h2>
+    <p class="sub">And a few things you might not.</p>
+    <ul class="checks">
+      <li>HTTP, GraphQL with introspection, WebSocket and server-sent events</li>
+      <li>OAuth 2.0 with PKCE, OAuth 1.0, JWT, AWS Signature V4, Digest, API keys, Basic and Bearer</li>
+      <li>Collection runner with iterations and CSV/JSON data files, exporting JSON or JUnit reports</li>
+      <li>Visual assertions, saved examples, offline mocks and a local mock server</li>
+      <li>Pretty JSON, a response tree, search, comparison, images, audio, video and hex</li>
+      <li>Code generation in 13 languages, plus cURL import and export</li>
+      <li>Timing breakdowns, TLS details, HTTP/HTTPS/SOCKS5 proxies and client certificates</li>
+      <li>Optional Chrome, Firefox and Safari TLS profiles on iPhone, iPad and Mac</li>
+      <li>Six themes, your own colours and fonts</li>
+      <li>English, Spanish, French, Japanese, Korean and Simplified Chinese</li>
+      <li>An Apple Watch companion for favourite requests</li>
+      <li>Open source under the BSD 3-Clause License</li>
+    </ul>
+    <div class="split" style="margin-top:48px">
+      <img class="shot" src="assets/mac-04-tests.jpg" alt="Test results on the Mac" loading="lazy">
+      <img class="shot" src="assets/mac-02-dark.jpg" alt="Dark theme on the Mac" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Private by design</h2>
+    <p class="sub">Requests go straight from your device to your servers. There is no Monkeytail backend in between.</p>
+    <div class="privacy">
+      <div><strong>No account</strong><span>Install it and start sending requests.</span></div>
+      <div><strong>No tracking</strong><span>No analytics, telemetry or data collection.</span></div>
+      <div><strong>Your iCloud</strong><span>Sync uses your own iCloud Drive, and you can turn it off.</span></div>
+      <div><strong>Your Keychain</strong><span>Optionally keep credentials in the system Keychain.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="wrap">
+    <h2>Leave the login screen behind</h2>
+    <p class="sub" style="margin:0 auto 32px">Free on the App Store for iPhone, iPad, Mac and Apple Vision Pro.</p>
+    <div class="buttons">
+      <a class="button primary" href="https://apps.apple.com/app/id6814706725">Download on the App Store</a>
+      <a class="button" href="https://github.com/iebb/Monkeytail">GitHub</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Monkeytail · BSD 3-Clause License</span>
+    <a href="https://github.com/iebb/Monkeytail">Source</a>
+    <a href="https://github.com/iebb/Monkeytail/issues">Issues</a>
+    <a href="https://docs.kitta.co/monkeytail/privacy/">Privacy</a>
+    <a href="https://docs.kitta.co/monkeytail/support/">Support</a>
+  </div>
+</footer>
+</body>
+</html>

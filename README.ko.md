@@ -10,6 +10,10 @@ Monkeytail은 이미 가진 컬렉션을 열어 똑같이 실행합니다. Monke
 
 <p><img src="docs/screenshots/iphone-request.png" alt="iPhone의 요청 편집기" width="285"> <img src="docs/screenshots/iphone-response.png" alt="iPhone의 JSON 응답" width="285"></p>
 
+## 다운로드
+
+**[App Store에서 다운로드](https://apps.apple.com/app/id6814706725)**: iPhone, iPad, Mac, Apple Vision Pro용으로 무료이며 앱 내 구입이 없습니다. 웹사이트: [monk.ieb.app](https://monk.ieb.app)
+
 ## Postman이나 Insomnia에서 옮겨 오기
 
 - **모두 가져옵니다.** Postman 컬렉션(v1, v2, v2.1), 환경, 전역 변수, 전체 데이터 내보내기, Insomnia v4 및 v5 내보내기는 물론 Bruno, Hoppscotch, Thunder Client, HAR, `.http` 파일, OpenAPI/Swagger, cURL을 지원합니다. 여러 파일이나 폴더 전체를 한 번에 선택할 수 있습니다.

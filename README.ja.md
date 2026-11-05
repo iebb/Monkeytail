@@ -10,6 +10,10 @@ Monkeytail は手持ちのコレクションを開き、同じように実行し
 
 <p><img src="docs/screenshots/iphone-request.png" alt="iPhone のリクエストエディタ" width="285"> <img src="docs/screenshots/iphone-response.png" alt="iPhone の JSON レスポンス" width="285"></p>
 
+## ダウンロード
+
+**[App Store からダウンロード](https://apps.apple.com/app/id6814706725)**：iPhone、iPad、Mac、Apple Vision Pro 向けに無料で、App 内課金もありません。Web サイト：[monk.ieb.app](https://monk.ieb.app)
+
 ## Postman や Insomnia からの乗り換え
 
 - **すべて読み込めます。** Postman のコレクション（v1、v2、v2.1）、環境、グローバル変数、データの一括エクスポート、Insomnia v4・v5 のエクスポートに加え、Bruno、Hoppscotch、Thunder Client、HAR、`.http` ファイル、OpenAPI/Swagger、cURL に対応。複数のファイルやフォルダをまとめて選べます。
