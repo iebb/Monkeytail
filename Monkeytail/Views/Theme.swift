@@ -90,7 +90,7 @@ struct ThemeSettings: Codable, Equatable {
     /// The interface language, or nil to follow the system. Text in views switches at once; the rest on the next launch.
     var language: String? {
         didSet {
-            guard language != oldValue else { return }
+            guard language != oldValue, !ScreenshotMode.active else { return }
             let defaults = UserDefaults.standard
             if let language { defaults.set(language, forKey: "appLanguage"); defaults.set([language], forKey: "AppleLanguages") }
             else { defaults.removeObject(forKey: "appLanguage"); defaults.removeObject(forKey: "AppleLanguages") }
@@ -98,9 +98,10 @@ struct ThemeSettings: Codable, Equatable {
     }
     private init(defaults: UserDefaults = .standard) {
         settings = defaults.data(forKey: Self.key).flatMap { try? JSONDecoder().decode(ThemeSettings.self, from: $0) } ?? ThemeSettings()
+        if let scene = ScreenshotMode.scene { settings = ThemeSettings(preset: scene.preset, appearance: scene.dark ? .dark : .light); language = nil; return }
         language = defaults.string(forKey: "appLanguage").flatMap { code in AppLanguage.supported.contains { $0.code == code } ? code : nil }
     }
-    private func save() { UserDefaults.standard.set(try? JSONEncoder().encode(settings), forKey: Self.key) }
+    private func save() { guard !ScreenshotMode.active else { return }; UserDefaults.standard.set(try? JSONEncoder().encode(settings), forKey: Self.key) }
 }
 
 enum Theme {
@@ -374,10 +375,12 @@ extension ThemeAppearance {
 struct LanguagePicker: View {
     @Bindable private var theme = ThemeStore.shared
     var body: some View {
-        Picker(selection: $theme.language) {
-            Text("Follow system").tag(String?.none)
-            Divider()
-            ForEach(AppLanguage.supported, id: \.code) { Text(verbatim: $0.name).tag(String?.some($0.code)) }
+        LabeledContent {
+            Picker(selection: $theme.language) {
+                Text("Follow system").tag(String?.none)
+                Divider()
+                ForEach(AppLanguage.supported, id: \.code) { Text(verbatim: $0.name).tag(String?.some($0.code)) }
+            } label: { Text("Language") }.labelsHidden().fixedSize().borderlessMenu()
         } label: { Label("Language", systemImage: "globe") }
     }
 }
@@ -391,7 +394,7 @@ struct ThemeSettingsView: View {
             Section {
                 ThemeGallery()
                 AppearancePicker()
-            } header: { Text("Theme") }
+            } header: { Text("Theme") }.flatSection()
             Section {
                 ForEach(ThemeToken.allCases) { token in
                     HStack(spacing: 12) {
@@ -420,18 +423,18 @@ struct ThemeSettingsView: View {
                     Text("Light").lineLimit(1).minimumScaleFactor(0.7).frame(width: 52)
                     Text("Dark").lineLimit(1).minimumScaleFactor(0.7).frame(width: 52)
                 }
-            } footer: { Text("Override any colour of the chosen theme. Changes apply to every window straight away.") }
+            } footer: { Text("Override any colour of the chosen theme. Changes apply to every window straight away.") }.flatSection()
             Section {
                 fontPicker("Interface font", selection: $theme.settings.interfaceFont, families: interfaceFamilies)
                 fontPicker("Code font", selection: $theme.settings.codeFont, families: codeFamilies)
                 if theme.settings.interfaceFont != nil || theme.settings.codeFont != nil {
                     Button("Use system fonts") { theme.settings.interfaceFont = nil; theme.settings.codeFont = nil }
                 }
-            } header: { Text("Fonts") }
+            } header: { Text("Fonts") }.flatSection()
             Section {
                 preview
-            } header: { Text("Preview") }
-        }.formStyle(.grouped)
+            } header: { Text("Preview") }.flatSection()
+        }.settingsForm()
             .navigationTitle("Theme & fonts").inlineTitle()
             .task {
                 guard interfaceFamilies.isEmpty else { return }
@@ -472,15 +475,16 @@ struct ThemeSettingsView: View {
             if dark { pair.dark = Theme.hex(color) } else { pair.light = Theme.hex(color) }
             theme.settings.colors[token] = pair == ThemePreset.named(theme.settings.preset).colors[token] ? nil : pair
         })
-        return ColorPicker(selection: binding, supportsOpacity: false) { dark ? Text("\(Text(token.title)), dark") : Text("\(Text(token.title)), light") }
-            .labelsHidden().frame(width: 52)
+        return ColorWell(color: binding, label: dark ? Text("\(Text(token.title)), dark") : Text("\(Text(token.title)), light"))
     }
 
     private func fontPicker(_ title: LocalizedStringKey, selection: Binding<String?>, families: [String]) -> some View {
-        Picker(title, selection: selection) {
-            Text("System").tag(String?.none)
-            if let current = selection.wrappedValue, !families.contains(current) { Text(verbatim: current).tag(String?.some(current)) }
-            ForEach(families, id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
+        LabeledContent(title) {
+            Picker(title, selection: selection) {
+                Text("System").tag(String?.none)
+                if let current = selection.wrappedValue, !families.contains(current) { Text(verbatim: current).tag(String?.some(current)) }
+                ForEach(families, id: \.self) { Text(verbatim: $0).tag(String?.some($0)) }
+            }.labelsHidden().fixedSize().borderlessMenu()
         }
     }
 }

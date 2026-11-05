@@ -19,6 +19,7 @@
 		10581EAEE18449219345570F /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = F292057CE60FE52926AEEE6C /* Components.swift */; };
 		122327BF25A09F2F40349CF2 /* MockServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFED1C08E0D8C6B660B122BA /* MockServer.swift */; };
 		122AD00BACD4793DEF645B24 /* AdvancedIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B555605FD80F566F8716E2BA /* AdvancedIntegrationTests.swift */; };
+		13B51A3721734ACAF80F8FCA /* ScreenshotMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255E36D0D32E688AE67904A0 /* ScreenshotMode.swift */; };
 		14D0F5F864BB31607823FF37 /* ResponsePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F48FD4E7E6D6C31EA922878 /* ResponsePreview.swift */; };
 		16393256937BB797AA103142 /* ICloudWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2922CCDF370B32765975DFCD /* ICloudWorkspace.swift */; };
 		18FE5A33F60D1CEAB6115373 /* SnapshotStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCD31297689DC03303592345 /* SnapshotStorage.swift */; };
@@ -28,6 +29,7 @@
 		229104C9C93127E70662B916 /* ICloudWorkspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2922CCDF370B32765975DFCD /* ICloudWorkspace.swift */; };
 		247E049F4B9893105DB43095 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 346988471402DD2E71FE5984 /* Localizable.xcstrings */; };
 		26AB2DAC4C57ED390C90783C /* LocalNetworkStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28C6E72668FA389E3665FD5B /* LocalNetworkStorage.swift */; };
+		2A0650B95943673CAD1C3ACE /* ScreenshotMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255E36D0D32E688AE67904A0 /* ScreenshotMode.swift */; };
 		302A8F7A36C5955739B28712 /* CollectionRun.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB844D3D7B24142C30777746 /* CollectionRun.swift */; };
 		304ADCC3949E7E3F576BBEFA /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 346988471402DD2E71FE5984 /* Localizable.xcstrings */; };
 		3607D69D6BD87963249BDF98 /* ResponseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E33FB421789C053BD9B6160C /* ResponseView.swift */; };
@@ -117,6 +119,7 @@
 		D26721A5DA7B8386C36568BB /* VisionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57001A2DE3558A7FD9FE0D86 /* VisionUITests.swift */; };
 		D3FC964386D873C236ED72A5 /* SidebarMoves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47E84377731BF3DDF5F5D6FF /* SidebarMoves.swift */; };
 		D67B5EE7BDC10CB12B9B8697 /* ResponseMediaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B9ABF580715316AB6CE849C /* ResponseMediaView.swift */; };
+		D693A0413A79B942F6FE62D8 /* ScreenshotMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255E36D0D32E688AE67904A0 /* ScreenshotMode.swift */; };
 		D75281272C5F71EA07C34D76 /* WorkspaceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2E152455287C4C8E758C5A /* WorkspaceStore.swift */; };
 		DA1D0A4E535590FE5D393D80 /* MockServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFED1C08E0D8C6B660B122BA /* MockServer.swift */; };
 		DC30BF87EA3E7FD53B9F5F36 /* MonkeytailWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 394EFB86C5861596EF3FF5B1 /* MonkeytailWatchApp.swift */; };
@@ -215,6 +218,7 @@
 		1B9ABF580715316AB6CE849C /* ResponseMediaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResponseMediaView.swift; sourceTree = "<group>"; };
 		1C3396862DE443E05DF2C1A0 /* OAuthAuthorizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthAuthorizer.swift; sourceTree = "<group>"; };
 		249960996981BDF096E52556 /* UploadEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadEditor.swift; sourceTree = "<group>"; };
+		255E36D0D32E688AE67904A0 /* ScreenshotMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotMode.swift; sourceTree = "<group>"; };
 		26FD72B695B5A7EB294BABCD /* MonkeytailVisionUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MonkeytailVisionUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		28C6E72668FA389E3665FD5B /* LocalNetworkStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNetworkStorage.swift; sourceTree = "<group>"; };
 		2922CCDF370B32765975DFCD /* ICloudWorkspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudWorkspace.swift; sourceTree = "<group>"; };
@@ -364,6 +368,7 @@
 				BFED1C08E0D8C6B660B122BA /* MockServer.swift */,
 				1C3396862DE443E05DF2C1A0 /* OAuthAuthorizer.swift */,
 				9F48FD4E7E6D6C31EA922878 /* ResponsePreview.swift */,
+				255E36D0D32E688AE67904A0 /* ScreenshotMode.swift */,
 				E4726B75DE984647B6815AC2 /* ScriptLibraries.swift */,
 				32501AACB3CB3122C4AB4329 /* ScriptRunner.swift */,
 				5071325300ABE069E1D857EB /* SecretVault.swift */,
@@ -826,6 +831,7 @@
 				FF1E6EC5F1118075D55CF571 /* ResponseTools.swift in Sources */,
 				3607D69D6BD87963249BDF98 /* ResponseView.swift in Sources */,
 				CD4D215255D12F773DEE5E41 /* RunnerView.swift in Sources */,
+				2A0650B95943673CAD1C3ACE /* ScreenshotMode.swift in Sources */,
 				387AE10EE4D796E9E86E23A8 /* ScriptLibraries.swift in Sources */,
 				ED6374C5E836DF6786D07653 /* ScriptRunner.swift in Sources */,
 				A29AAED733E7048AC71EDE55 /* SecretVault.swift in Sources */,
@@ -876,6 +882,7 @@
 				A1179A708ED9EA7E798DDFAD /* ResponseTools.swift in Sources */,
 				FAE0914EC27668E3B9755F60 /* ResponseView.swift in Sources */,
 				F0588ADF5ED0A98DBB25C18F /* RunnerView.swift in Sources */,
+				13B51A3721734ACAF80F8FCA /* ScreenshotMode.swift in Sources */,
 				EE8564489D70A1A0C4643D76 /* ScriptLibraries.swift in Sources */,
 				AEB1D618108F579B691EA828 /* ScriptRunner.swift in Sources */,
 				6B3FAC71F4F081CE9931B7E4 /* SecretVault.swift in Sources */,
@@ -943,6 +950,7 @@
 				811C53536987D170111C2826 /* ResponseTools.swift in Sources */,
 				5606CBF79A621158A2C76B66 /* ResponseView.swift in Sources */,
 				4C1E92712548551603B6991C /* RunnerView.swift in Sources */,
+				D693A0413A79B942F6FE62D8 /* ScreenshotMode.swift in Sources */,
 				4392515BFB54C6BB825DD40C /* ScriptLibraries.swift in Sources */,
 				F2E87233DCDDD482B7069F63 /* ScriptRunner.swift in Sources */,
 				EB4D698A404F06C73078A07A /* SecretVault.swift in Sources */,

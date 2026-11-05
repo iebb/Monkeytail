@@ -21,7 +21,7 @@ struct SidebarTree: View {
     @Bindable var store: WorkspaceStore
     var search: String
     var actions: SidebarTreeActions
-    @State private var expanded: Set<UUID> = Self.loadExpanded()
+    @State private var expanded: Set<UUID> = ScreenshotMode.active ? Set(DemoWorkspace.workspace.collections.prefix(2).map(\.id) + (DemoWorkspace.workspace.collections.first?.folders ?? []).prefix(2).map(\.id)) : Self.loadExpanded()
     @State private var target: UUID?
 
     private enum Row: Identifiable {
@@ -39,6 +39,7 @@ struct SidebarTree: View {
                 rowView(row)
                     .listRowInsets(EdgeInsets(top: 0, leading: SidebarMetrics.treeInset, bottom: 0, trailing: 4))
                     .listRowSeparator(.hidden)
+                    .listRowBackground(rowBackground(row))
             }
             if store.collections.isEmpty {
                 note("No collections yet", action: "New collection", perform: actions.newCollection)
@@ -56,7 +57,7 @@ struct SidebarTree: View {
             .environment(\.defaultMinListRowHeight, SidebarMetrics.treeRowHeight)
             .onAppear { reveal(store.selectedRequestID) }
             .onChange(of: store.selectedRequestID) { _, id in reveal(id) }
-            .onChange(of: expanded) { _, value in UserDefaults.standard.set(value.map(\.uuidString), forKey: "sidebarExpanded") }
+            .onChange(of: expanded) { _, value in if !ScreenshotMode.active { UserDefaults.standard.set(value.map(\.uuidString), forKey: "sidebarExpanded") } }
     }
 
     // MARK: Rows
@@ -153,6 +154,15 @@ struct SidebarTree: View {
         }
     }
 
+    private func rowBackground(_ row: Row) -> Color {
+        #if os(macOS)
+        .clear
+        #else
+        if case .request(let request, _, _) = row, request.id == store.selectedRequestID { return Palette.mint.opacity(0.1) }
+        return .clear
+        #endif
+    }
+
     private func highlight(_ id: UUID, _ on: Bool) {
         if on { target = id } else if target == id { target = nil }
     }
@@ -173,9 +183,6 @@ struct SidebarTree: View {
                 .background(target == request.id ? Palette.mint.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 5))
         }.buttonStyle(.plain).tag(request.id)
             .accessibilityLabel(Text(verbatim: "\(request.method) \(request.name)"))
-            #if !os(macOS)
-            .listRowBackground(selected ? Palette.mint.opacity(0.1) : Color.clear)
-            #endif
             .contextMenu { requestMenu(request, collection: collectionID) }
             .draggable(SidebarItem.request(request.id).payload) { Text(verbatim: "\(request.method) \(request.name)").padding(6) }
             .dropDestination(for: String.self) { items, _ in store.drop(items, to: collectionID, folder: request.folderID, before: request.id) } isTargeted: { highlight(request.id, $0) }

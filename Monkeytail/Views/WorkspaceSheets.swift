@@ -191,10 +191,17 @@ struct SettingsView: View {
                     ThemeGallery()
                     AppearancePicker()
                     NavigationLink { ThemeSettingsView() } label: {
-                        LabeledContent { Text(fontSummary) } label: { Label("Theme & fonts", systemImage: "paintpalette") }
-                    }
+                        LabeledContent {
+                            HStack(spacing: 6) {
+                                Text(fontSummary)
+                                #if os(macOS)
+                                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                                #endif
+                            }
+                        } label: { Label("Theme & fonts", systemImage: "paintpalette") }.contentShape(Rectangle())
+                    }.buttonStyle(.plain)
                     LanguagePicker()
-                } header: { Text("Appearance") } footer: { Text("Some text changes language after you reopen Monkeytail.") }
+                } header: { Text("Appearance") } footer: { Text("Some text changes language after you reopen Monkeytail.") }.flatSection()
                 Section {
                     Toggle(isOn: Binding(get: { store.syncEnabled }, set: { store.setSyncEnabled($0) })) { Label("iCloud sync", systemImage: "icloud") }
                     if store.syncEnabled {
@@ -218,16 +225,18 @@ struct SettingsView: View {
                         Button("Clear request history", role: .destructive) { store.clearHistory() }
                             .disabled(store.history.isEmpty)
                     } label: { Label("Storage & limits", systemImage: "internaldrive") }
-                } header: { Text("Workspace") }
+                } header: { Text("Workspace") }.flatSection()
                 Section {
-                    Picker(selection: $store.workspace.proxy.kind) { ForEach(ProxyKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } } label: { Label("Proxy", systemImage: "network") }
+                    LabeledContent {
+                        Picker("Proxy", selection: $store.workspace.proxy.kind) { ForEach(ProxyKind.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.labelsHidden().fixedSize().borderlessMenu()
+                    } label: { Label("Proxy", systemImage: "network") }
                     if store.workspace.proxy.kind != .system {
                         TextField("Hostname or IP address", text: $store.workspace.proxy.host).urlInput()
                         TextField("Port", text: $store.workspace.proxy.port).numberInput()
                         TextField("Username (optional)", text: $store.workspace.proxy.username)
                         SecureField("Password (optional)", text: $store.workspace.proxy.password)
                     }
-                } header: { Text("Connection") }
+                } header: { Text("Connection") }.flatSection()
                 Section {
                     LabeledContent("Monkeytail", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3")
                     HStack(spacing: 20) {
@@ -243,8 +252,8 @@ struct SettingsView: View {
                             .navigationTitle("Licenses")
                     }
                     #endif
-                } header: { Text("About") } footer: { Text("Kitta Co · No data collected") }
-            }.formStyle(.grouped).toggleStyle(.switch).noCapitalization().autocorrectionDisabled()
+                } header: { Text("About") } footer: { Text("Kitta Co · No data collected") }.flatSection()
+            }.settingsForm().noCapitalization().autocorrectionDisabled()
                 .navigationTitle("Settings").inlineTitle()
                 #if !os(macOS)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.keyboardShortcut(.defaultAction) } }

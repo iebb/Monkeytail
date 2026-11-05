@@ -12,6 +12,10 @@ For documentation-only pushes, use `[ci skip]` in the commit message ([GitHub gu
 
 The generated project is committed, so CI does not need XcodeGen. Regenerate with `xcodegen generate` after changing `project.yml`.
 
+## App Store screenshots
+
+`Scripts/screenshots.sh [iphone] [ipad] [mac]` captures 20 scenes per platform from built-in demo data into `build/screenshots/` (iPhone 6.9" 1320 × 2868, iPad 13" 2064 × 2752, Mac 2880 × 1800). Each scene launches the app with `--screenshot <scene>`, which loads the demo workspace in a temporary directory and leaves your own workspace, theme and language untouched; every demo request answers from an offline mock. `SCENES="04-tests 14-runner"` limits a run to some scenes. App Store Connect accepts up to 10 screenshots per device size.
+
 ## GitHub Actions build
 
 Builds run in GitHub Actions (`.github/workflows/build.yml`); Xcode Cloud is no longer used and CI runs no tests. Run tests locally with `swift test` and `Scripts/test.sh`.

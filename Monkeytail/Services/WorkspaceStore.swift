@@ -62,9 +62,9 @@ final class WorkspaceStore {
 
 
     init(directory: URL? = nil) {
-        let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
+        let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing") || ScreenshotMode.active
         managesWatchStorage = directory == nil && !testing
-        self.directory = directory ?? (testing ? FileManager.default.temporaryDirectory.appendingPathComponent("MonkeytailUITests") : URL.applicationSupportDirectory.appendingPathComponent("Monkeytail", isDirectory: true))
+        self.directory = directory ?? (testing ? FileManager.default.temporaryDirectory.appendingPathComponent(ScreenshotMode.active ? "MonkeytailScreenshots" : "MonkeytailUITests") : URL.applicationSupportDirectory.appendingPathComponent("Monkeytail", isDirectory: true))
         if testing { try? FileManager.default.removeItem(at: self.directory) }
         let location = self.directory.appendingPathComponent("workspace.json")
         var savedSettings = LocalSettings()
@@ -109,6 +109,7 @@ final class WorkspaceStore {
             persistsActiveWorkspace = true
         }
         selectedRequestID = workspace.collections.first?.requests.first?.id
+        ScreenshotMode.prepare(self)
         if !testing { restoreTabs() }
         if !testing {
             if let data = try? Data(contentsOf: self.directory.appendingPathComponent("sync-state.json")), let state = try? JSONDecoder().decode(WorkspaceSyncState.self, from: data) { syncState = state }

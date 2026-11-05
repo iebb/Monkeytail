@@ -11,7 +11,7 @@ import MonkeytailCore
 struct WorkspaceView: View {
     @Bindable var store: WorkspaceStore
     @State private var visibility: NavigationSplitViewVisibility = .all
-    @State private var compactColumn: NavigationSplitViewColumn = .detail
+    @State private var compactColumn: NavigationSplitViewColumn = ScreenshotMode.scene?.sidebar == true ? .sidebar : .detail
     @State private var sheet: WorkspaceSheet?
     @State private var search = ""
     @FocusState private var searchFocused: Bool
@@ -35,7 +35,7 @@ struct WorkspaceView: View {
     @State private var deletingWorkspace = false
     @State private var deletingCollection: RequestCollection?
 
-    enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, history, snapshots, curl, code, network, defaults, watch, runner; var id: String { rawValue } }
+    enum WorkspaceSheet: String, Identifiable { case transfer, environment, settings, theme, history, snapshots, curl, code, network, defaults, watch, runner; var id: String { rawValue } }
 
     var body: some View {
         GeometryReader { geometry in
@@ -67,8 +67,8 @@ struct WorkspaceView: View {
             exportCurl: { if store.selectedRequest != nil { sheet = .curl } }
         ))
         #else
-        .onAppear { visibility = geometry.size.width >= 1100 ? .all : .detailOnly }
-        .onChange(of: geometry.size.width) { _, width in visibility = width >= 1100 ? .all : .detailOnly }
+        .onAppear { visibility = geometry.size.width >= 1100 || ScreenshotMode.active ? .all : .detailOnly }
+        .onChange(of: geometry.size.width) { _, width in visibility = width >= 1100 || ScreenshotMode.active ? .all : .detailOnly }
         #endif
         .sheet(item: $sheet) { sheet in
             switch sheet {
@@ -88,6 +88,10 @@ struct WorkspaceView: View {
                 #endif
             case .defaults: if let id = editingCollectionID { FolderSettingsView(store: store, collectionID: id, folderID: editingFolderID) }
             case .runner: if let id = runnerCollectionID { CollectionRunnerView(store: store, collectionID: id, folderID: runnerFolderID) }
+            case .theme:
+                NavigationStack {
+                    ThemeSettingsView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { self.sheet = nil } } }
+                }.macSheetFrame(minWidth: 560, minHeight: 640)
             }
         }
         .alert("Workspace", isPresented: Binding(get: { sheet == nil && (store.issue != nil || store.notice != nil) }, set: { if !$0 { store.issue = nil; store.notice = nil } })) {
@@ -131,6 +135,7 @@ struct WorkspaceView: View {
                 deletingCollection = nil
             }
         } message: { Text("^[\(deletingCollection?.requests.count ?? 0) request](inflect: true) will be deleted.") }
+        .task { await stageScreenshot() }
         .onOpenURL { url in
             if url.scheme == "monkeytail" { return }
             let granted = url.startAccessingSecurityScopedResource()
@@ -210,7 +215,7 @@ struct WorkspaceView: View {
             .toolbar { ToolbarItem { sidebarToggle }.flatToolbarBackground() }
             #endif
             .onChange(of: store.selectedRequestID) { _, id in
-                if id != nil { compactColumn = .detail }
+                if id != nil && !ScreenshotMode.active { compactColumn = .detail }
             }
     }
 
@@ -294,6 +299,29 @@ struct WorkspaceView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Switch workspace").accessibilityValue(Text(verbatim: store.name(of: active)))
             .accessibilityIdentifier("Switch workspace")
+    }
+
+    /// Sets up one App Store screenshot scene; see ScreenshotMode.
+    private func stageScreenshot() async {
+        guard let scene = ScreenshotMode.scene else { return }
+        #if os(macOS)
+        let window = { NSApp.windows.first { $0.isVisible && $0.canBecomeMain } }
+        window()?.setFrame(NSRect(x: 60, y: 60, width: 1440, height: 900), display: true)
+        #endif
+        try? await Task.sleep(for: .milliseconds(600))
+        #if os(macOS)
+        window()?.setFrame(NSRect(x: 60, y: 60, width: 1440, height: 900), display: true)
+        window()?.makeFirstResponder(nil)
+        #endif
+        if scene.send { store.send() }
+        if scene.sheet == "runner", let collection = store.collections.first {
+            runnerCollectionID = collection.id; runnerFolderID = nil
+            let ids = store.runPlan(collectionID: collection.id, folderID: nil).filter { $0.mock?.enabled == true }.map(\.id)
+            store.startRun(collectionID: collection.id, folderID: nil, configuration: RunConfiguration(requestIDs: Set(ids)))
+        }
+        try? await Task.sleep(for: .milliseconds(900))
+        if let name = scene.sheet { sheet = WorkspaceSheet(rawValue: name) }
+
     }
 
     private func runCollection(_ id: UUID, folder: UUID?) {
@@ -405,7 +433,7 @@ struct WorkspaceView: View {
 struct RequestWorkspace: View {
     @Bindable var store: WorkspaceStore
     let requestID: UUID
-    @State private var pane = "Request"
+    @State private var pane = ScreenshotMode.scene?.pane ?? "Request"
     @State private var inputDismissal = 0
     @State private var fold: CGRect?
     #if os(macOS)

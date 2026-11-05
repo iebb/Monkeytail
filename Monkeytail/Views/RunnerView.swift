@@ -19,7 +19,7 @@ struct CollectionRunnerView: View {
     let collectionID: UUID
     let folderID: UUID?
     @Environment(\.dismiss) private var dismiss
-    @State private var tab = "Configure"
+    @State private var tab = ScreenshotMode.active ? "Results" : "Configure"
     @State private var selected: Set<UUID> = []
     @State private var iterations = 1
     @State private var delay = 0

@@ -11,8 +11,8 @@ struct ResponseView: View {
     var savedResponse: PreparedResponse? = nil
     @State private var pathTool = false
     @State private var comparing = false
-    @State private var tab = "Body"
-    @State private var format = "Pretty"
+    @State private var tab = ScreenshotMode.scene?.responseTab ?? "Body"
+    @State private var format = ScreenshotMode.scene?.format ?? "Pretty"
     @State private var lastKind: ResponseBodyKind?
     @State private var search = ""
     @State private var copied = false

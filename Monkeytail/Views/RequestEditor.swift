@@ -8,7 +8,7 @@ import MonkeytailCore
 struct RequestEditor: View {
     @Binding var request: APIRequest
     let store: WorkspaceStore
-    @State private var tab = "Headers"
+    @State private var tab = ScreenshotMode.scene?.editorTab ?? "Headers"
     @State private var scriptTab = "Before"
     @State private var editorError: String?
     @Environment(\.verticalSizeClass) private var verticalSizeClass
